@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: venue-api-gateway
+    runtime: node
+    plan: free
+    rootDir: services/api-gateway
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/v1/pdv/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: AI_ENGINE_TIMEOUT_MS
+        value: "2500"
+      - key: AI_ENGINE_PING_TIMEOUT_MS
+        value: "800"
+      - key: WINDOW_TIME_MIN
+        value: "30"
+      - key: DESLOCAMENTO_MEDIO_MIN
+        value: "8"

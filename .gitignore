@@ -1,0 +1,27 @@
+# Arquivos de contexto e diário interno (solicitado pelo usuário)
+PROGRESS_LOG.md
+PROJECT_CONTEXT.md
+
+# Dependências e builds
+node_modules/
+dist/
+build/
+.cache/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs e Sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
