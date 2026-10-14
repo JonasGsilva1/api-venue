@@ -305,7 +305,6 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
     },
     servers: [
       { url: '/', description: 'Servidor atual (automático / Render / produção / local)' },
-      { url: `http://localhost:${config.PORT}`, description: 'Desenvolvimento local explícito' },
     ],
     tags: [
       { name: TAGS.telemetria, description: 'Ingestão de telemetria, Matriz de Resiliência e SSE.' },
