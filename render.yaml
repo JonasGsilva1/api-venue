@@ -1,21 +1,20 @@
 services:
   - type: web
     name: venue-api-gateway
-    runtime: node
+    runtime: python
     plan: free
-    rootDir: services/api-gateway
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: npm run start
-    healthCheckPath: /api/v1/pdv/status
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: CORS_ORIGINS
         value: "*"
-      - key: AI_ENGINE_TIMEOUT_MS
-        value: "2500"
-      - key: AI_ENGINE_PING_TIMEOUT_MS
-        value: "800"
+      - key: DEV_TOKEN
+        value: "dev-raiz-token-2026"
+      - key: AI_ENGINE_TIMEOUT_SEG
+        value: "2.5"
       - key: WINDOW_TIME_MIN
         value: "30"
       - key: DESLOCAMENTO_MEDIO_MIN

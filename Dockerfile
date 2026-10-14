@@ -1,27 +1,26 @@
-FROM node:22-alpine AS builder
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copia manifestos de dependência do api-gateway
-COPY services/api-gateway/package*.json ./
-RUN npm ci --no-audit --no-fund
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000
 
-# Copia código-fonte e compila TypeScript
-COPY services/api-gateway/tsconfig.json ./
-COPY services/api-gateway/src ./src
-RUN npm run build
+# Dependências do sistema (mínimo necessário)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-FROM node:22-alpine AS runner
+# Instala dependências Python
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
+# Copia a aplicação unificada
+COPY app ./app
 
-COPY services/api-gateway/package*.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+EXPOSE 8000
 
-COPY --from=builder /app/dist ./dist
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-EXPOSE 3000
-
-CMD ["node", "dist/server.js"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

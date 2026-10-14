@@ -1,8 +1,14 @@
-node_modules
-dist
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache
+tests
 .git
 .env
 .env.*
-npm-debug.log*
 PROGRESS_LOG.md
 PROJECT_CONTEXT.md
+node_modules
+dist
