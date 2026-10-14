@@ -36,7 +36,7 @@ const TAGS = {
   zonas: 'Zonas & Roteamento',
   ops: 'Operações (Staff)',
   analytics: 'Analytics de Negócio',
-  venue: 'Readiness & Heatmap',
+  venue: 'Prontidão & Mapa de Calor',
 } as const;
 
 export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateDocument']> {
@@ -128,15 +128,15 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
     path: '/api/v1/analytics/dropoff-summary',
     operationId: 'resumoDropoff',
     tags: [TAGS.analytics],
-    summary: 'Window Time, Queue Time, Density Point, Drop-off Rate, CES e síntese D1-D3',
+    summary: 'Janela de Tempo, Fila Média, Abandono de Consumo (Drop-off Rate), Esforço (CES) e Síntese D1-D3',
     description: [
-      '- `queue_time_medio_min`: média das esperas atuais em zonas de fila (BAR, BANHEIRO, CATRACA).',
-      `- \`dropoff_rate_estimado_pct\`: razão r = (deslocamento ${config.DESLOCAMENTO_MEDIO_MIN} min + fila) / window. Se r >= 25/30 → > 80% (linear até 100%); abaixo, 80·(r/(25/30))².`,
-      '- `ces_score`: 1 + 4·r (limitado a 1..5; 5 = esforço máximo).',
-      '- `density_point_atingido`: alguma zona em VERMELHO (> 12 min).',
+      '- `tempo_medio_fila_min`: média das esperas atuais em zonas de fila (BAR, BANHEIRO, CATRACA).',
+      `- \`taxa_abandono_estimada_pct\`: razão r = (deslocamento ${config.DESLOCAMENTO_MEDIO_MIN} min + fila) / janela_tempo_min. Se r >= 25/30 → > 80% (linear até 100%); abaixo, 80·(r/(25/30))².`,
+      '- `pontuacao_esforco_ces`: 1 + 4·r (limitado a 1..5; 5 = esforço crítico).',
+      '- `ponto_densidade_atingido`: alguma zona em nível crítico VERMELHO (> 12 min).',
     ].join('\n'),
     responses: {
-      200: { description: 'Métricas consolidadas.', content: json(AnalyticsSummaryResponseContract) },
+      200: { description: 'Métricas consolidadas de negócio.', content: json(AnalyticsSummaryResponseContract) },
       ...ERROS_PADRAO,
     },
   });
@@ -147,9 +147,9 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
     path: '/api/v1/venue/readiness-heatmap',
     operationId: 'readinessHeatmap',
     tags: [TAGS.venue],
-    summary: 'Readiness pós-montagem (S01) e Mapa de Calor global (S06)',
+    summary: 'Prontidão pós-montagem (S01) e Mapa de Calor global (S06)',
     description:
-      'Readiness: sensores ONLINE, estoque dos BARs >= 45%, rota livre (sem dispatch CRITICO_PCD_CLIMA pendente e acessos fora do VERMELHO) e ping ao ai-engine. Heatmap: agregados anônimos das leituras atuais (velocidade via modelo de Greenshields).',
+      'Prontidão: sensores ONLINE, estoque dos BARs >= 45%, rota livre (sem chamado CRITICO_PCD_CLIMA pendente e acessos fora do VERMELHO) e ping ao motor de IA. Mapa de calor: agregados anônimos das leituras atuais (velocidade calculada via modelo de Greenshields).',
     responses: {
       200: { description: 'Indicadores de prontidão e mapa de calor.', content: json(ReadinessHeatmapResponseContract) },
       ...ERROS_PADRAO,
@@ -204,8 +204,8 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
       { name: TAGS.telemetria, description: 'Ingestão, Matriz de Resiliência e SSE.' },
       { name: TAGS.zonas, description: 'Status das zonas e Paradoxo do Roteamento.' },
       { name: TAGS.ops, description: 'Intervenções humanas assistidas.' },
-      { name: TAGS.analytics, description: 'Drop-off Rate, CES e acumulados.' },
-      { name: TAGS.venue, description: 'Readiness S01 e Heatmap S06.' },
+      { name: TAGS.analytics, description: 'Abandono de consumo (Drop-off), esforço e acumulados.' },
+      { name: TAGS.venue, description: 'Prontidão pós-montagem (S01) e Mapa de Calor (S06).' },
     ],
   });
 }

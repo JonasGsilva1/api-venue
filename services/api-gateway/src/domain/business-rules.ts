@@ -24,16 +24,16 @@ export function habilitarRedirecionamentoPush(tempoEsperaSeg: number | null): bo
 }
 
 /** §4.2.2 — Ruptura mascarada (fila estagnada sem POS) ou estoque crítico. */
-export function detectarRupturaEstoque(paxCount: number, transacoesPos3m: number, estoquePct: number): boolean {
-  const filaEstagnada = paxCount >= LIMIAR_FILA_RUPTURA_PAX && transacoesPos3m === 0;
+export function detectarRupturaEstoque(contagemPessoas: number, transacoesPos3m: number, estoquePct: number): boolean {
+  const filaEstagnada = contagemPessoas >= LIMIAR_FILA_RUPTURA_PAX && transacoesPos3m === 0;
   const estoqueCritico = estoquePct < LIMIAR_ESTOQUE_CRITICO_PCT;
   return filaEstagnada || estoqueCritico;
 }
 
 /** Densidade em pessoas/m², arredondada a 2 casas. */
-export function calcularDensidade(paxCount: number, areaM2: number): number {
+export function calcularDensidade(contagemPessoas: number, areaM2: number): number {
   if (areaM2 <= 0) return 0;
-  return arredondar(paxCount / areaM2, 2);
+  return arredondar(contagemPessoas / areaM2, 2);
 }
 
 /** Estado operacional consolidado a partir das cores das zonas. */

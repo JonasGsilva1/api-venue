@@ -29,10 +29,10 @@ export interface FrameAnalysisResult {
 }
 
 interface LeituraCalculada {
-  readonly pax_count: number;
+  readonly contagem_pessoas: number;
   readonly tempo_espera_seg: number;
   readonly densidade_m2: number;
-  readonly ia_confidence: number;
+  readonly confianca_ia: number;
   readonly status_cor: ReadingRecord['status_cor'];
   readonly alerta_ruptura_estoque: boolean;
   readonly modo_leitura: ModoLeitura;
@@ -60,11 +60,11 @@ export class TelemetryService {
     const registro = this.repo.addReading({
       pdv_id: pdv.id,
       timestamp: new Date(agoraMs).toISOString(),
-      pax_count: calculada.pax_count,
+      contagem_pessoas: calculada.contagem_pessoas,
       tempo_espera_seg: calculada.tempo_espera_seg,
       densidade_m2: calculada.densidade_m2,
       status_cor: calculada.status_cor,
-      ia_confidence: calculada.ia_confidence,
+      confianca_ia: calculada.confianca_ia,
       alerta_ruptura_estoque: calculada.alerta_ruptura_estoque,
       modo_leitura: calculada.modo_leitura,
       transacoes_pos_ultimos_3m: entrada.transacoes_pos_ultimos_3m,
@@ -110,10 +110,10 @@ export class TelemetryService {
       case 'OK': {
         const d = resultado.dados;
         return {
-          pax_count: d.pax_count,
+          contagem_pessoas: d.contagem_pessoas,
           tempo_espera_seg: d.tempo_espera_seg,
           densidade_m2: d.densidade_m2,
-          ia_confidence: d.ia_confidence,
+          confianca_ia: d.confianca_ia,
           status_cor: d.status_cor,
           alerta_ruptura_estoque: d.alerta_ruptura_estoque,
           modo_leitura: 'TEMPO_REAL',
@@ -143,19 +143,19 @@ export class TelemetryService {
   }
 
   private montar(
-    est: { pax_count: number; tempo_espera_seg: number; densidade_m2: number; ia_confidence: number },
+    est: { contagem_pessoas: number; tempo_espera_seg: number; densidade_m2: number; confianca_ia: number },
     entrada: TelemetryAnalysisRequest,
     modo: ModoLeitura,
     httpStatus: FrameAnalysisHttpStatus,
     aviso: string,
   ): LeituraCalculada {
     return {
-      pax_count: est.pax_count,
+      contagem_pessoas: est.contagem_pessoas,
       tempo_espera_seg: est.tempo_espera_seg,
       densidade_m2: est.densidade_m2,
-      ia_confidence: est.ia_confidence,
+      confianca_ia: est.confianca_ia,
       status_cor: classificarStatusCor(est.tempo_espera_seg),
-      alerta_ruptura_estoque: detectarRupturaEstoque(est.pax_count, entrada.transacoes_pos_ultimos_3m, entrada.estoque_percentual),
+      alerta_ruptura_estoque: detectarRupturaEstoque(est.contagem_pessoas, entrada.transacoes_pos_ultimos_3m, entrada.estoque_percentual),
       modo_leitura: modo,
       httpStatus,
       aviso,

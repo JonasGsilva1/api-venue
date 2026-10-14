@@ -1,16 +1,16 @@
 /**
  * Planos de contingência da Matriz de Resiliência (PROJECT_CONTEXT.md §6).
  * Funções puras sobre o histórico do repositório: produzem uma estimativa
- * (pax, espera, densidade, confiança) sem depender do ai-engine.
+ * (contagem de pessoas, espera, densidade, confiança) sem depender do ai-engine.
  */
 import { arredondar, calcularDensidade, limitar } from '../domain/business-rules';
 import type { PdvRecord, ReadingRecord } from '../domain/types';
 
 export interface EstimativaLeitura {
-  readonly pax_count: number;
+  readonly contagem_pessoas: number;
   readonly tempo_espera_seg: number;
   readonly densidade_m2: number;
-  readonly ia_confidence: number;
+  readonly confianca_ia: number;
   /** Detalhe técnico incluído no aviso de contingência. */
   readonly base_calculo: string;
 }
@@ -35,11 +35,11 @@ export function estimarContingencia503(pdv: PdvRecord, contagemBruta: number, tr
   const tempo =
     ritmoPorMin > 0 ? (contagemBruta / ritmoPorMin) * 60 : contagemBruta * TEMPO_SERVICO_PADRAO_SEG;
   return {
-    pax_count: contagemBruta,
+    contagem_pessoas: contagemBruta,
     tempo_espera_seg: Math.round(limitar(tempo, 0, TEMPO_ESPERA_MAX_SEG)),
     densidade_m2: calcularDensidade(contagemBruta, pdv.area_m2),
-    ia_confidence: 0.35,
-    base_calculo: `heurística POS (${arredondar(ritmoPorMin, 2)} atend./min) + contagem bruta (${contagemBruta} pax)`,
+    confianca_ia: 0.35,
+    base_calculo: `heurística POS (${arredondar(ritmoPorMin, 2)} atend./min) + contagem bruta (${contagemBruta} pessoas)`,
   };
 }
 
@@ -57,7 +57,7 @@ export function estimarFallback502(
   if (historico15m.length === 0) {
     // Sem histórico: o próprio volume do POS é a única fonte disponível.
     const base = estimarContingencia503(pdv, transacoesPos3m, transacoesPos3m);
-    return { ...base, ia_confidence: 0.2, base_calculo: `sem histórico de 15 min; ${base.base_calculo}` };
+    return { ...base, confianca_ia: 0.2, base_calculo: `sem histórico de 15 min; ${base.base_calculo}` };
   }
 
   const ordenado = [...historico15m].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
@@ -66,7 +66,7 @@ export function estimarFallback502(
   const ponderada = (sel: (r: ReadingRecord) => number): number =>
     ordenado.reduce((s, r, i) => s + sel(r) * (pesos[i] ?? 0), 0) / somaPesos;
 
-  const paxPond = ponderada((r) => r.pax_count);
+  const pessoasPond = ponderada((r) => r.contagem_pessoas);
   const tempoPond = ponderada((r) => r.tempo_espera_seg);
   const txPond = ponderada((r) => r.transacoes_pos_ultimos_3m);
 
@@ -83,14 +83,14 @@ export function estimarFallback502(
 
   // Cruzamento com o POS adjacente: menos transações que o histórico → espera e fila maiores.
   const fatorPos = limitar((txPond + 1) / (transacoesPos3m + 1), 0.5, 2);
-  const pax = Math.round(paxPond * Math.sqrt(fatorPos));
+  const pessoas = Math.round(pessoasPond * Math.sqrt(fatorPos));
   const tempo = Math.round(limitar(tempoTendencia * fatorPos, 0, TEMPO_ESPERA_MAX_SEG));
 
   return {
-    pax_count: pax,
+    contagem_pessoas: pessoas,
     tempo_espera_seg: tempo,
-    densidade_m2: calcularDensidade(pax, pdv.area_m2),
-    ia_confidence: arredondar(limitar(0.35 + 0.02 * ordenado.length, 0.35, 0.65), 2),
+    densidade_m2: calcularDensidade(pessoas, pdv.area_m2),
+    confianca_ia: arredondar(limitar(0.35 + 0.02 * ordenado.length, 0.35, 0.65), 2),
     base_calculo: `tendência de ${ordenado.length} leituras/15 min × fator POS ${arredondar(fatorPos, 2)}`,
   };
 }
@@ -107,14 +107,14 @@ export function estimarMediaMovel504(
 ): EstimativaLeitura {
   if (historico3m.length === 0) {
     const base = estimarContingencia503(pdv, contagemAtual, transacoesPos3m);
-    return { ...base, ia_confidence: 0.3, base_calculo: `sem leituras nos últimos 3 min; ${base.base_calculo}` };
+    return { ...base, confianca_ia: 0.3, base_calculo: `sem leituras nos últimos 3 min; ${base.base_calculo}` };
   }
-  const pax = Math.round(media(historico3m.map((r) => r.pax_count)));
+  const pessoas = Math.round(media(historico3m.map((r) => r.contagem_pessoas)));
   return {
-    pax_count: pax,
+    contagem_pessoas: pessoas,
     tempo_espera_seg: Math.round(media(historico3m.map((r) => r.tempo_espera_seg))),
-    densidade_m2: calcularDensidade(pax, pdv.area_m2),
-    ia_confidence: 0.6,
+    densidade_m2: calcularDensidade(pessoas, pdv.area_m2),
+    confianca_ia: 0.6,
     base_calculo: `média móvel de ${historico3m.length} leituras/3 min`,
   };
 }

@@ -121,11 +121,11 @@ export function buildSeedReadings(agoraMs: number): NewReadingRecord[] {
       leituras.push({
         pdv_id: pdv.id,
         timestamp: new Date(timestampMs).toISOString(),
-        pax_count: pax,
+        contagem_pessoas: pax,
         tempo_espera_seg: tempo,
         densidade_m2: calcularDensidade(pax, pdv.area_m2),
         status_cor: classificarStatusCor(tempo),
-        ia_confidence: perfil.confidence,
+        confianca_ia: perfil.confidence,
         alerta_ruptura_estoque: detectarRupturaEstoque(pax, tx, estoque),
         modo_leitura: 'TEMPO_REAL',
         transacoes_pos_ultimos_3m: tx,
@@ -145,3 +145,21 @@ export const SEED_COUNTERS: CountersRecord = {
   autosservico_retiradas: 968,
   engajamento_interacoes: 1735,
 };
+
+/** Intervenções operacionais pré-carregadas para demonstração no Cockpit. */
+export const SEED_DISPATCHES: readonly Omit<import('../domain/types').DispatchRecord, 'id'>[] = [
+  {
+    pdv_id: 1,
+    nivel_critico: 'ALTO',
+    sugestao_acao: 'Acionar reposição lateral preventiva de chopp e insumos no Balcão Z1',
+    status: 'EM_ANDAMENTO',
+    criado_em: new Date(Date.now() - 12 * 60_000).toISOString(),
+  },
+  {
+    pdv_id: 5,
+    nivel_critico: 'CRITICO_PCD_CLIMA',
+    sugestao_acao: 'Desobstrução imediata da rota de acesso aos sanitários para acessibilidade (PCD)',
+    status: 'PENDENTE',
+    criado_em: new Date(Date.now() - 5 * 60_000).toISOString(),
+  },
+];

@@ -6,7 +6,7 @@
  */
 import type { NivelCritico, SensorStatus } from '../contracts';
 import type { CountersRecord, DispatchRecord, NewReadingRecord, PdvRecord, ReadingRecord } from '../domain/types';
-import { SEED_COUNTERS, SEED_PDVS, buildSeedReadings } from './seed';
+import { SEED_COUNTERS, SEED_DISPATCHES, SEED_PDVS, buildSeedReadings } from './seed';
 
 /** Retenção da série temporal em memória (min). */
 const RETENCAO_LEITURAS_MS = 60 * 60_000;
@@ -37,13 +37,21 @@ export class InMemoryVenueRepository implements VenueRepository {
   private nextReadingId = 1;
   private nextDispatchId = 1;
 
-  constructor(pdvs: readonly PdvRecord[], seedReadings: readonly NewReadingRecord[], counters: CountersRecord) {
+  constructor(
+    pdvs: readonly PdvRecord[],
+    seedReadings: readonly NewReadingRecord[],
+    counters: CountersRecord,
+    seedDispatches: readonly Omit<DispatchRecord, 'id'>[] = [],
+  ) {
     for (const pdv of pdvs) {
       this.pdvs.set(pdv.id, pdv);
       this.leituras.set(pdv.id, []);
     }
     for (const leitura of seedReadings) this.addReading(leitura);
     this.counters = { ...counters };
+    for (const disp of seedDispatches) {
+      this.dispatches.push({ id: this.nextDispatchId++, ...disp });
+    }
   }
 
   listPdvs(): readonly PdvRecord[] {
@@ -119,4 +127,5 @@ export const venueRepository: VenueRepository = new InMemoryVenueRepository(
   SEED_PDVS,
   buildSeedReadings(Date.now()),
   SEED_COUNTERS,
+  SEED_DISPATCHES,
 );

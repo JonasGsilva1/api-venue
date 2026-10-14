@@ -1,16 +1,15 @@
 /**
  * Contratos de telemetria — Endpoint 1 (`POST /api/v1/telemetry/frame-analysis`)
  * e leitura consolidada reutilizada por Endpoint 2 e pelo SSE (Endpoint 6).
- * Fonte: PROJECT_CONTEXT.md §5.2.
  *
+ * 100% dos campos em português.
  * Guardrail de anonimato (§1.4 / §2): nenhum campo de identificação pessoal,
- * biometria ou rastreamento individual existe nestes contratos; `.strict()`
- * rejeita qualquer tentativa de injetar tais campos.
+ * biometria ou rastreamento individual; `.strict()` rejeita campos extras.
  */
 import { IsoDateTime, ModoLeituraEnum, SensorStatusEnum, StatusCorEnum } from './common.contract';
 import { z } from './zod';
 
-/** Limite defensivo de pontos por frame (proteção contra payloads abusivos). */
+/** Limite defensivo de coordenadas por frame. */
 export const MAX_COORDENADAS_POR_FRAME = 5000;
 
 export const CoordinateContract = z
@@ -40,7 +39,7 @@ export const TelemetryAnalysisRequestContract = z
       .min(0)
       .max(100)
       .default(100)
-      .openapi({ description: 'Nível atual do estoque da zona (0..100). Default 100.', example: 42 }),
+      .openapi({ description: 'Nível atual do estoque da zona (0..100). Padrão 100.', example: 42 }),
   })
   .strict()
   .openapi('TelemetryAnalysisRequest', {
@@ -62,14 +61,14 @@ export const TelemetryReadingContract = z
     id: z.number().int().positive(),
     pdv_id: z.number().int().positive(),
     timestamp: IsoDateTime,
-    pax_count: z.number().int().min(0).openapi({ description: 'Pessoas contabilizadas (contagem agregada, anônima).' }),
+    contagem_pessoas: z.number().int().min(0).openapi({ description: 'Total de pessoas contabilizadas (contagem anônima agregada).' }),
     tempo_espera_seg: z.number().int().min(0).openapi({ description: 'Tempo de espera estimado em segundos.' }),
-    densidade_m2: z.number().min(0).openapi({ description: 'Densidade em pessoas/m².', example: 0.78 }),
+    densidade_m2: z.number().min(0).openapi({ description: 'Densidade calculada em pessoas/m².', example: 0.78 }),
     status_cor: StatusCorEnum,
-    ia_confidence: z.number().min(0).max(1).openapi({ description: 'Confiança da leitura (0..1).' }),
+    confianca_ia: z.number().min(0).max(1).openapi({ description: 'Confiança estatística da leitura (0..1).' }),
     alerta_ruptura_estoque: z
       .boolean()
-      .openapi({ description: 'true se fila estagnada (pax >= 6 e POS = 0 em 3 min) ou estoque < 45%.' }),
+      .openapi({ description: 'true se fila estagnada (>= 6 pessoas e POS = 0 em 3 min) ou estoque < 45%.' }),
     modo_leitura: ModoLeituraEnum,
   })
   .strict()
@@ -79,11 +78,11 @@ export const TelemetryAnalysisResponseContract = z
   .object({
     sucesso: z
       .boolean()
-      .openapi({ description: 'true apenas para leitura TEMPO_REAL; false quando um plano de contingência foi aplicado.' }),
+      .openapi({ description: 'true em TEMPO_REAL; false quando plano de contingência foi aplicado.' }),
     aviso_contingencia: z
       .string()
       .nullable()
-      .openapi({ description: 'Mensagem operacional do plano de contingência aplicado (null em TEMPO_REAL).' }),
+      .openapi({ description: 'Mensagem explicativa da contingência (null em TEMPO_REAL).' }),
     leitura: TelemetryReadingContract,
   })
   .strict()

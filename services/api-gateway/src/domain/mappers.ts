@@ -10,11 +10,11 @@ export function toReadingContract(r: ReadingRecord): TelemetryReading {
     id: r.id,
     pdv_id: r.pdv_id,
     timestamp: r.timestamp,
-    pax_count: r.pax_count,
+    contagem_pessoas: r.contagem_pessoas,
     tempo_espera_seg: r.tempo_espera_seg,
     densidade_m2: r.densidade_m2,
     status_cor: r.status_cor,
-    ia_confidence: r.ia_confidence,
+    confianca_ia: r.confianca_ia,
     alerta_ruptura_estoque: r.alerta_ruptura_estoque,
     modo_leitura: r.modo_leitura,
   };

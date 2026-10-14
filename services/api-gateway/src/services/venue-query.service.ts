@@ -1,5 +1,6 @@
 /**
  * Serviços de leitura agregada: Endpoint 2 (status), 3 (dispatch), 4 (analytics) e 5 (readiness/heatmap).
+ * 100% dos retornos em português.
  */
 import type {
   AnalyticsSummaryResponse,
@@ -80,7 +81,7 @@ export class VenueQueryService {
     return this.repo.listDispatches().map(toDispatchContract);
   }
 
-  /** Endpoint 4 */
+  /** Endpoint 4 — Analytics em Português */
   resumoDropoff(): AnalyticsSummaryResponse {
     const atuais = this.leiturasAtuais();
     // Fila = microcontextos transacionais/estruturais (zonas ESTANDE são de permanência, não de fila).
@@ -100,16 +101,16 @@ export class VenueQueryService {
     }
 
     return {
-      window_time_min: window,
-      queue_time_medio_min: arredondar(queueMedioMin, 2),
-      density_point_atingido: atuais.some(({ leitura }) => leitura.status_cor === 'VERMELHO'),
-      dropoff_rate_estimado_pct: arredondar(limitar(dropoff, 0, 100), 1),
-      ces_score: arredondar(limitar(1 + 4 * razao, 1, 5), 1),
+      janela_tempo_min: window,
+      tempo_medio_fila_min: arredondar(queueMedioMin, 2),
+      ponto_densidade_atingido: atuais.some(({ leitura }) => leitura.status_cor === 'VERMELHO'),
+      taxa_abandono_estimada_pct: arredondar(limitar(dropoff, 0, 100), 1),
+      pontuacao_esforco_ces: arredondar(limitar(1 + 4 * razao, 1, 5), 1),
       acumulado_evento: this.repo.getCounters(),
     };
   }
 
-  /** Endpoint 5 */
+  /** Endpoint 5 — Prontidão e Mapa de Calor em Português */
   async readinessHeatmap(): Promise<ReadinessHeatmapResponse> {
     const pdvs = this.repo.listPdvs();
     const atuais = this.leiturasAtuais();
@@ -126,25 +127,25 @@ export class VenueQueryService {
       ({ tipo, leitura }) => (tipo === 'CATRACA' || tipo === 'BANHEIRO') && leitura.status_cor === 'VERMELHO',
     );
 
-    const pessoas = atuais.reduce((s, { leitura }) => s + leitura.pax_count, 0);
+    const pessoas = atuais.reduce((s, { leitura }) => s + leitura.contagem_pessoas, 0);
     const capacidadeTotal = pdvs.reduce((s, p) => s + p.capacidade, 0);
     const permanencia =
       pessoas === 0
         ? 0
-        : atuais.reduce((s, { leitura, permanencia: perm }) => s + leitura.pax_count * perm, 0) / pessoas;
+        : atuais.reduce((s, { leitura, permanencia: perm }) => s + leitura.contagem_pessoas * perm, 0) / pessoas;
     const densidadeMedia =
-      pessoas === 0 ? 0 : atuais.reduce((s, { leitura }) => s + leitura.pax_count * leitura.densidade_m2, 0) / pessoas;
+      pessoas === 0 ? 0 : atuais.reduce((s, { leitura }) => s + leitura.contagem_pessoas * leitura.densidade_m2, 0) / pessoas;
     const velocidade = VELOCIDADE_LIVRE_MS * Math.max(0, 1 - densidadeMedia / DENSIDADE_CONGESTIONAMENTO);
 
     return {
-      readiness: {
+      prontidao: {
         sensores_ativos: sensoresAtivos,
         fontes_online_str: `${sensoresAtivos}/${pdvs.length}`,
         estoque_inicial_ok: estoqueOk,
         rota_livre_ok: !pcdPendente && !acessoCritico,
-        ai_engine_online: aiOnline,
+        motor_ia_online: aiOnline,
       },
-      heatmap_global: {
+      mapa_calor_global: {
         pessoas_presentes: pessoas,
         ocupacao_estimada_pct: capacidadeTotal === 0 ? 0 : arredondar((pessoas / capacidadeTotal) * 100, 1),
         permanencia_media_seg: Math.round(permanencia),
@@ -153,7 +154,7 @@ export class VenueQueryService {
         zonas_atracao: atuais.filter(
           ({ tipo, leitura }) => (tipo === 'BAR' || tipo === 'ESTANDE') && leitura.densidade_m2 >= DENSIDADE_ZONA_ATRACAO,
         ).length,
-        hotspots_criticos: atuais.filter(
+        pontos_criticos: atuais.filter(
           ({ leitura }) => leitura.status_cor === 'VERMELHO' || leitura.alerta_ruptura_estoque,
         ).length,
         estado_operacional: consolidarEstadoOperacional(atuais.map(({ leitura }) => leitura.status_cor)),
