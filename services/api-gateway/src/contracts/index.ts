@@ -8,3 +8,5 @@ export * from './dispatch.contract';
 export * from './analytics.contract';
 export * from './venue.contract';
 export * from './sse.contract';
+export * from './insumos.contract';
+export * from './predicoes.contract';

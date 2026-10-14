@@ -8,6 +8,7 @@ import { config } from './config/env';
 import { buildOpenApiDocument } from './docs/openapi';
 import { errorHandler, notFoundHandler } from './http/error-handler';
 import { apiV1Router } from './routes';
+import { raizEventoService } from './services/raizevento.service';
 
 export function createApp(): Express {
   const app = express();
@@ -20,6 +21,16 @@ export function createApp(): Express {
     }),
   );
   app.use(express.json({ limit: '512kb', strict: true }));
+
+  // Health check e monitoramento
+  app.get('/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      servico: 'api-gateway',
+      status_operacional_evento: raizEventoService.obterStatusEvento(),
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // Swagger obrigatório (PROJECT_CONTEXT.md §1.3)
   app.get('/openapi.json', (_req, res) => {

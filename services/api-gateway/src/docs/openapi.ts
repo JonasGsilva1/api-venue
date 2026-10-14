@@ -1,18 +1,24 @@
 /**
  * Registro OpenAPI 3.0 gerado a partir dos MESMOS contratos Zod usados em runtime
- * (PROJECT_CONTEXT.md §1.3). Exposto em `/openapi.json` e `/docs` (Swagger UI).
+ * (PROJECT_CONTEXT.md §1.3 e §8.3). Exposto em `/openapi.json` e `/docs` (Swagger UI).
  */
 import { OpenAPIRegistry, OpenApiGeneratorV3, type RouteConfig } from '@asteasolutions/zod-to-openapi';
 import { config } from '../config/env';
 import {
+  AcionarFluxoRequestContract,
+  AcionarFluxoResponseContract,
   AnalyticsSummaryResponseContract,
   ErrorResponseContract,
   InferenceRequestContract,
   InferenceResponseContract,
+  InsumosStatusResponseContract,
   OperationalDispatchListResponseContract,
   OperationalDispatchRequestContract,
   OperationalDispatchResponseContract,
   PdvStatusResponseContract,
+  PredicaoGargaloResponseContract,
+  ReabastecimentoRequestContract,
+  ReabastecimentoResponseContract,
   ReadinessHeatmapResponseContract,
   SseEventContract,
   TelemetryAnalysisRequestContract,
@@ -28,6 +34,8 @@ const erro = (description: string): Responses[number] => ({ description, content
 
 const ERROS_PADRAO: Responses = {
   400: erro('Violação do contrato estrito (.strict()): campos extras, tipos errados, limites ou JSON malformado.'),
+  401: erro('Não autorizado: Bearer Token JWT ausente ou inválido. Use "dev-token" para testes locais.'),
+  403: erro('Acesso negado por controle de acesso baseado em papéis (RBAC).'),
   500: erro('Erro interno inesperado (registrado em log). O servidor permanece estável.'),
 };
 
@@ -37,10 +45,22 @@ const TAGS = {
   ops: 'Operações (Staff)',
   analytics: 'Analytics de Negócio',
   venue: 'Prontidão & Mapa de Calor',
+  insumos: 'Métrica de Insumos (Produto 1)',
+  predicoes: 'Acionamento Preditivo (Produto 2)',
+  realtime: 'Tempo Real (WebSocket & SSE)',
 } as const;
 
 export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateDocument']> {
   const registry = new OpenAPIRegistry();
+
+  // Registro de Segurança Bearer JWT + RBAC (§8.1)
+  registry.registerComponent('securitySchemes', 'BearerAuth', {
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    description:
+      'Autenticação Bearer Token JWT com RBAC. Para testes diretos no Swagger, digite "dev-token" no campo de autorização.',
+  });
 
   // Componentes auxiliares (referência para integrações).
   registry.register('AiEngineInferenceRequest', InferenceRequestContract);
@@ -98,9 +118,10 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
     path: '/api/v1/ops/dispatch',
     operationId: 'criarDispatchOperacional',
     tags: [TAGS.ops],
-    summary: 'Registrar intervenção operacional humana',
+    summary: 'Registrar intervenção operacional humana (Altera estado para ACAO_EM_ANDAMENTO)',
     description:
-      'Registra realocação de Staff Móvel, reposição lateral de estoque, liberação de rota PCD ou contingência climática (`CRITICO_PCD_CLIMA`). Status inicial `PENDENTE`. Emite evento SSE `dispatch`.',
+      'Registra realocação de Staff Móvel, reposição lateral de estoque, liberação de rota PCD ou contingência climática (`CRITICO_PCD_CLIMA`). Atualiza o estado operacional global do evento de ESTAVEL para ACAO_EM_ANDAMENTO (§8.2). Emite eventos SSE e WebSocket.',
+    security: [{ BearerAuth: [] }],
     request: { body: { required: true, content: json(OperationalDispatchRequestContract) } },
     responses: {
       201: { description: 'Intervenção registrada.', content: json(OperationalDispatchResponseContract) },
@@ -161,7 +182,7 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
     method: 'get',
     path: '/api/v1/telemetry/stream',
     operationId: 'streamTelemetria',
-    tags: [TAGS.telemetria],
+    tags: [TAGS.realtime],
     summary: 'Canal Server-Sent Events (SSE) em tempo real',
     description: [
       'Conexão `text/event-stream` persistente. Cada mensagem tem `event: <tipo>` e `data: <JSON>` validado pelo componente `SseEvent`:',
@@ -188,24 +209,113 @@ export function buildOpenApiDocument(): ReturnType<OpenApiGeneratorV3['generateD
     },
   });
 
+  // ── Produto 1: Métrica de Insumos (§8.3) ──────────────────────────────────
+  registry.registerPath({
+    method: 'get',
+    path: '/api/v1/insumos/status',
+    operationId: 'obterStatusInsumos',
+    tags: [TAGS.insumos],
+    summary: 'Métrica de Insumos: Níveis e Alertas de Déficit Crítico',
+    description:
+      'Retorna a listagem consolidada de insumos monitorados nos bares, quantidades atuais, mínimas e alertas de déficit crítico (ex: BAR-83-IPA). Requer autenticação JWT.',
+    security: [{ BearerAuth: [] }],
+    responses: {
+      200: { description: 'Status consolidado dos insumos.', content: json(InsumosStatusResponseContract) },
+      ...ERROS_PADRAO,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/v1/insumos/reabastecimento',
+    operationId: 'solicitarReabastecimentoInsumo',
+    tags: [TAGS.insumos],
+    summary: 'Solicitação Urgente de Reabastecimento de Insumos',
+    description:
+      'Registra a solicitação de reabastecimento urgente de insumos (ex: 14 barris de Chopp IPA para o Bar Principal Norte) e dispara alerta instantâneo via WebSocket.',
+    security: [{ BearerAuth: [] }],
+    request: { body: { required: true, content: json(ReabastecimentoRequestContract) } },
+    responses: {
+      201: { description: 'Solicitação registrada com sucesso.', content: json(ReabastecimentoResponseContract) },
+      ...ERROS_PADRAO,
+    },
+  });
+
+  // ── Produto 2: Acionamento Preditivo (§8.3) ───────────────────────────────
+  registry.registerPath({
+    method: 'get',
+    path: '/api/v1/predicoes/gargalos',
+    operationId: 'obterPredicoesGargalos',
+    tags: [TAGS.predicoes],
+    summary: 'Predição de Gargalos de Fluxo e Recomendações de IA',
+    description:
+      'Consulta predições de saturação e recomendações preditivas geradas pelo motor de IA (ex: Portão Principal / Entrada Norte, acionar 2 filas adicionais). Requer autenticação JWT.',
+    security: [{ BearerAuth: [] }],
+    responses: {
+      200: { description: 'Predição ativa de gargalo.', content: json(PredicaoGargaloResponseContract) },
+      ...ERROS_PADRAO,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/v1/predicoes/acionar-fluxo',
+    operationId: 'acionarFluxoPreditivo',
+    tags: [TAGS.predicoes],
+    summary: 'Execução de Medida Preditiva de Fluxo (Altera estado para ACAO_EM_ANDAMENTO)',
+    description:
+      'Executa a recomendação preditiva da IA para mitigar gargalos (ex: alerta PRED-9921 no Portão Principal). Atualiza o estado global do evento para ACAO_EM_ANDAMENTO e notifica o painel via WebSocket.',
+    security: [{ BearerAuth: [] }],
+    request: { body: { required: true, content: json(AcionarFluxoRequestContract) } },
+    responses: {
+      200: { description: 'Ação executada com sucesso.', content: json(AcionarFluxoResponseContract) },
+      ...ERROS_PADRAO,
+    },
+  });
+
+  // ── Canal WebSocket (§8.3) ────────────────────────────────────────────────
+  registry.registerPath({
+    method: 'get',
+    path: '/api/v1/live/stream',
+    operationId: 'canalWebSocketLiveStream',
+    tags: [TAGS.realtime],
+    summary: 'Canal WebSocket de Baixa Latência (WS /api/v1/live/stream)',
+    description: [
+      'Conexão WebSocket persistente (`ws://` ou `wss://`) para push instantâneo (latência 10ms a 400ms):',
+      '',
+      '- **Alertas de Déficit:** Notificação instantânea ao solicitar reabastecimento (`tipo: "alerta_insumo"`).',
+      '- **Predições Críticas:** Alertas preditivos de gargalos e transição para `ACAO_EM_ANDAMENTO` (`tipo: "predicao_critica"`).',
+      '- **Estado Operacional:** Notificações de mudança de estado global (`tipo: "estado_operacional"`).',
+      '- **Telemetria de Campo:** Métricas de malha LiDAR (60 FPS), 12 câmeras neurais, 54 sensores IoT de barris e leitores NFC.',
+      '',
+      'Para conectar via cliente WebSocket (ex: Postman, wscat ou front-end): `ws://localhost:3000/api/v1/live/stream`',
+    ].join('\n'),
+    responses: {
+      101: { description: 'Troca de protocolo para WebSocket (101 Switching Protocols).' },
+    },
+  });
+
   return new OpenApiGeneratorV3(registry.definitions).generateDocument({
     openapi: '3.0.3',
     info: {
-      title: 'Venue Intelligence Core — API Gateway',
-      version: '0.1.0',
+      title: 'Venue Intelligence Core — API Gateway (Suíte RaizEvento)',
+      version: '0.2.0',
       description:
-        'Gateway de orquestração do estande RAIZ. **Contract-First**: todos os contratos são Zod `.strict()` — campos não mapeados retornam 400. Dados 100% sintéticos e anônimos (sem identificação individual ou biometria).',
+        'Gateway de orquestração do estande e arena RAIZ. **Contract-First**: todos os contratos Zod são `.strict()` — campos não mapeados retornam 400. Inclui governança ética (anonimato total), RBAC (Bearer Token JWT), resiliência 400/502/503/504, Métrica de Insumos (Produto 1), Acionamento Preditivo (Produto 2), SSE e WebSocket.',
     },
     servers: [
       { url: '/', description: 'Servidor atual (automático / Render / produção / local)' },
       { url: `http://localhost:${config.PORT}`, description: 'Desenvolvimento local explícito' },
     ],
     tags: [
-      { name: TAGS.telemetria, description: 'Ingestão, Matriz de Resiliência e SSE.' },
+      { name: TAGS.telemetria, description: 'Ingestão de telemetria, Matriz de Resiliência e SSE.' },
       { name: TAGS.zonas, description: 'Status das zonas e Paradoxo do Roteamento.' },
-      { name: TAGS.ops, description: 'Intervenções humanas assistidas.' },
-      { name: TAGS.analytics, description: 'Abandono de consumo (Drop-off), esforço e acumulados.' },
+      { name: TAGS.ops, description: 'Intervenções humanas assistidas e Staff Móvel.' },
+      { name: TAGS.analytics, description: 'Abandono de consumo (Drop-off Rate), esforço (CES) e acumulados.' },
       { name: TAGS.venue, description: 'Prontidão pós-montagem (S01) e Mapa de Calor (S06).' },
+      { name: TAGS.insumos, description: 'Produto 1: Níveis de estoque, déficits críticos e reabastecimento.' },
+      { name: TAGS.predicoes, description: 'Produto 2: Detecção preditiva de gargalos e acionamento de fluxo.' },
+      { name: TAGS.realtime, description: 'Canais em tempo real: WebSocket (WS) e Server-Sent Events (SSE).' },
     ],
   });
 }

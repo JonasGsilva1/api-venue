@@ -13,6 +13,8 @@ import {
 } from '../contracts';
 import { venueQueryService } from '../container';
 import { asyncHandler, parseInput, sendContract } from '../http/contract';
+import { raizEventoService } from '../services/raizevento.service';
+import { websocketHub } from '../services/websocket.hub';
 
 export const pdvRouter = Router();
 export const opsRouter = Router();
@@ -34,7 +36,23 @@ opsRouter.post(
   asyncHandler(async (req, res) => {
     parseInput(EmptyQueryContract, req.query as unknown, 'query', req);
     const entrada = parseInput(OperationalDispatchRequestContract, req.body as unknown, 'body', req);
-    sendContract(res, 201, OperationalDispatchResponseContract, venueQueryService.criarDispatch(entrada));
+    const resultado = venueQueryService.criarDispatch(entrada);
+    raizEventoService.atualizarStatusEvento('ACAO_EM_ANDAMENTO');
+
+    websocketHub.broadcast({
+      tipo: 'despacho_operacional',
+      emitido_em: new Date().toISOString(),
+      dados: {
+        id: resultado.id,
+        pdv_id: resultado.pdv_id,
+        nivel_critico: resultado.nivel_critico,
+        sugestao_acao: resultado.sugestao_acao,
+        status: resultado.status,
+        status_operacional_evento: raizEventoService.obterStatusEvento(),
+      },
+    });
+
+    sendContract(res, 201, OperationalDispatchResponseContract, resultado);
   }),
 );
 
