@@ -2,8 +2,13 @@
 from __future__ import annotations
 
 from app.contracts import (
+    AutosservicoItemContract,
+    ConsumoHoraContract,
     DispatchResponseContract,
+    FotoRecenteContract,
+    IluminacaoCenicaContract,
     IndicadoresZonaContract,
+    InstagramavelItemContract,
     InsumoItemContract,
     InsumosStatusResponseContract,
     ReadinessContract,
@@ -13,7 +18,9 @@ from app.contracts import (
 )
 from app.repositories.memory_db import (
     LIMIAR_REDIRECIONAMENTO_SEG,
+    AutosservicoRecord,
     DispatchRecord,
+    InstagramavelRecord,
     LeituraRecord,
     MemoryDB,
     PedidoReabastecimentoRecord,
@@ -23,12 +30,22 @@ from app.repositories.memory_db import (
 from app.services.ai_engine import formatar_tempo
 
 
+_LOCALIZACOES_ZONAS = {
+    1: "RAIZ | Balcão Principal | planta(x:570,y:440)",
+    2: "RAIZ | Lounge Poltronas | planta(x:230,y:470)",
+    3: "RAIZ | Entrada & Circulação | planta(x:860,y:330)",
+    4: "RAIZ | Espaço Instagramável | planta(x:1080,y:480)",
+    5: "Arena | Bar Principal Norte | planta(x:700,y:200)",
+}
+
+
 def leitura_para_contrato(l: LeituraRecord) -> TelemetryReadingContract:
     return TelemetryReadingContract(
         id=l.id,
         pdv_id=l.pdv_id,
         timestamp=l.timestamp,
         pax_count=l.pax_count,
+        contagem_pessoas=l.pax_count,
         tempo_espera_seg=l.tempo_espera_seg,
         tempo_espera_fmt=formatar_tempo(l.tempo_espera_seg),
         densidade_m2=l.densidade_m2,
@@ -55,6 +72,7 @@ def zona_para_contrato(z: ZonaRecord, ultima: LeituraRecord | None) -> ZonaStatu
         indicadores=IndicadoresZonaContract(**z.indicadores),
         ultima_leitura=leitura_para_contrato(ultima) if ultima else None,
         habilitar_redirecionamento_push=tempo is not None and tempo > LIMIAR_REDIRECIONAMENTO_SEG,
+        localizacao_geo=_LOCALIZACOES_ZONAS.get(z.id, f"Arena | Zona {z.id} | planta(x:500,y:400)"),
     )
 
 
@@ -108,3 +126,64 @@ def pedido_para_contrato(p: PedidoReabastecimentoRecord, db: MemoryDB) -> Reabas
 
 def readiness_contrato(db: MemoryDB) -> ReadinessContract:
     return ReadinessContract(**db.readiness())  # type: ignore[arg-type]
+
+
+def autosservico_para_contrato(a: AutosservicoRecord) -> AutosservicoItemContract:
+    return AutosservicoItemContract(
+        id=a.id,
+        codigo=a.codigo,
+        nome=a.nome,
+        tipoInsumo=a.tipoInsumo,
+        setor=a.setor,
+        status=a.status,  # type: ignore[arg-type]
+        capacidadeTotalInsumo=a.capacidadeTotalInsumo,
+        nivelAtualInsumo=a.nivelAtualInsumo,
+        unidadeMedida=a.unidadeMedida,  # type: ignore[arg-type]
+        capacidadeCopos=a.capacidadeCopos,
+        nivelCopos=a.nivelCopos,
+        transacoesAcumuladas=a.transacoesAcumuladas,
+        receitaTotal=a.receitaTotal,
+        ticketMedio=a.ticketMedio,
+        tempoMedioAtendimentoSegundos=a.tempoMedioAtendimentoSegundos,
+        pessoasNaFila=a.pessoasNaFila,
+        tempoEstimadoEsperaMin=a.tempoEstimadoEsperaMin,
+        temperaturaC=a.temperaturaC,
+        pressaoPsi=a.pressaoPsi,
+        posicao3D=a.posicao3D,
+        ultimoAbastecimento=a.ultimoAbastecimento,
+        consumoPorHora=[
+            ConsumoHoraContract(hora=c.hora, transacoes=c.transacoes, receita=c.receita)
+            for c in a.consumoPorHora
+        ],
+    )
+
+
+def instagramavel_para_contrato(i: InstagramavelRecord) -> InstagramavelItemContract:
+    return InstagramavelItemContract(
+        id=i.id,
+        codigo=i.codigo,
+        nome=i.nome,
+        patrocinador=i.patrocinador,
+        categoriaCenario=i.categoriaCenario,
+        setor=i.setor,
+        status=i.status,  # type: ignore[arg-type]
+        capturasTotais=i.capturasTotais,
+        compartilhamentosSociaisEstimados=i.compartilhamentosSociaisEstimados,
+        alcanceEstimadoRedes=i.alcanceEstimadoRedes,
+        tempoPermanenciaMedioSegundos=i.tempoPermanenciaMedioSegundos,
+        avaliacaoMedia=i.avaliacaoMedia,
+        npsScore=i.npsScore,
+        pessoasNaFila=i.pessoasNaFila,
+        tempoEsperaMin=i.tempoEsperaMin,
+        iluminacaoCenica=IluminacaoCenicaContract(
+            modo=i.iluminacaoCenica.modo,  # type: ignore[arg-type]
+            corPrincipal=i.iluminacaoCenica.corPrincipal,
+            intensidadePct=i.iluminacaoCenica.intensidadePct,
+        ),
+        posicao3D=i.posicao3D,
+        hashtagsPrincipais=list(i.hashtagsPrincipais),
+        fotosRecentes=[
+            FotoRecenteContract(id=f.id, timestamp=f.timestamp, autor=f.autor, likes=f.likes)
+            for f in i.fotosRecentes
+        ],
+    )

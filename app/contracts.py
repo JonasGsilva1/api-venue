@@ -9,7 +9,7 @@ anonimato absoluto (§1.4): não existe campo para identificação individual.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -97,6 +97,23 @@ class TokenResponseContract(ContratoEstrito):
     papel: Papel = Field(..., examples=["operador"])
 
 
+class LoginRequestContract(ContratoEstrito):
+    email: str = Field(..., examples=["operador@raizevento.com"])
+    password: str = Field(..., examples=["senha123"])
+
+
+class UserContract(ContratoEstrito):
+    id: str = Field(..., examples=["usr-1"])
+    name: str = Field(..., examples=["Operador RAIZ"])
+    email: str = Field(..., examples=["operador@raizevento.com"])
+    role: Literal["admin", "operator", "viewer", "operador", "visualizador"] = Field(..., examples=["admin"])
+
+
+class LoginResponseContract(ContratoEstrito):
+    token: str = Field(..., examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."])
+    user: UserContract
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # Infraestrutura
 # ════════════════════════════════════════════════════════════════════════════
@@ -180,6 +197,7 @@ class TelemetryReadingContract(ContratoEstrito):
     sensor_status: SensorStatus = Field(..., examples=["ONLINE"])
     transacoes_pos_ultimos_3m: int = Field(..., ge=0, examples=[4])
     estoque_percentual: int = Field(..., ge=0, le=100, examples=[42])
+    contagem_pessoas: Optional[int] = Field(None, ge=0, description="Alias para pax_count compatível com frontend.", examples=[6])
 
 
 class TelemetryAnalysisResponseContract(ContratoEstrito):
@@ -365,6 +383,7 @@ class ZonaStatusContract(ContratoEstrito):
     indicadores: IndicadoresZonaContract
     ultima_leitura: Optional[TelemetryReadingContract] = None
     habilitar_redirecionamento_push: bool = Field(..., description="true SOMENTE quando tempo_espera_seg > 180.", examples=[True])
+    localizacao_geo: Optional[str] = Field(None, description="Coordenadas para planta isométrica do frontend.", examples=["RAIZ | Frente | planta(x:570,y:440)"])
 
 
 class PdvStatusResponseContract(ContratoEstrito):
@@ -400,6 +419,8 @@ class ReadinessHeatmapResponseContract(ContratoEstrito):
     readiness: ReadinessContract
     heatmap_global: HeatmapGlobalContract
     gerado_em: datetime = Field(..., examples=["2026-10-14T20:30:00Z"])
+    prontidao: Optional[ReadinessContract] = None
+    mapa_calor_global: Optional[HeatmapGlobalContract] = None
 
 
 class PublicoPorDiaContract(ContratoEstrito):
@@ -424,6 +445,11 @@ class AnalyticsDropoffResponseContract(ContratoEstrito):
     dropoff_rate_estimado_pct: float = Field(..., ge=0, le=100, examples=[28.9])
     ces_score: float = Field(..., ge=1, le=5, description="Customer Effort Score (1 = baixo esforço, 5 = alto).", examples=[3.0])
     acumulado_evento: AcumuladoEventoContract
+    janela_tempo_min: Optional[int] = Field(None, description="Alias em português.", examples=[30])
+    tempo_medio_fila_min: Optional[float] = Field(None, description="Alias em português.", examples=[7.08])
+    ponto_densidade_atingido: Optional[bool] = Field(None, description="Alias em português.", examples=[True])
+    taxa_abandono_estimada_pct: Optional[float] = Field(None, description="Alias em português.", examples=[28.9])
+    pontuacao_esforco_ces: Optional[float] = Field(None, description="Alias em português.", examples=[3.0])
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -440,3 +466,155 @@ class EventoTempoRealContract(ContratoEstrito):
     acionamento: Optional[AcionarFluxoResponseContract] = None
     insumos: Optional[InsumosStatusResponseContract] = None
     readiness: Optional[ReadinessContract] = None
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Venue Tactical Suite UI — Atrações, Totens & Síntese Integrada
+# ════════════════════════════════════════════════════════════════════════════
+StatusAutosservico = Literal["operacional", "atencao", "critico", "manutencao"]
+StatusInstagramavel = Literal["ativo", "alta_procura", "limpeza", "pausado"]
+ModoIluminacao = Literal["Neon Pulsar", "Cyber Glow", "Golden Hour", "Studio Spotlight"]
+
+
+class ConsumoHoraContract(ContratoEstrito):
+    hora: str = Field(..., examples=["18h"])
+    transacoes: int = Field(..., ge=0, examples=[45])
+    receita: float = Field(..., ge=0.0, examples=[1350.0])
+
+
+class AutosservicoItemContract(ContratoEstrito):
+    id: str = Field(..., examples=["aut-01"])
+    codigo: str = Field(..., examples=["AUT-BEER-01"])
+    nome: str = Field(..., examples=["Beer Wall Master 01"])
+    tipoInsumo: str = Field(..., examples=["Chopp Artesanal IPA & Pilsen"])
+    setor: str = Field(..., examples=["Arena Principal"])
+    status: StatusAutosservico = Field(..., examples=["operacional"])
+    capacidadeTotalInsumo: float = Field(..., gt=0, examples=[500.0])
+    nivelAtualInsumo: float = Field(..., ge=0.0, examples=[385.0])
+    unidadeMedida: Literal["L", "un"] = Field("L", examples=["L"])
+    capacidadeCopos: int = Field(..., ge=0, examples=[600])
+    nivelCopos: int = Field(..., ge=0, examples=[490])
+    transacoesAcumuladas: int = Field(..., ge=0, examples=[612])
+    receitaTotal: float = Field(..., ge=0.0, examples=[18360.0])
+    ticketMedio: float = Field(..., ge=0.0, examples=[30.0])
+    tempoMedioAtendimentoSegundos: int = Field(..., ge=0, examples=[24])
+    pessoasNaFila: int = Field(..., ge=0, examples=[4])
+    tempoEstimadoEsperaMin: float = Field(..., ge=0.0, examples=[1.6])
+    temperaturaC: Optional[float] = Field(None, examples=[2.1])
+    pressaoPsi: Optional[float] = Field(None, examples=[14.2])
+    posicao3D: List[float] = Field(..., examples=[[-6.0, 0.0, 4.0]])
+    ultimoAbastecimento: str = Field(..., examples=["Há 45 min"])
+    consumoPorHora: List[ConsumoHoraContract] = Field(default_factory=list)
+
+
+class IluminacaoCenicaContract(ContratoEstrito):
+    modo: ModoIluminacao = Field(..., examples=["Neon Pulsar"])
+    corPrincipal: str = Field(..., examples=["#10b981"])
+    intensidadePct: int = Field(..., ge=0, le=100, examples=[92])
+
+
+class FotoRecenteContract(ContratoEstrito):
+    id: str = Field(..., examples=["f-1"])
+    timestamp: str = Field(..., examples=["22:48"])
+    autor: str = Field(..., examples=["@mariana.sound"])
+    likes: int = Field(..., ge=0, examples=[342])
+
+
+class InstagramavelItemContract(ContratoEstrito):
+    id: str = Field(..., examples=["inst-01"])
+    codigo: str = Field(..., examples=["INSTA-NEON-01"])
+    nome: str = Field(..., examples=["Túnel Neon Cyber Sound"])
+    patrocinador: str = Field(..., examples=["Heineken 0.0"])
+    categoriaCenario: str = Field(..., examples=["Túnel Imersivo de LED 360°"])
+    setor: str = Field(..., examples=["Arena Principal"])
+    status: StatusInstagramavel = Field(..., examples=["alta_procura"])
+    capturasTotais: int = Field(..., ge=0, examples=[1420])
+    compartilhamentosSociaisEstimados: int = Field(..., ge=0, examples=[1180])
+    alcanceEstimadoRedes: int = Field(..., ge=0, examples=[185000])
+    tempoPermanenciaMedioSegundos: int = Field(..., ge=0, examples=[85])
+    avaliacaoMedia: float = Field(..., ge=0.0, le=5.0, examples=[4.92])
+    npsScore: int = Field(..., ge=0, le=100, examples=[94])
+    pessoasNaFila: int = Field(..., ge=0, examples=[18])
+    tempoEsperaMin: float = Field(..., ge=0.0, examples=[9.5])
+    iluminacaoCenica: IluminacaoCenicaContract
+    posicao3D: List[float] = Field(..., examples=[[-2.0, 0.0, 7.0]])
+    hashtagsPrincipais: List[str] = Field(default_factory=list, examples=[["#HeinekenLive", "#ArenaCyber"]])
+    fotosRecentes: List[FotoRecenteContract] = Field(default_factory=list)
+
+
+class FaturamentoSetorContract(ContratoEstrito):
+    setor: str = Field(..., examples=["Arena Principal"])
+    receita: float = Field(..., ge=0.0, examples=[18360.0])
+    volume: int = Field(..., ge=0, examples=[612])
+    pct: float = Field(..., ge=0.0, le=100.0, examples=[26.5])
+
+
+class FluxoHorarioContract(ContratoEstrito):
+    hora: str = Field(..., examples=["18h"])
+    autosservico: int = Field(..., ge=0, examples=[115])
+    instagramavel: int = Field(..., ge=0, examples=[320])
+    receita: float = Field(..., ge=0.0, examples=[4725.0])
+
+
+class PrincipalAlertaContract(ContratoEstrito):
+    id: str = Field(..., examples=["al-1"])
+    tipo: Literal["aviso", "urgente", "info"] = Field(..., examples=["aviso"])
+    mensagem: str = Field(..., examples=["Nível de Chopp Gin Tônica em 22% no Totem AUT-DRINK-02."])
+    hora: str = Field(..., examples=["22:45"])
+    atracao: str = Field(..., examples=["Dispenser Cocktails & Gin 02"])
+    atracaoId: Optional[str] = Field(None, examples=["aut-02"])
+    direcionamento: str = Field(..., examples=["Despachar equipe de reabastecimento móvel..."])
+    impactoEstimado: Optional[str] = Field(None, examples=["Evita perda projetada de R$ 3.800..."])
+    acaoRapidaLabel: Optional[str] = Field(None, examples=["Despachar Reposição Móvel"])
+
+
+class SinteseAcumuladaContract(ContratoEstrito):
+    eventoNome: str = Field(..., examples=["Festival Som & Luz Arena 2026"])
+    dataEvento: str = Field(..., examples=["19 de Outubro de 2026"])
+    tempoDecorridoHoras: float = Field(..., ge=0.0, examples=[4.8])
+    publicoTotalEstimadoVenue: int = Field(..., ge=0, examples=[18500])
+    totalAtendimentosGerais: int = Field(..., ge=0, examples=[5527])
+    receitaTotalAutosservico: float = Field(..., ge=0.0, examples=[69310.0])
+    totalCapturasInstagramavel: int = Field(..., ge=0, examples=[3860])
+    alcanceTotalRedes: int = Field(..., ge=0, examples=[519000])
+    ticketMedioGeral: float = Field(..., ge=0.0, examples=[41.58])
+    vazaoMediaAtendimentosPorMin: float = Field(..., ge=0.0, examples=[18.4])
+    tempoMedioEsperaGlobalMin: float = Field(..., ge=0.0, examples=[4.2])
+    satisfacaoGeralScore: float = Field(..., ge=0.0, le=5.0, examples=[4.91])
+    autosservicoPorStatus: Dict[str, int] = Field(..., examples=[{"operacional": 3, "atencao": 1, "critico": 0, "manutencao": 0}])
+    instagramavelPorStatus: Dict[str, int] = Field(..., examples=[{"ativo": 3, "alta_procura": 1, "limpeza": 0, "pausado": 0}])
+    faturamentoPorSetor: List[FaturamentoSetorContract] = Field(default_factory=list)
+    fluxoHorario: List[FluxoHorarioContract] = Field(default_factory=list)
+    principaisAlertas: List[PrincipalAlertaContract] = Field(default_factory=list)
+
+
+class GuicheItemContract(ContratoEstrito):
+    id: str = Field(..., examples=["g1"])
+    codigo: str = Field(..., examples=["G-01"])
+    nome: str = Field(..., examples=["Atendimento & Recepção Geral"])
+    tipo: str = Field(..., examples=["Informações & Cadastro RAIZ"])
+    atendente: str = Field(..., examples=["Mariana Costa"])
+    pessoasNaFila: int = Field(..., ge=0, examples=[4])
+    capacidadeFila: int = Field(..., gt=0, examples=[8])
+    tempoMedioAtendimentoSeg: int = Field(..., ge=0, examples=[170])
+    status: Literal["NORMAL", "PRESSAO", "CRITICO"] = Field(..., examples=["NORMAL"])
+    atendimentosConcluidos: int = Field(..., ge=0, examples=[42])
+
+
+class TransacaoRequestContract(ContratoEstrito):
+    valor: float = Field(30.0, gt=0, description="Valor da transação em reais.", examples=[30.0])
+
+
+class ModoLuzRequestContract(ContratoEstrito):
+    modo: ModoIluminacao = Field(..., examples=["Neon Pulsar"])
+
+
+class CriarAtracaoRequestContract(ContratoEstrito):
+    tipo: Literal["autosservico", "instagramavel"] = Field(..., examples=["autosservico"])
+    nome: str = Field(..., min_length=2, max_length=100, examples=["Beer Wall 05 - Express"])
+    setor: str = Field("Arena Principal", examples=["Arena Principal"])
+    insumoOuPatrocinador: Optional[str] = Field(None, examples=["Chopp IPA 500ml"])
+
+
+class AtualizarFilaGuicheRequestContract(ContratoEstrito):
+    delta: int = Field(1, description="Variação na fila (+1 ou -1)", examples=[1])

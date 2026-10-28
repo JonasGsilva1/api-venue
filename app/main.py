@@ -11,10 +11,13 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from fastapi import Depends, FastAPI, status
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.contracts import HealthResponseContract
@@ -89,8 +92,20 @@ for modulo in (auth, telemetry, insumos, predicoes, ops, venue, stream):
     app.include_router(modulo.router)
 
 
+# ── Servir o Front-End Unificado (se frontend/dist existir) ───────────────────
+_PASTA_FRONTEND = Path("frontend/dist")
+if not _PASTA_FRONTEND.is_dir() and Path("dist").is_dir():
+    _PASTA_FRONTEND = Path("dist")
+
+if (_PASTA_FRONTEND / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_PASTA_FRONTEND / "assets")), name="assets")
+
+
 @app.get("/", include_in_schema=False)
-async def raiz() -> RedirectResponse:
+async def raiz() -> Response:
+    index_html = _PASTA_FRONTEND / "index.html"
+    if index_html.is_file():
+        return FileResponse(index_html)
     return RedirectResponse(url="/docs")
 
 
@@ -113,6 +128,18 @@ async def health() -> HealthResponseContract:
         motor_ia_online=memory_db.motor_ia_online,
         conexoes_tempo_real=event_bus.conexoes,
     )
+
+
+@app.get("/{caminho_completo:path}", include_in_schema=False)
+async def fallback_spa(caminho_completo: str) -> Response:
+    """Serve arquivos estáticos ou fallback do SPA para rotas não mapeadas pela API."""
+    arquivo = _PASTA_FRONTEND / caminho_completo
+    if caminho_completo and arquivo.is_file():
+        return FileResponse(arquivo)
+    index_html = _PASTA_FRONTEND / "index.html"
+    if index_html.is_file():
+        return FileResponse(index_html)
+    return RedirectResponse(url="/docs")
 
 
 def _openapi_customizado() -> Dict[str, Any]:

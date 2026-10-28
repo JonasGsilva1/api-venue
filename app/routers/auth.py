@@ -5,7 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import emitir_token
 from app.config import settings
-from app.contracts import ErrorResponseContract, TokenRequestContract, TokenResponseContract
+from app.contracts import (
+    ErrorResponseContract,
+    LoginRequestContract,
+    LoginResponseContract,
+    TokenRequestContract,
+    TokenResponseContract,
+    UserContract,
+)
 from app.errors import sem_query_params
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação (JWT / RBAC)"])
@@ -32,3 +39,28 @@ async def gerar_token(pedido: TokenRequestContract) -> TokenResponseContract:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Emissor de tokens de desenvolvimento desativado.")
     token, expira = emitir_token(pedido.usuario, pedido.papel)
     return TokenResponseContract(access_token=token, token_type="bearer", expira_em_seg=expira, papel=pedido.papel)
+
+
+@router.post(
+    "/login",
+    response_model=LoginResponseContract,
+    status_code=status.HTTP_200_OK,
+    summary="Login de autenticação para o Front-End",
+    description="Autentica operador/admin e devolve o Bearer Token e dados de sessão para o front-end.",
+    responses={
+        400: {"model": ErrorResponseContract, "description": "Contrato violado."},
+    },
+    dependencies=[Depends(sem_query_params)],
+)
+async def login(credenciais: LoginRequestContract) -> LoginResponseContract:
+    usuario_nome = credenciais.email.split("@")[0] or "operador"
+    token, _ = emitir_token(usuario_nome, "admin")
+    return LoginResponseContract(
+        token=token,
+        user=UserContract(
+            id="usr-1",
+            name="Operador RAIZ",
+            email=credenciais.email,
+            role="admin",
+        ),
+    )

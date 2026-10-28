@@ -37,10 +37,18 @@ def test_health_check_publico():
     assert dados["motor_ia_online"] is True
 
 
-def test_redirect_raiz_para_docs():
+def test_raiz_e_documentacao_swagger():
+    # Na raiz: se o front-end compilado existir, serve 200 OK; caso contrário, redireciona 307 para /docs
     response = client.get("/", follow_redirects=False)
-    assert response.status_code == 307
-    assert response.headers["location"] == "/docs"
+    if response.status_code == 200:
+        assert "html" in response.headers.get("content-type", "")
+    else:
+        assert response.status_code == 307
+        assert response.headers["location"] == "/docs"
+
+    # Em /docs: sempre retorna 200 OK com o Swagger UI
+    resp_docs = client.get("/docs")
+    assert resp_docs.status_code == 200
 
 
 # ── Autenticação & RBAC ──────────────────────────────────────────────────────
@@ -412,3 +420,119 @@ def test_rejeicao_query_params_nao_mapeados():
     r = client.get("/api/v1/insumos/status?param_invalido=123", headers=AUTH_HEADER)
     assert r.status_code == 400
     assert r.json()["erro"] == "CONTRATO_VIOLADO"
+
+
+# ── Adaptações e Endpoints da Suíte Front-End ───────────────────────────────
+
+def test_auth_login_frontend():
+    r = client.post("/api/v1/auth/login", json={"email": "operador@raizevento.com", "password": "123"})
+    assert r.status_code == 200
+    dados = r.json()
+    assert "token" in dados
+    assert dados["user"]["email"] == "operador@raizevento.com"
+    assert dados["user"]["role"] == "admin"
+
+
+def test_venue_autosservico_fluxo():
+    r = client.get("/api/v1/venue/autosservico", headers=AUTH_HEADER)
+    assert r.status_code == 200
+    totens = r.json()
+    assert len(totens) >= 4
+    beer_wall = next(t for t in totens if t["id"] == "aut-01")
+    assert beer_wall["codigo"] == "AUT-BEER-01"
+
+    # Transação
+    r_tx = client.post("/api/v1/venue/autosservico/aut-01/transacao", headers=AUTH_HEADER, json={"valor": 30.0})
+    assert r_tx.status_code == 200
+    assert r_tx.json()["transacoesAcumuladas"] == 613
+
+    # Manutenção
+    r_man = client.post("/api/v1/venue/autosservico/aut-01/manutencao", headers=AUTH_HEADER)
+    assert r_man.status_code == 200
+    assert r_man.json()["status"] == "manutencao"
+    client.post("/api/v1/venue/autosservico/aut-01/manutencao", headers=AUTH_HEADER)
+
+    # Reabastecer
+    r_reab = client.post("/api/v1/venue/autosservico/aut-01/reabastecer", headers=AUTH_HEADER)
+    assert r_reab.status_code == 200
+    assert r_reab.json()["nivelAtualInsumo"] == 500.0
+
+
+def test_venue_instagramavel_fluxo():
+    r = client.get("/api/v1/venue/instagramavel", headers=AUTH_HEADER)
+    assert r.status_code == 200
+    instas = r.json()
+    assert len(instas) >= 4
+
+    # Captura
+    r_cap = client.post("/api/v1/venue/instagramavel/inst-01/captura", headers=AUTH_HEADER)
+    assert r_cap.status_code == 200
+    assert r_cap.json()["capturasTotais"] == 1421
+
+    # Modo Luz
+    r_luz = client.post("/api/v1/venue/instagramavel/inst-01/modo-luz", headers=AUTH_HEADER, json={"modo": "Cyber Glow"})
+    assert r_luz.status_code == 200
+    assert r_luz.json()["iluminacaoCenica"]["modo"] == "Cyber Glow"
+
+    # Toggle status
+    r_tog = client.post("/api/v1/venue/instagramavel/inst-01/toggle-status", headers=AUTH_HEADER)
+    assert r_tog.status_code == 200
+
+
+def test_venue_sintese_e_simular_pico():
+    r = client.get("/api/v1/venue/sintese", headers=AUTH_HEADER)
+    assert r.status_code == 200
+    sintese = r.json()
+    assert sintese["eventoNome"] == "Festival Som & Luz Arena 2026"
+    assert sintese["totalAtendimentosGerais"] > 0
+    assert len(sintese["principaisAlertas"]) >= 3
+
+    # Simular pico
+    r_pico = client.post("/api/v1/venue/simular-pico", headers=AUTH_HEADER)
+    assert r_pico.status_code == 200
+
+
+def test_venue_criar_atracao():
+    payload = {
+        "tipo": "autosservico",
+        "nome": "Beer Wall 05 - Express",
+        "setor": "Arena Principal",
+        "insumoOuPatrocinador": "Chopp Pilsen",
+    }
+    r = client.post("/api/v1/venue/atracao", headers=AUTH_HEADER, json=payload)
+    assert r.status_code == 201
+    assert r.json()["nome"] == "Beer Wall 05 - Express"
+
+
+def test_venue_guiches_e_fila():
+    r = client.get("/api/v1/venue/guiches", headers=AUTH_HEADER)
+    assert r.status_code == 200
+    guiches = r.json()
+    assert len(guiches) == 3
+
+    r_fila = client.post("/api/v1/venue/guiches/g1/fila", headers=AUTH_HEADER, json={"delta": 1})
+    assert r_fila.status_code == 200
+    assert r_fila.json()["pessoasNaFila"] == 5
+
+
+def test_compatibilidade_frontend_campos_adaptados():
+    # 1. PDV Status com localizacao_geo e contagem_pessoas
+    r_pdv = client.get("/api/v1/pdv/status", headers=AUTH_HEADER)
+    assert r_pdv.status_code == 200
+    zonas = r_pdv.json()["zonas"]
+    assert "planta(x:570,y:440)" in zonas[0]["localizacao_geo"]
+    assert zonas[0]["ultima_leitura"]["contagem_pessoas"] == zonas[0]["ultima_leitura"]["pax_count"]
+
+    # 2. Readiness com prontidao e mapa_calor_global
+    r_read = client.get("/api/v1/venue/readiness-heatmap", headers=AUTH_HEADER)
+    assert r_read.status_code == 200
+    dados_read = r_read.json()
+    assert "prontidao" in dados_read
+    assert "mapa_calor_global" in dados_read
+
+    # 3. Analytics com aliases em português
+    r_drop = client.get("/api/v1/analytics/dropoff-summary", headers=AUTH_HEADER)
+    assert r_drop.status_code == 200
+    dados_drop = r_drop.json()
+    assert dados_drop["janela_tempo_min"] == dados_drop["window_time_min"]
+    assert dados_drop["taxa_abandono_estimada_pct"] == dados_drop["dropoff_rate_estimado_pct"]

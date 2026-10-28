@@ -138,6 +138,91 @@ class AcumuladoRecord:
         return sum(self.publico_por_dia.values())
 
 
+@dataclass
+class ConsumoHoraRecord:
+    hora: str
+    transacoes: int
+    receita: float
+
+
+@dataclass
+class AutosservicoRecord:
+    id: str
+    codigo: str
+    nome: str
+    tipoInsumo: str
+    setor: str
+    status: str
+    capacidadeTotalInsumo: float
+    nivelAtualInsumo: float
+    unidadeMedida: str
+    capacidadeCopos: int
+    nivelCopos: int
+    transacoesAcumuladas: int
+    receitaTotal: float
+    ticketMedio: float
+    tempoMedioAtendimentoSegundos: int
+    pessoasNaFila: int
+    tempoEstimadoEsperaMin: float
+    temperaturaC: Optional[float]
+    pressaoPsi: Optional[float]
+    posicao3D: List[float]
+    ultimoAbastecimento: str
+    consumoPorHora: List[ConsumoHoraRecord]
+
+
+@dataclass
+class IluminacaoCenicaRecord:
+    modo: str
+    corPrincipal: str
+    intensidadePct: int
+
+
+@dataclass
+class FotoRecenteRecord:
+    id: str
+    timestamp: str
+    autor: str
+    likes: int
+
+
+@dataclass
+class InstagramavelRecord:
+    id: str
+    codigo: str
+    nome: str
+    patrocinador: str
+    categoriaCenario: str
+    setor: str
+    status: str
+    capturasTotais: int
+    compartilhamentosSociaisEstimados: int
+    alcanceEstimadoRedes: int
+    tempoPermanenciaMedioSegundos: int
+    avaliacaoMedia: float
+    npsScore: int
+    pessoasNaFila: int
+    tempoEsperaMin: float
+    iluminacaoCenica: IluminacaoCenicaRecord
+    posicao3D: List[float]
+    hashtagsPrincipais: List[str]
+    fotosRecentes: List[FotoRecenteRecord]
+
+
+@dataclass
+class GuicheRecord:
+    id: str
+    codigo: str
+    nome: str
+    tipo: str
+    atendente: str
+    pessoasNaFila: int
+    capacidadeFila: int
+    tempoMedioAtendimentoSeg: int
+    status: str
+    atendimentosConcluidos: int
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # SEEDS OBRIGATÓRIOS (PROJECT_CONTEXT.md §4)
 # ════════════════════════════════════════════════════════════════════════════
@@ -188,6 +273,145 @@ def _seed_insumos() -> List[InsumoRecord]:
         InsumoRecord("BAR-83-IPA", "Chopp IPA (Barril 50L)", "Bar Principal Norte", 6, 20),
         InsumoRecord("BAR-01-AGUA", "Água Mineral 500ml", "Principal", 4, 15),
         InsumoRecord("BAR-02-CAFE", "Café Expresso (Grãos kg)", "Autosserviço Lateral", 18, 10),
+    ]
+
+
+def _seed_autosservico() -> List[AutosservicoRecord]:
+    return [
+        AutosservicoRecord(
+            id="aut-01", codigo="AUT-BEER-01", nome="Beer Wall Master 01",
+            tipoInsumo="Chopp Artesanal IPA & Pilsen", setor="Arena Principal",
+            status="operacional", capacidadeTotalInsumo=500.0, nivelAtualInsumo=385.0,
+            unidadeMedida="L", capacidadeCopos=600, nivelCopos=490,
+            transacoesAcumuladas=612, receitaTotal=18360.0, ticketMedio=30.0,
+            tempoMedioAtendimentoSegundos=24, pessoasNaFila=4, tempoEstimadoEsperaMin=1.6,
+            temperaturaC=2.1, pressaoPsi=14.2, posicao3D=[-6.0, 0.0, 4.0],
+            ultimoAbastecimento="Há 45 min",
+            consumoPorHora=[
+                ConsumoHoraRecord("18h", 45, 1350.0), ConsumoHoraRecord("19h", 110, 3300.0),
+                ConsumoHoraRecord("20h", 185, 5550.0), ConsumoHoraRecord("21h", 160, 4800.0),
+                ConsumoHoraRecord("22h", 112, 3360.0),
+            ],
+        ),
+        AutosservicoRecord(
+            id="aut-02", codigo="AUT-DRINK-02", nome="Dispenser Cocktails & Gin 02",
+            tipoInsumo="Gin Tônica & Drinks Prontos", setor="Palco Sunset",
+            status="atencao", capacidadeTotalInsumo=300.0, nivelAtualInsumo=68.0,
+            unidadeMedida="L", capacidadeCopos=400, nivelCopos=82,
+            transacoesAcumuladas=480, receitaTotal=19200.0, ticketMedio=40.0,
+            tempoMedioAtendimentoSegundos=31, pessoasNaFila=12, tempoEstimadoEsperaMin=6.2,
+            temperaturaC=3.5, pressaoPsi=13.8, posicao3D=[5.0, 0.0, 6.0],
+            ultimoAbastecimento="Há 2h 10 min",
+            consumoPorHora=[
+                ConsumoHoraRecord("18h", 30, 1200.0), ConsumoHoraRecord("19h", 95, 3800.0),
+                ConsumoHoraRecord("20h", 140, 5600.0), ConsumoHoraRecord("21h", 125, 5000.0),
+                ConsumoHoraRecord("22h", 90, 3600.0),
+            ],
+        ),
+        AutosservicoRecord(
+            id="aut-03", codigo="AUT-SNACK-03", nome="Totem Grab & Go Gastrô 03",
+            tipoInsumo="Pizzas Artesanais & Burgers", setor="Vila Gastronômica",
+            status="operacional", capacidadeTotalInsumo=350.0, nivelAtualInsumo=240.0,
+            unidadeMedida="un", capacidadeCopos=350, nivelCopos=310,
+            transacoesAcumuladas=340, receitaTotal=15300.0, ticketMedio=45.0,
+            tempoMedioAtendimentoSegundos=45, pessoasNaFila=6, tempoEstimadoEsperaMin=4.5,
+            temperaturaC=-1.0, pressaoPsi=0.0, posicao3D=[-7.0, 0.0, -4.0],
+            ultimoAbastecimento="Há 1h 20 min",
+            consumoPorHora=[
+                ConsumoHoraRecord("18h", 25, 1125.0), ConsumoHoraRecord("19h", 75, 3375.0),
+                ConsumoHoraRecord("20h", 120, 5400.0), ConsumoHoraRecord("21h", 70, 3150.0),
+                ConsumoHoraRecord("22h", 50, 2250.0),
+            ],
+        ),
+        AutosservicoRecord(
+            id="aut-04", codigo="AUT-VIP-04", nome="Wine & Champagne Tap VIP",
+            tipoInsumo="Vinhos Finos & Espumantes", setor="Camarote VIP",
+            status="operacional", capacidadeTotalInsumo=200.0, nivelAtualInsumo=165.0,
+            unidadeMedida="L", capacidadeCopos=300, nivelCopos=275,
+            transacoesAcumuladas=235, receitaTotal=16450.0, ticketMedio=70.0,
+            tempoMedioAtendimentoSegundos=20, pessoasNaFila=2, tempoEstimadoEsperaMin=0.7,
+            temperaturaC=5.0, pressaoPsi=12.0, posicao3D=[6.0, 0.0, -5.0],
+            ultimoAbastecimento="Há 30 min",
+            consumoPorHora=[
+                ConsumoHoraRecord("18h", 15, 1050.0), ConsumoHoraRecord("19h", 40, 2800.0),
+                ConsumoHoraRecord("20h", 70, 4900.0), ConsumoHoraRecord("21h", 65, 4550.0),
+                ConsumoHoraRecord("22h", 45, 3150.0),
+            ],
+        ),
+    ]
+
+
+def _seed_instagramavel() -> List[InstagramavelRecord]:
+    return [
+        InstagramavelRecord(
+            id="inst-01", codigo="INSTA-NEON-01", nome="Túnel Neon Cyber Sound",
+            patrocinador="Heineken 0.0", categoriaCenario="Túnel Imersivo de LED 360°",
+            setor="Arena Principal", status="alta_procura", capturasTotais=1420,
+            compartilhamentosSociaisEstimados=1180, alcanceEstimadoRedes=185000,
+            tempoPermanenciaMedioSegundos=85, avaliacaoMedia=4.92, npsScore=94,
+            pessoasNaFila=18, tempoEsperaMin=9.5,
+            iluminacaoCenica=IluminacaoCenicaRecord(modo="Neon Pulsar", corPrincipal="#10b981", intensidadePct=92),
+            posicao3D=[-2.0, 0.0, 7.0],
+            hashtagsPrincipais=["#HeinekenLive", "#ArenaCyber", "#NoiteNeon"],
+            fotosRecentes=[
+                FotoRecenteRecord("f-1", "22:48", "@mariana.sound", 342),
+                FotoRecenteRecord("f-2", "22:42", "@lucas_bass", 189),
+                FotoRecenteRecord("f-3", "22:36", "@dj_anapaula", 512),
+            ],
+        ),
+        InstagramavelRecord(
+            id="inst-02", codigo="INSTA-SWING-02", nome="Balanço Flutuante nas Alturas",
+            patrocinador="Red Bull Energy", categoriaCenario="Instalação Aérea com Fumaça Iluminada",
+            setor="Palco Sunset", status="ativo", capturasTotais=980,
+            compartilhamentosSociaisEstimados=810, alcanceEstimadoRedes=124000,
+            tempoPermanenciaMedioSegundos=110, avaliacaoMedia=4.88, npsScore=89,
+            pessoasNaFila=8, tempoEsperaMin=5.2,
+            iluminacaoCenica=IluminacaoCenicaRecord(modo="Cyber Glow", corPrincipal="#ef4444", intensidadePct=88),
+            posicao3D=[2.0, 0.0, 8.0],
+            hashtagsPrincipais=["#TeDaAsas", "#SunsetVibe", "#RedBullFestival"],
+            fotosRecentes=[
+                FotoRecenteRecord("f-4", "22:49", "@felipetrip", 230),
+                FotoRecenteRecord("f-5", "22:40", "@carol.vlog", 418),
+            ],
+        ),
+        InstagramavelRecord(
+            id="inst-03", codigo="INSTA-HOLO-03", nome="Cabine Holográfica Glitch 360°",
+            patrocinador="Itaú Tech Labs", categoriaCenario="Vídeo Spinner Bullet-Time 4K",
+            setor="Vila das Marcas", status="ativo", capturasTotais=820,
+            compartilhamentosSociaisEstimados=750, alcanceEstimadoRedes=98000,
+            tempoPermanenciaMedioSegundos=65, avaliacaoMedia=4.85, npsScore=86,
+            pessoasNaFila=5, tempoEsperaMin=3.0,
+            iluminacaoCenica=IluminacaoCenicaRecord(modo="Studio Spotlight", corPrincipal="#f59e0b", intensidadePct=95),
+            posicao3D=[-3.0, 0.0, -7.0],
+            hashtagsPrincipais=["#ItauNoFestival", "#BulletTime360", "#TechFestival"],
+            fotosRecentes=[
+                FotoRecenteRecord("f-6", "22:45", "@bruno.engineer", 175),
+                FotoRecenteRecord("f-7", "22:31", "@gabi_lifestyle", 620),
+            ],
+        ),
+        InstagramavelRecord(
+            id="inst-04", codigo="INSTA-VIP-04", nome="Espelho Infinito & Led Waves",
+            patrocinador="Spotify Sessions", categoriaCenario="Infinity Mirror Room Audio-Reativa",
+            setor="Camarote VIP", status="ativo", capturasTotais=640,
+            compartilhamentosSociaisEstimados=590, alcanceEstimadoRedes=112000,
+            tempoPermanenciaMedioSegundos=90, avaliacaoMedia=4.96, npsScore=96,
+            pessoasNaFila=4, tempoEsperaMin=2.5,
+            iluminacaoCenica=IluminacaoCenicaRecord(modo="Golden Hour", corPrincipal="#a855f7", intensidadePct=85),
+            posicao3D=[3.0, 0.0, -6.0],
+            hashtagsPrincipais=["#SpotifyVIP", "#InfinityRoom", "#SoundsGood"],
+            fotosRecentes=[
+                FotoRecenteRecord("f-8", "22:47", "@vitor.soundtrack", 440),
+                FotoRecenteRecord("f-9", "22:38", "@patricia_music", 810),
+            ],
+        ),
+    ]
+
+
+def _seed_guiches() -> List[GuicheRecord]:
+    return [
+        GuicheRecord("g1", "G-01", "Atendimento & Recepção Geral", "Informações & Cadastro RAIZ", "Mariana Costa", 4, 8, 170, "NORMAL", 42),
+        GuicheRecord("g2", "G-02", "Degustação & Experiência", "Bar & Harmonização", "Felipe Alencar", 7, 8, 250, "PRESSAO", 58),
+        GuicheRecord("g3", "G-03", "Retirada Express & Welcome Kit", "Entrega Rápida de Brindes", "Lucas Peixoto", 2, 6, 90, "NORMAL", 64),
     ]
 
 
@@ -277,6 +501,9 @@ class MemoryDB:
                 atendimentos_cortesia=720, bebidas_unidades=840,
                 autosservico_retiradas=660, engajamento_interacoes=360,
             )
+            self._autos: Dict[str, AutosservicoRecord] = {a.id: a for a in _seed_autosservico()}
+            self._instas: Dict[str, InstagramavelRecord] = {i.id: i for i in _seed_instagramavel()}
+            self._guiches: Dict[str, GuicheRecord] = {g.id: g for g in _seed_guiches()}
             self._seed_historico(agora)
 
     def _seed_historico(self, agora: datetime) -> None:
@@ -449,6 +676,336 @@ class MemoryDB:
 
     def acumulado(self) -> AcumuladoRecord:
         return self._acumulado
+
+    # ── Autosserviço / Atrações ───────────────────────────────────────────────
+    def listar_autosservico(self) -> List[AutosservicoRecord]:
+        with self._lock:
+            return list(self._autos.values())
+
+    def obter_autosservico(self, id: str) -> Optional[AutosservicoRecord]:
+        with self._lock:
+            return self._autos.get(id)
+
+    def transacao_autosservico(self, id: str, valor: float = 30.0) -> Optional[AutosservicoRecord]:
+        with self._lock:
+            item = self._autos.get(id)
+            if not item:
+                return None
+            novo_nivel = max(0.0, round(item.nivelAtualInsumo - 0.5, 1))
+            novo_copos = max(0, item.nivelCopos - 1)
+            novas_transacoes = item.transacoesAcumuladas + 1
+            nova_receita = item.receitaTotal + valor
+            if novo_nivel <= 20:
+                novo_status = "critico"
+            elif novo_nivel <= 70:
+                novo_status = "atencao"
+            elif item.status == "manutencao":
+                novo_status = "manutencao"
+            else:
+                novo_status = "operacional"
+
+            atualizado = replace(
+                item,
+                nivelAtualInsumo=novo_nivel,
+                nivelCopos=novo_copos,
+                transacoesAcumuladas=novas_transacoes,
+                receitaTotal=nova_receita,
+                status=novo_status,
+            )
+            self._autos[id] = atualizado
+            return atualizado
+
+    def reabastecer_autosservico(self, id: str) -> Optional[AutosservicoRecord]:
+        with self._lock:
+            item = self._autos.get(id)
+            if not item:
+                return None
+            atualizado = replace(
+                item,
+                nivelAtualInsumo=item.capacidadeTotalInsumo,
+                nivelCopos=item.capacidadeCopos,
+                status="operacional",
+                pessoasNaFila=max(1, item.pessoasNaFila // 2),
+                ultimoAbastecimento="Agora mesmo",
+            )
+            self._autos[id] = atualizado
+            if "BAR-83-IPA" in self._insumos and "Beer" in item.nome:
+                self.registrar_reabastecimento("BAR-83-IPA", 14, "ALTA")
+            return atualizado
+
+    def toggle_manutencao_autosservico(self, id: str) -> Optional[AutosservicoRecord]:
+        with self._lock:
+            item = self._autos.get(id)
+            if not item:
+                return None
+            novo_status = "operacional" if item.status == "manutencao" else "manutencao"
+            atualizado = replace(item, status=novo_status)
+            self._autos[id] = atualizado
+            return atualizado
+
+    # ── Instagramáveis ───────────────────────────────────────────────────────
+    def listar_instagramavel(self) -> List[InstagramavelRecord]:
+        with self._lock:
+            return list(self._instas.values())
+
+    def obter_instagramavel(self, id: str) -> Optional[InstagramavelRecord]:
+        with self._lock:
+            return self._instas.get(id)
+
+    def captura_instagramavel(self, id: str) -> Optional[InstagramavelRecord]:
+        with self._lock:
+            item = self._instas.get(id)
+            if not item:
+                return None
+            novas_capturas = item.capturasTotais + 1
+            novos_shares = item.compartilhamentosSociaisEstimados + 1
+            novo_alcance = item.alcanceEstimadoRedes + 120
+            novo_status = "alta_procura" if item.pessoasNaFila > 12 else item.status
+            atualizado = replace(
+                item,
+                capturasTotais=novas_capturas,
+                compartilhamentosSociaisEstimados=novos_shares,
+                alcanceEstimadoRedes=novo_alcance,
+                status=novo_status,
+            )
+            self._instas[id] = atualizado
+            return atualizado
+
+    def mudar_modo_luz_instagramavel(self, id: str, modo: str) -> Optional[InstagramavelRecord]:
+        with self._lock:
+            item = self._instas.get(id)
+            if not item:
+                return None
+            cores = {
+                "Neon Pulsar": "#10b981",
+                "Cyber Glow": "#ef4444",
+                "Golden Hour": "#f59e0b",
+                "Studio Spotlight": "#a855f7",
+            }
+            nova_luz = IluminacaoCenicaRecord(
+                modo=modo,
+                corPrincipal=cores.get(modo, item.iluminacaoCenica.corPrincipal),
+                intensidadePct=item.iluminacaoCenica.intensidadePct,
+            )
+            atualizado = replace(item, iluminacaoCenica=nova_luz)
+            self._instas[id] = atualizado
+            return atualizado
+
+    def toggle_status_instagramavel(self, id: str) -> Optional[InstagramavelRecord]:
+        with self._lock:
+            item = self._instas.get(id)
+            if not item:
+                return None
+            novo_status = "ativo" if item.status == "pausado" else "pausado"
+            atualizado = replace(item, status=novo_status)
+            self._instas[id] = atualizado
+            return atualizado
+
+    # ── Criar Atração e Simulação de Pico ───────────────────────────────────
+    def criar_atracao(self, tipo: str, nome: str, setor: str, insumo_ou_patrocinador: Optional[str] = None) -> object:
+        with self._lock:
+            timestamp_id = int(agora_utc().timestamp() * 1000)
+            if tipo == "autosservico":
+                novo_auto = AutosservicoRecord(
+                    id=f"aut-{timestamp_id}",
+                    codigo=f"AUT-{len(self._autos) + 1}",
+                    nome=nome,
+                    tipoInsumo=insumo_ou_patrocinador or "Chopp Artesanal",
+                    setor=setor,
+                    status="operacional",
+                    capacidadeTotalInsumo=300.0,
+                    nivelAtualInsumo=300.0,
+                    unidadeMedida="L",
+                    capacidadeCopos=400,
+                    nivelCopos=400,
+                    transacoesAcumuladas=0,
+                    receitaTotal=0.0,
+                    ticketMedio=35.0,
+                    tempoMedioAtendimentoSegundos=25,
+                    pessoasNaFila=1,
+                    tempoEstimadoEsperaMin=0.5,
+                    temperaturaC=2.5,
+                    pressaoPsi=13.5,
+                    posicao3D=[float(len(self._autos) * 2 - 4), 0.0, float(len(self._autos) * 2 - 3)],
+                    ultimoAbastecimento="Agora",
+                    consumoPorHora=[
+                        ConsumoHoraRecord("20h", 0, 0.0),
+                        ConsumoHoraRecord("21h", 0, 0.0),
+                        ConsumoHoraRecord("22h", 0, 0.0),
+                    ],
+                )
+                self._autos[novo_auto.id] = novo_auto
+                return novo_auto
+            else:
+                novo_insta = InstagramavelRecord(
+                    id=f"inst-{timestamp_id}",
+                    codigo=f"INSTA-{len(self._instas) + 1}",
+                    nome=nome,
+                    patrocinador=insumo_ou_patrocinador or "Marca Parceira",
+                    categoriaCenario="Instalação Visual Iluminada",
+                    setor=setor,
+                    status="ativo",
+                    capturasTotais=0,
+                    compartilhamentosSociaisEstimados=0,
+                    alcanceEstimadoRedes=0,
+                    tempoPermanenciaMedioSegundos=75,
+                    avaliacaoMedia=5.0,
+                    npsScore=92,
+                    pessoasNaFila=0,
+                    tempoEsperaMin=0.0,
+                    iluminacaoCenica=IluminacaoCenicaRecord(modo="Neon Pulsar", corPrincipal="#ec4899", intensidadePct=90),
+                    posicao3D=[float(len(self._instas) * 2 - 3), 0.0, float(-(len(self._instas) * 2 - 2))],
+                    hashtagsPrincipais=["#Festival2026", f"#{nome.replace(' ', '')}"],
+                    fotosRecentes=[],
+                )
+                self._instas[novo_insta.id] = novo_insta
+                return novo_insta
+
+    def simular_pico_fluxo(self) -> None:
+        with self._lock:
+            self.marcar_acao_em_andamento()
+            for id, a in list(self._autos.items()):
+                self._autos[id] = replace(
+                    a,
+                    transacoesAcumuladas=a.transacoesAcumuladas + 25,
+                    receitaTotal=a.receitaTotal + (25 * a.ticketMedio),
+                    nivelAtualInsumo=max(10.0, a.nivelAtualInsumo - 12.0),
+                    pessoasNaFila=a.pessoasNaFila + 4,
+                )
+            for id, i in list(self._instas.items()):
+                self._instas[id] = replace(
+                    i,
+                    capturasTotais=i.capturasTotais + 40,
+                    compartilhamentosSociaisEstimados=i.compartilhamentosSociaisEstimados + 32,
+                    alcanceEstimadoRedes=i.alcanceEstimadoRedes + 5400,
+                    pessoasNaFila=i.pessoasNaFila + 5,
+                    status="alta_procura",
+                )
+
+    def calcular_sintese(self) -> Dict[str, object]:
+        with self._lock:
+            autos = list(self._autos.values())
+            instas = list(self._instas.values())
+            receita_total_autos = sum(a.receitaTotal for a in autos)
+            transacoes_autos = sum(a.transacoesAcumuladas for a in autos)
+            capturas_instas = sum(i.capturasTotais for i in instas)
+            alcance_redes = sum(i.alcanceEstimadoRedes for i in instas)
+            total_atendimentos = transacoes_autos + capturas_instas
+            ticket_medio = receita_total_autos / transacoes_autos if transacoes_autos > 0 else 0.0
+
+            todas_esperas = [a.tempoEstimadoEsperaMin for a in autos] + [i.tempoEsperaMin for i in instas]
+            tempo_espera_global = (sum(todas_esperas) / len(todas_esperas)) if todas_esperas else 0.0
+            vazao = round(total_atendimentos / 300.0, 1)
+
+            autos_status: Dict[str, int] = {"operacional": 0, "atencao": 0, "critico": 0, "manutencao": 0}
+            for a in autos:
+                autos_status[a.status] = autos_status.get(a.status, 0) + 1
+
+            instas_status: Dict[str, int] = {"ativo": 0, "alta_procura": 0, "limpeza": 0, "pausado": 0}
+            for i in instas:
+                instas_status[i.status] = instas_status.get(i.status, 0) + 1
+
+            setor_map: Dict[str, Dict[str, float]] = {}
+            for a in autos:
+                if a.setor not in setor_map:
+                    setor_map[a.setor] = {"receita": 0.0, "volume": 0}
+                setor_map[a.setor]["receita"] += a.receitaTotal
+                setor_map[a.setor]["volume"] += a.transacoesAcumuladas
+            for i in instas:
+                if i.setor not in setor_map:
+                    setor_map[i.setor] = {"receita": 0.0, "volume": 0}
+                setor_map[i.setor]["volume"] += i.capturasTotais
+
+            faturamento_setor = [
+                {
+                    "setor": setor,
+                    "receita": data["receita"],
+                    "volume": int(data["volume"]),
+                    "pct": round((data["receita"] / receita_total_autos * 100), 1) if receita_total_autos > 0 else 0.0,
+                }
+                for setor, data in setor_map.items()
+            ]
+
+            fluxo_horario = [
+                {"hora": "18h", "autosservico": 115, "instagramavel": 320, "receita": 4725.0},
+                {"hora": "19h", "autosservico": 320, "instagramavel": 680, "receita": 16275.0},
+                {"hora": "20h", "autosservico": 515, "instagramavel": 1100, "receita": 26450.0},
+                {"hora": "21h", "autosservico": 420, "instagramavel": 950, "receita": 17500.0},
+                {"hora": "22h", "autosservico": 297, "instagramavel": 810, "receita": 12360.0},
+            ]
+
+            alertas = [
+                {
+                    "id": "al-1",
+                    "tipo": "aviso",
+                    "mensagem": "Nível de Chopp Gin Tônica em 22% (68L restantes) no Totem AUT-DRINK-02 (Palco Sunset).",
+                    "hora": "22:45",
+                    "atracao": "Dispenser Cocktails & Gin 02",
+                    "atracaoId": "aut-02",
+                    "direcionamento": "Despachar equipe de reabastecimento móvel com 2 barris de 50L e 1 lote de 200 copos para o Palco Sunset nos próximos 15 minutos.",
+                    "impactoEstimado": "Evita perda projetada de R$ 3.800 em vendas e ruptura antes do show das 23h15.",
+                    "acaoRapidaLabel": "Despachar Reposição Móvel",
+                },
+                {
+                    "id": "al-2",
+                    "tipo": "urgente",
+                    "mensagem": "Fila de 18 pessoas no Túnel Neon Cyber Sound (Tempo de espera médio elevado para 9.5 min).",
+                    "hora": "22:38",
+                    "atracao": "Túnel Neon Cyber Sound",
+                    "atracaoId": "inst-01",
+                    "direcionamento": "Ativar modo de disparo fotográfico rápido (redução de pose de 85s para 50s) e sinalizar via totem o Balanço Flutuante (Setor Sunset), que possui fila de apenas 5 min.",
+                    "impactoEstimado": "Redução estimada de 45% no tempo de espera da fila e alívio de gargalo na circulação da Arena.",
+                    "acaoRapidaLabel": "Ativar Modo Ágil & Rebalancear Fila",
+                },
+                {
+                    "id": "al-3",
+                    "tipo": "info",
+                    "mensagem": "Meta horária de receita superada na Arena Principal (+18% sobre a projeção do dia).",
+                    "hora": "22:15",
+                    "atracao": "Arena Principal",
+                    "atracaoId": "aut-01",
+                    "direcionamento": "Oportunidade comercial: disparar notificação promocional push no app do evento oferecendo combo \"Chopp + Pizza Artesanal\" na Vila Gastronômica para dispersar o fluxo.",
+                    "impactoEstimado": "Potencial de incremento de +R$ 4.500 no ticket médio de alimentação do setor gastronômico.",
+                    "acaoRapidaLabel": "Ativar Promoção Cruzada Gastrô",
+                },
+            ]
+
+            return {
+                "eventoNome": "Festival Som & Luz Arena 2026",
+                "dataEvento": "19 de Outubro de 2026",
+                "tempoDecorridoHoras": 4.8,
+                "publicoTotalEstimadoVenue": 18500,
+                "totalAtendimentosGerais": total_atendimentos,
+                "receitaTotalAutosservico": round(receita_total_autos, 2),
+                "totalCapturasInstagramavel": capturas_instas,
+                "alcanceTotalRedes": alcance_redes,
+                "ticketMedioGeral": round(ticket_medio, 2),
+                "vazaoMediaAtendimentosPorMin": vazao,
+                "tempoMedioEsperaGlobalMin": round(tempo_espera_global, 1),
+                "satisfacaoGeralScore": 4.91,
+                "autosservicoPorStatus": autos_status,
+                "instagramavelPorStatus": instas_status,
+                "faturamentoPorSetor": faturamento_setor,
+                "fluxoHorario": fluxo_horario,
+                "principaisAlertas": alertas,
+            }
+
+    # ── Guichês ──────────────────────────────────────────────────────────────
+    def listar_guiches(self) -> List[GuicheRecord]:
+        with self._lock:
+            return list(self._guiches.values())
+
+    def atualizar_fila_guiche(self, id: str, delta: int) -> Optional[GuicheRecord]:
+        with self._lock:
+            g = self._guiches.get(id)
+            if not g:
+                return None
+            nova_fila = max(0, g.pessoasNaFila + delta)
+            ocupacao = nova_fila / g.capacidadeFila if g.capacidadeFila > 0 else 0.0
+            novo_status = "CRITICO" if ocupacao >= 0.85 else "PRESSAO" if ocupacao >= 0.6 else "NORMAL"
+            atualizado = replace(g, pessoasNaFila=nova_fila, status=novo_status)
+            self._guiches[id] = atualizado
+            return atualizado
 
 
 memory_db = MemoryDB()
