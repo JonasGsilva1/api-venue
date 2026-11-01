@@ -602,3 +602,34 @@ class CriarAtracaoRequestContract(ContratoEstrito):
     nome: str = Field(..., min_length=2, max_length=100, examples=["Beer Wall 05 - Express"])
     setor: str = Field("Arena Principal", examples=["Arena Principal"])
     insumoOuPatrocinador: Optional[str] = Field(None, examples=["Chopp IPA 500ml"])
+
+
+TipoCameraHardware = Literal["entrada_perimetro", "fb_liquid"]
+StatusCameraHardware = Literal["operacional", "atencao", "critico"]
+
+
+class CameraMetricaContract(ContratoEstrito):
+    rotulo: str = Field(..., examples=["Fluxo Acesso"])
+    valor: str = Field(..., examples=["380 pess/h"])
+    detalhe: Optional[str] = Field(None, examples=["Tempo fila: 1.5 min"])
+
+
+class CameraTelemetryItemContract(ContratoEstrito):
+    id: str = Field(..., examples=["cam-ent-01"])
+    codigo: str = Field(..., examples=["CAM-ENT-01"])
+    nome: str = Field(..., examples=["Entrada Portão A (Perímetro Norte)"])
+    tipo: TipoCameraHardware = Field(..., examples=["entrada_perimetro"])
+    setor: str = Field(..., examples=["Acesso / Perímetro Norte"])
+    posicao: List[float] = Field(..., examples=[[-4.0, 4.2, 12.0]])
+    alvo: List[float] = Field(..., examples=[[-4.0, 0.0, 12.0]])
+    status: StatusCameraHardware = Field(..., examples=["operacional"])
+    fps: int = Field(..., gt=0, examples=[30])
+    metricas: CameraMetricaContract
+    zona: ZonaStatusContract
+
+
+class CamerasResponseContract(ContratoEstrito):
+    total_cameras: int = Field(..., ge=0, examples=[7])
+    cameras_online: int = Field(..., ge=0, examples=[7])
+    atualizado_em: datetime = Field(..., examples=["2026-10-14T20:30:00Z"])
+    cameras: List[CameraTelemetryItemContract]

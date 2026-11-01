@@ -504,6 +504,24 @@ def test_venue_criar_atracao():
     assert r.json()["nome"] == "Beer Wall 05 - Express"
 
 
+def test_venue_cameras_endpoint_dedicado():
+    r = client.get("/api/v1/venue/cameras", headers=AUTH_HEADER)
+    assert r.status_code == 200
+    dados = r.json()
+    assert dados["total_cameras"] == 7
+    assert dados["cameras_online"] == 7
+    assert len(dados["cameras"]) == 7
+
+    cam_ent = next(c for c in dados["cameras"] if c["id"] == "cam-ent-01")
+    assert cam_ent["codigo"] == "CAM-ENT-01"
+    assert cam_ent["tipo"] == "entrada_perimetro"
+    assert cam_ent["zona"]["ultima_leitura"]["contagem_pessoas"] == 18
+
+    r_detalhe = client.get("/api/v1/venue/cameras/cam-fb-01", headers=AUTH_HEADER)
+    assert r_detalhe.status_code == 200
+    assert r_detalhe.json()["zona"]["id"] == 5
+
+
 def test_compatibilidade_frontend_campos_adaptados():
     # 1. PDV Status com localizacao_geo e contagem_pessoas
     r_pdv = client.get("/api/v1/pdv/status", headers=AUTH_HEADER)

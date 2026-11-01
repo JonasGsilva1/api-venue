@@ -56,6 +56,31 @@ function normalizarZona(zona: ZonaStatusV2): PdvStatusItem {
   };
 }
 
+export interface CameraApiItem {
+  id: string;
+  codigo: string;
+  nome: string;
+  tipo: 'entrada_perimetro' | 'fb_liquid';
+  setor: string;
+  posicao: [number, number, number];
+  alvo: [number, number, number];
+  status: 'operacional' | 'atencao' | 'critico';
+  fps: number;
+  metricas: {
+    rotulo: string;
+    valor: string;
+    detalhe?: string | null;
+  };
+  zona: ZonaStatusV2;
+}
+
+export interface CamerasResponseV2 {
+  total_cameras: number;
+  cameras_online: number;
+  atualizado_em: string;
+  cameras: CameraApiItem[];
+}
+
 /** Zonas do estande com a última leitura de cada uma (aceita a API nova e a antiga). */
 export async function getPdvStatus(signal?: AbortSignal): Promise<PdvStatusResponse> {
   const { data } = await api.get<PdvStatusResponse | PdvStatusResponseV2>('/api/v1/pdv/status', {
@@ -64,6 +89,22 @@ export async function getPdvStatus(signal?: AbortSignal): Promise<PdvStatusRespo
     timeout: TIMEOUT_MS,
   });
   return Array.isArray(data) ? data : data.zonas.map(normalizarZona);
+}
+
+/** Telemetria dedicada das 7 câmeras de hardware da arena (GET /api/v1/venue/cameras). */
+export async function getCamerasTelemetry(
+  signal?: AbortSignal,
+): Promise<Record<string, PdvStatusItem>> {
+  const { data } = await api.get<CamerasResponseV2>('/api/v1/venue/cameras', {
+    signal,
+    headers: authHeaders(),
+    timeout: TIMEOUT_MS,
+  });
+  const mapa: Record<string, PdvStatusItem> = {};
+  for (const cam of data.cameras) {
+    mapa[cam.id] = normalizarZona(cam.zona);
+  }
+  return mapa;
 }
 
 /** Registra uma intervenção operacional humana. */

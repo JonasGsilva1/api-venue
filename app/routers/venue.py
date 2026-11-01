@@ -11,6 +11,8 @@ from app.contracts import (
     AcumuladoEventoContract,
     AnalyticsDropoffResponseContract,
     AutosservicoItemContract,
+    CamerasResponseContract,
+    CameraTelemetryItemContract,
     CriarAtracaoRequestContract,
     HeatmapGlobalContract,
     InstagramavelItemContract,
@@ -25,6 +27,7 @@ from app.errors import RESPOSTAS_PADRAO, sem_query_params
 from app.repositories.memory_db import agora_utc, memory_db
 from app.services.mappers import (
     autosservico_para_contrato,
+    camera_para_contrato,
     instagramavel_para_contrato,
     readiness_contrato,
     zona_para_contrato,
@@ -293,3 +296,46 @@ async def obter_sintese(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -
 async def simular_pico(usuario: UsuarioAutenticado = Depends(exigir_operacao)):
     memory_db.simular_pico_fluxo()
     return {"status": "ok", "mensagem": "Pico de fluxo simulado em todos os setores da arena."}
+
+
+@router.get(
+    "/venue/cameras",
+    response_model=CamerasResponseContract,
+    status_code=status.HTTP_200_OK,
+    summary="Telemetria em tempo real das 7 câmeras de hardware da arena (4 Entradas + 3 F&B)",
+    description=(
+        "Retorna todas as 7 câmeras de hardware (`CAM-ENT-01`..`04` de acesso/perímetro e `CAM-FB-01`..`03` de F&B), "
+        "incluindo coordenadas 3D (`posicao`, `alvo`), taxa de quadros (`fps`), métricas operacionais e a respectiva "
+        "`zona` com `ultima_leitura` completa (contagem de pessoas, tempo de espera, densidade/m² e confiança da IA)."
+    ),
+    dependencies=[Depends(sem_query_params)],
+)
+async def listar_cameras(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> CamerasResponseContract:
+    itens = [camera_para_contrato(c, memory_db) for c in memory_db.listar_cameras()]
+    online = sum(
+        1 for c in itens if c.zona.ultima_leitura is None or c.zona.ultima_leitura.sensor_status == "ONLINE"
+    )
+    return CamerasResponseContract(
+        total_cameras=len(itens),
+        cameras_online=online,
+        atualizado_em=agora_utc(),
+        cameras=itens,
+    )
+
+
+@router.get(
+    "/venue/cameras/{camera_id}",
+    response_model=CameraTelemetryItemContract,
+    status_code=status.HTTP_200_OK,
+    summary="Telemetria detalhada de uma câmera de hardware específica",
+    description="Consulta uma câmera individual pelo seu ID (`cam-ent-01`..`04` ou `cam-fb-01`..`03`).",
+    dependencies=[Depends(sem_query_params)],
+)
+async def obter_camera(
+    camera_id: str,
+    usuario: UsuarioAutenticado = Depends(exigir_leitura),
+) -> CameraTelemetryItemContract:
+    cam = memory_db.obter_camera(camera_id)
+    if not cam:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Câmera '{camera_id}' não encontrada.")
+    return camera_para_contrato(cam, memory_db)

@@ -209,6 +209,25 @@ class InstagramavelRecord:
     fotosRecentes: List[FotoRecenteRecord]
 
 
+@dataclass
+class CameraHardwareRecord:
+    id: str
+    codigo: str
+    nome: str
+    tipo: str  # "entrada_perimetro" | "fb_liquid"
+    setor: str
+    posicao: List[float]
+    alvo: List[float]
+    status: str  # "operacional" | "atencao" | "critico"
+    fps: int
+    rotulo_metrica: str
+    valor_metrica: str
+    detalhe_metrica: Optional[str]
+    pdv_id_vinculado: Optional[int]
+    zona_dedicada: Optional[ZonaRecord] = None
+    leitura_dedicada: Optional[LeituraRecord] = None
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # SEEDS OBRIGATÓRIOS (PROJECT_CONTEXT.md §4)
 # ════════════════════════════════════════════════════════════════════════════
@@ -393,6 +412,228 @@ def _seed_instagramavel() -> List[InstagramavelRecord]:
     ]
 
 
+def _seed_cameras(agora: datetime) -> List[CameraHardwareRecord]:
+    return [
+        CameraHardwareRecord(
+            id="cam-ent-01",
+            codigo="CAM-ENT-01",
+            nome="Entrada Portão A (Perímetro Norte)",
+            tipo="entrada_perimetro",
+            setor="Acesso / Perímetro Norte",
+            posicao=[-4.0, 4.2, 12.0],
+            alvo=[-4.0, 0.0, 12.0],
+            status="operacional",
+            fps=30,
+            rotulo_metrica="Fluxo Acesso",
+            valor_metrica="380 pess/h",
+            detalhe_metrica="Tempo fila: 1.5 min",
+            pdv_id_vinculado=None,
+            zona_dedicada=ZonaRecord(
+                id=101,
+                codigo_zona="ENT-A",
+                nome="ENT-A | Portão A (Perímetro Norte)",
+                tipo="ESTANDE",
+                area_m2=45.0,
+                capacidade=80,
+                tempo_servico_seg=5.0,
+                postos_atendimento=4,
+                reposicao_min=0,
+                indicadores={"fila_pax": 18, "tempo_espera_seg": 90},
+            ),
+            leitura_dedicada=LeituraRecord(
+                id=1001,
+                pdv_id=101,
+                timestamp=agora,
+                pax_count=18,
+                tempo_espera_seg=90,
+                densidade_m2=0.40,
+                status_cor="VERDE",
+                confianca_ia=0.95,
+                alerta_ruptura_estoque=False,
+                anomalias=[],
+                modo_leitura="TEMPO_REAL",
+                sensor_status="ONLINE",
+                transacoes_pos_ultimos_3m=19,
+                estoque_percentual=100,
+            ),
+        ),
+        CameraHardwareRecord(
+            id="cam-ent-02",
+            codigo="CAM-ENT-02",
+            nome="Entrada Catracas VIP",
+            tipo="entrada_perimetro",
+            setor="Acesso / VIP",
+            posicao=[-1.0, 4.2, 12.0],
+            alvo=[-1.0, 0.0, 12.0],
+            status="operacional",
+            fps=30,
+            rotulo_metrica="Fluxo VIP",
+            valor_metrica="120 pess/h",
+            detalhe_metrica="Tempo fila: 0.5 min",
+            pdv_id_vinculado=None,
+            zona_dedicada=ZonaRecord(
+                id=102,
+                codigo_zona="ENT-VIP",
+                nome="ENT-VIP | Catracas VIP",
+                tipo="ESTANDE",
+                area_m2=30.0,
+                capacidade=40,
+                tempo_servico_seg=5.0,
+                postos_atendimento=2,
+                reposicao_min=0,
+                indicadores={"fila_pax": 6, "tempo_espera_seg": 30},
+            ),
+            leitura_dedicada=LeituraRecord(
+                id=1002,
+                pdv_id=102,
+                timestamp=agora,
+                pax_count=6,
+                tempo_espera_seg=30,
+                densidade_m2=0.20,
+                status_cor="VERDE",
+                confianca_ia=0.97,
+                alerta_ruptura_estoque=False,
+                anomalias=[],
+                modo_leitura="TEMPO_REAL",
+                sensor_status="ONLINE",
+                transacoes_pos_ultimos_3m=6,
+                estoque_percentual=100,
+            ),
+        ),
+        CameraHardwareRecord(
+            id="cam-ent-03",
+            codigo="CAM-ENT-03",
+            nome="Entrada Pista Principal",
+            tipo="entrada_perimetro",
+            setor="Acesso / Geral",
+            posicao=[1.0, 4.2, 12.0],
+            alvo=[1.0, 0.0, 12.0],
+            status="operacional",
+            fps=30,
+            rotulo_metrica="Fluxo Geral",
+            valor_metrica="490 pess/h",
+            detalhe_metrica="Tempo fila: 2.8 min",
+            pdv_id_vinculado=None,
+            zona_dedicada=ZonaRecord(
+                id=103,
+                codigo_zona="ENT-GERAL",
+                nome="ENT-GERAL | Pista Principal",
+                tipo="ESTANDE",
+                area_m2=60.0,
+                capacidade=120,
+                tempo_servico_seg=5.0,
+                postos_atendimento=6,
+                reposicao_min=0,
+                indicadores={"fila_pax": 34, "tempo_espera_seg": 168},
+            ),
+            leitura_dedicada=LeituraRecord(
+                id=1003,
+                pdv_id=103,
+                timestamp=agora,
+                pax_count=34,
+                tempo_espera_seg=168,
+                densidade_m2=0.57,
+                status_cor="VERDE",
+                confianca_ia=0.93,
+                alerta_ruptura_estoque=False,
+                anomalias=[],
+                modo_leitura="TEMPO_REAL",
+                sensor_status="ONLINE",
+                transacoes_pos_ultimos_3m=25,
+                estoque_percentual=100,
+            ),
+        ),
+        CameraHardwareRecord(
+            id="cam-ent-04",
+            codigo="CAM-ENT-04",
+            nome="Entrada Perímetro Leste",
+            tipo="entrada_perimetro",
+            setor="Acesso / Leste",
+            posicao=[4.0, 4.2, 12.0],
+            alvo=[4.0, 0.0, 12.0],
+            status="operacional",
+            fps=30,
+            rotulo_metrica="Fluxo Leste",
+            valor_metrica="210 pess/h",
+            detalhe_metrica="Tempo fila: 1.1 min",
+            pdv_id_vinculado=None,
+            zona_dedicada=ZonaRecord(
+                id=104,
+                codigo_zona="ENT-LESTE",
+                nome="ENT-LESTE | Perímetro Leste",
+                tipo="ESTANDE",
+                area_m2=40.0,
+                capacidade=60,
+                tempo_servico_seg=6.0,
+                postos_atendimento=3,
+                reposicao_min=0,
+                indicadores={"fila_pax": 11, "tempo_espera_seg": 66},
+            ),
+            leitura_dedicada=LeituraRecord(
+                id=1004,
+                pdv_id=104,
+                timestamp=agora,
+                pax_count=11,
+                tempo_espera_seg=66,
+                densidade_m2=0.28,
+                status_cor="VERDE",
+                confianca_ia=0.94,
+                alerta_ruptura_estoque=False,
+                anomalias=[],
+                modo_leitura="TEMPO_REAL",
+                sensor_status="ONLINE",
+                transacoes_pos_ultimos_3m=11,
+                estoque_percentual=100,
+            ),
+        ),
+        CameraHardwareRecord(
+            id="cam-fb-01",
+            codigo="CAM-FB-01",
+            nome="F&B Chopp Hub 1 (IPA & Pilsen)",
+            tipo="fb_liquid",
+            setor="Liquid / F&B Oeste",
+            posicao=[-5.0, 4.8, 2.0],
+            alvo=[-5.0, 0.8, 2.0],
+            status="operacional",
+            fps=60,
+            rotulo_metrica="Vazão de Chopp",
+            valor_metrica="6.4 L/min",
+            detalhe_metrica="Nível barril: 94% · 3.2°C",
+            pdv_id_vinculado=5,
+        ),
+        CameraHardwareRecord(
+            id="cam-fb-02",
+            codigo="CAM-FB-02",
+            nome="F&B Estação Central Liquid",
+            tipo="fb_liquid",
+            setor="Liquid / F&B Centro",
+            posicao=[0.0, 5.0, -2.0],
+            alvo=[0.0, 1.0, -2.0],
+            status="operacional",
+            fps=60,
+            rotulo_metrica="Atendimentos F&B",
+            valor_metrica="4.8 atend/min",
+            detalhe_metrica="Pressão Chopp: 2.2 bar",
+            pdv_id_vinculado=1,
+        ),
+        CameraHardwareRecord(
+            id="cam-fb-03",
+            codigo="CAM-FB-03",
+            nome="F&B Chopp Hub 3 (Artesanais & Retirada)",
+            tipo="fb_liquid",
+            setor="Liquid / F&B Leste",
+            posicao=[5.0, 4.8, 2.0],
+            alvo=[5.0, 0.8, 2.0],
+            status="operacional",
+            fps=60,
+            rotulo_metrica="Vazão de Chopp",
+            valor_metrica="5.1 L/min",
+            detalhe_metrica="Nível barril: 88% · 2.9°C",
+            pdv_id_vinculado=2,
+        ),
+    ]
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # Regras puras compartilhadas (mesmos limiares em TEMPO_REAL e contingências)
 # ════════════════════════════════════════════════════════════════════════════
@@ -481,6 +722,7 @@ class MemoryDB:
             )
             self._autos: Dict[str, AutosservicoRecord] = {a.id: a for a in _seed_autosservico()}
             self._instas: Dict[str, InstagramavelRecord] = {i.id: i for i in _seed_instagramavel()}
+            self._cameras: Dict[str, CameraHardwareRecord] = {c.id: c for c in _seed_cameras(agora)}
             self._seed_historico(agora)
 
     def _seed_historico(self, agora: datetime) -> None:
@@ -967,6 +1209,15 @@ class MemoryDB:
                 "fluxoHorario": fluxo_horario,
                 "principaisAlertas": alertas,
             }
+
+    # ── Câmeras de Hardware ──────────────────────────────────────────────────
+    def listar_cameras(self) -> List[CameraHardwareRecord]:
+        with self._lock:
+            return list(self._cameras.values())
+
+    def obter_camera(self, camera_id: str) -> Optional[CameraHardwareRecord]:
+        with self._lock:
+            return self._cameras.get(camera_id)
 
 
 memory_db = MemoryDB()

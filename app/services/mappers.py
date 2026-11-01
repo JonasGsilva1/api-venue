@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from app.contracts import (
     AutosservicoItemContract,
+    CameraMetricaContract,
+    CameraTelemetryItemContract,
     ConsumoHoraContract,
     DispatchResponseContract,
     FotoRecenteContract,
@@ -19,6 +21,7 @@ from app.contracts import (
 from app.repositories.memory_db import (
     LIMIAR_REDIRECIONAMENTO_SEG,
     AutosservicoRecord,
+    CameraHardwareRecord,
     DispatchRecord,
     InstagramavelRecord,
     LeituraRecord,
@@ -186,4 +189,34 @@ def instagramavel_para_contrato(i: InstagramavelRecord) -> InstagramavelItemCont
             FotoRecenteContract(id=f.id, timestamp=f.timestamp, autor=f.autor, likes=f.likes)
             for f in i.fotosRecentes
         ],
+    )
+
+
+def camera_para_contrato(c: CameraHardwareRecord, db: MemoryDB) -> CameraTelemetryItemContract:
+    if c.pdv_id_vinculado is not None:
+        zona = db.obter_zona(c.pdv_id_vinculado)
+        ultima = db.ultima_leitura(c.pdv_id_vinculado)
+    else:
+        zona = c.zona_dedicada
+        ultima = c.leitura_dedicada
+
+    if zona is None:
+        raise ValueError(f"Câmera '{c.id}' sem zona configurada.")
+
+    return CameraTelemetryItemContract(
+        id=c.id,
+        codigo=c.codigo,
+        nome=c.nome,
+        tipo=c.tipo,  # type: ignore[arg-type]
+        setor=c.setor,
+        posicao=list(c.posicao),
+        alvo=list(c.alvo),
+        status=c.status,  # type: ignore[arg-type]
+        fps=c.fps,
+        metricas=CameraMetricaContract(
+            rotulo=c.rotulo_metrica,
+            valor=c.valor_metrica,
+            detalhe=c.detalhe_metrica,
+        ),
+        zona=zona_para_contrato(zona, ultima),
     )
