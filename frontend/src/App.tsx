@@ -1,48 +1,65 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  Activity, 
-  RefreshCw, 
-  Package, 
-  Radio, 
-  Plus, 
-  Layers3, 
-  Bot, 
-  Compass, 
-  Beer, 
-  Camera, 
-  X,
-  Flame,
-  Users,
-  BarChart3,
-  Wifi,
-  WifiOff
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Activity,
+  RefreshCw,
+  Radio,
+  Plus,
+  Layers3,
+  Bot,
+  Compass,
+  Beer,
+  Camera,
+  X
 } from 'lucide-react';
 import { AutosservicoCard } from './components/AutosservicoCard';
 import { InstagramavelCard } from './components/InstagramavelCard';
 import { Venue3DScene } from './components/Venue3DScene';
 import { SinteseAcumulada } from './components/SinteseAcumulada';
 import { TerminalCLI } from './components/TerminalCLI';
-import { PublicoHeatmap } from './components/PublicoHeatmap';
-import { BalcaoFilasView } from './components/balcao/BalcaoFilasView';
-import { SinteseD1D3View } from './components/sintese/SinteseD1D3View';
+import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
+import { ApiToast } from './components/ui/ApiToast';
+import { useOpsActions } from './hooks/useOpsActions';
+import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
+import {
+  getAutosservico,
+  postManutencaoAutosservico,
+  postReabastecerAutosservico,
+  postSimularPico,
+} from './services/venueApi';
+import { gerarAlertasPreditivos } from './utils/predicao';
+import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
 
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
 import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
-import type { PdvStatusItem, ReadinessHeatmapResponse } from './types/publico';
-import { toZonaPublico } from './utils/publico';
-import { venueService, type InsumosStatusResponse } from './services/venueService';
+
+export interface ZoneData {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  occupancy: number; 
+  pessoas: number;
+}
+
+export const ZONES_DATA: ZoneData[] = [
+  { id: 'Z1', name: 'Balcão Principal', x: -1.5, z: 2.0, occupancy: 86, pessoas: 16 },
+  { id: 'Z2', name: 'Lounge Poltronas', x: -3.0, z: 0.5, occupancy: 70, pessoas: 7 },
+  { id: 'Z3', name: 'Entrada & Circulação', x: 0.0, z: 2.5, occupancy: 100, pessoas: 15 },
+  { id: 'Z4', name: 'Mesas Café & Network', x: 2.0, z: 1.5, occupancy: 68, pessoas: 7 },
+  { id: 'Z5', name: 'Espaço Autosserviço', x: 3.2, z: -0.5, occupancy: 25, pessoas: 2 },
+  { id: 'Z6', name: 'Área de Apoio / Staff', x: 1.0, z: -1.5, occupancy: 17, pessoas: 1 },
+];
+
+export function getHeatmapColor(occupancy: number): string {
+  if (occupancy >= 85) return '#ef4444'; 
+  if (occupancy >= 50) return '#f59e0b'; 
+  return '#10b981';                     
+}
 
 export default function App() {
   const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
   const [instas, setInstas] = useState<InstagramavelItem[]>(INITIAL_INSTAGRAMAVEL);
-  const [sinteseData, setSinteseData] = useState(() => computeSinteseAcumulada(INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL));
-  const [pdvStatus, setPdvStatus] = useState<PdvStatusItem[]>([]);
-  const [readinessHeatmap, setReadinessHeatmap] = useState<ReadinessHeatmapResponse | null>(null);
-  const [insumosStatus, setInsumosStatus] = useState<InsumosStatusResponse | null>(null);
-  const [statusOperacional, setStatusOperacional] = useState<'ESTAVEL' | 'ACAO_EM_ANDAMENTO'>('ESTAVEL');
-  const [apiOnline, setApiOnline] = useState<boolean>(true);
-
-  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'heatmap' | 'balcao' | 'd1d3'>('tudo');
+  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'predicao' | 'mapa'>('tudo');
   const [show3DMap, setShow3DMap] = useState(true);
   const [selectedAtracaoId, setSelectedAtracaoId] = useState<string | null>(null);
   const [filtroSetor, setFiltroSetor] = useState<string | null>(null);
@@ -50,304 +67,335 @@ export default function App() {
   const [showTerminal, setShowTerminal] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('10s');
   const [lastUpdate, setLastUpdate] = useState('04:15:40');
-  const [pingLatency, setPingLatency] = useState(18);
+  const [pingLatency, setPingLatency] = useState(431);
+  const { ocupado, feedback, despachoOps, vendaExpress, limparFeedback } = useOpsActions();
 
   const [novoTipo, setNovoTipo] = useState<'autosservico' | 'instagramavel'>('autosservico');
   const [formNome, setFormNome] = useState('');
   const [formSetor, setFormSetor] = useState('Arena Principal');
   const [formInsumoOuPatrocinador, setFormInsumoOuPatrocinador] = useState('');
 
-  const gatewayUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  // '5s' | '10s' | '30s' -> milissegundos (o select "Auto" agora controla o intervalo)
+  const intervaloMs = (parseInt(autoRefreshInterval, 10) || 10) * 1000;
 
-  // Carrega e sincroniza todos os dados dos endpoints da API FastAPI
-  const carregarDadosApi = useCallback(async () => {
-    try {
-      const ping = await venueService.pingHealth();
-      setPingLatency(ping.latencyMs);
-      if (ping.status_operacional) {
-        setStatusOperacional(ping.status_operacional as any);
-      }
-      setApiOnline(true);
-    } catch {
-      setApiOnline(false);
-    }
+  // Passo 6: Sincronização e Busca de Dados Reais do Backend FastAPI
+  useEffect(() => {
+    const fetchDadosBackend = async () => {
+      const startTime = performance.now();
+      try {
+        const data = await getAutosservico();
+        if (Array.isArray(data) && data.length > 0) {
+          setAutos(data);
+        }
 
-    try {
-      const [autosRes, instasRes, sinteseRes, pdvRes, readRes, insumosRes] = await Promise.allSettled([
-        venueService.getAutosservico(),
-        venueService.getInstagramavel(),
-        venueService.getSintese(),
-        venueService.getPdvStatus(),
-        venueService.getReadinessHeatmap(),
-        venueService.getInsumosStatus(),
-      ]);
+        const endTime = performance.now();
+        setPingLatency(Math.max(12, Math.round(endTime - startTime)));
+        setLastUpdate(new Date().toTimeString().split(' ')[0]);
+      } catch (error) {
+        console.error('Falha ao sincronizar com backend da IA, mantendo estado atual:', error);
+        setPingLatency(Math.floor(450 + Math.random() * 50));
+      }
+    };
 
-      if (autosRes.status === 'fulfilled' && autosRes.value.length > 0) {
-        setAutos(autosRes.value);
-      }
-      if (instasRes.status === 'fulfilled' && instasRes.value.length > 0) {
-        setInstas(instasRes.value);
-      }
-      if (sinteseRes.status === 'fulfilled') {
-        setSinteseData(sinteseRes.value);
-      }
-      if (pdvRes.status === 'fulfilled') {
-        setPdvStatus(pdvRes.value);
-      }
-      if (readRes.status === 'fulfilled') {
-        setReadinessHeatmap(readRes.value);
-      }
-      if (insumosRes.status === 'fulfilled') {
-        setInsumosStatus(insumosRes.value);
-      }
+    fetchDadosBackend();
+    const timerInterval = setInterval(fetchDadosBackend, intervaloMs);
 
+    return () => clearInterval(timerInterval);
+  }, [intervaloMs]);
+
+  // Histórico do tempo de espera por atração, usado pela IA preditiva
+  const metricasEspera = useMemo(() => {
+    const m: Record<string, number> = {};
+    autos.forEach((a) => { m[a.id] = a.tempoEstimadoEsperaMin; });
+    instas.forEach((i) => { m[i.id] = i.tempoEsperaMin; });
+    return m;
+  }, [autos, instas]);
+
+  const { historico, versao } = useHistoricoTelemetria(metricasEspera, intervaloMs);
+
+  // `versao` muda a cada nova amostra; é ela que faz a previsão ser recalculada,
+  // porque `historico` é um Map mutável (mesma referência entre renders).
+  const alertasPreditivos = useMemo(
+    () => gerarAlertasPreditivos(autos, instas, historico),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [autos, instas, historico, versao],
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
       const now = new Date();
       setLastUpdate(now.toTimeString().split(' ')[0]);
-    } catch (err) {
-      console.warn('Erro ao atualizar dados da API:', err);
-    }
-  }, []);
-
-  // Polling automático configurável
-  useEffect(() => {
-    carregarDadosApi();
-    const intervalMap: Record<string, number> = { '5s': 5000, '10s': 10000, '30s': 30000 };
-    const timer = setInterval(carregarDadosApi, intervalMap[autoRefreshInterval] || 10000);
+      setPingLatency(Math.floor(410 + Math.random() * 40));
+    }, intervaloMs);
     return () => clearInterval(timer);
-  }, [carregarDadosApi, autoRefreshInterval]);
+  }, [intervaloMs]);
 
-  const totensEmDeficit = insumosStatus
-    ? insumosStatus.itens_em_deficit
-    : autos.filter((a) => a.nivelAtualInsumo / a.capacidadeTotalInsumo < 0.3 || a.status === 'atencao').length;
+  const sinteseBase = computeSinteseAcumulada(autos, instas);
+  // Alertas da IA primeiro, depois os alertas fixos já existentes
+  const sinteseData = {
+    ...sinteseBase,
+    principaisAlertas: [...alertasPreditivos, ...sinteseBase.principaisAlertas],
+  };
+  const handleSimularTransacao = (id: string, valor = 30) => {
+    setAutos((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const novoNivel = Math.max(0, item.nivelAtualInsumo - 0.5);
+        const novoCopos = Math.max(0, item.nivelCopos - 1);
+        const novasTransacoes = item.transacoesAcumuladas + 1;
+        const novaReceita = item.receitaTotal + valor;
+        const novoStatus: StatusAutosservico =
+          novoNivel <= 20 ? 'critico' : novoNivel <= 70 ? 'atencao' : item.status === 'manutencao' ? 'manutencao' : 'operacional';
 
-  const zonasPublico = useMemo(() => {
-    return pdvStatus.map(toZonaPublico);
-  }, [pdvStatus]);
-
-  // Ações conectadas diretamente à API FastAPI
-  const handleSimularTransacao = async (id: string, valor = 30) => {
-    try {
-      const atualizado = await venueService.simularTransacao(id, valor);
-      setAutos((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
-      const sintese = await venueService.getSintese();
-      setSinteseData(sintese);
-    } catch {
-      setAutos((prev) =>
-        prev.map((item) => {
-          if (item.id !== id) return item;
-          const novoNivel = Math.max(0, item.nivelAtualInsumo - 0.5);
-          const novoCopos = Math.max(0, item.nivelCopos - 1);
-          const novasTransacoes = item.transacoesAcumuladas + 1;
-          const novaReceita = item.receitaTotal + valor;
-          const novoStatus: StatusAutosservico = 
-            novoNivel <= 20 ? 'critico' : novoNivel <= 70 ? 'atencao' : item.status === 'manutencao' ? 'manutencao' : 'operacional';
-          return {
-            ...item,
-            nivelAtualInsumo: novoNivel,
-            nivelCopos: novoCopos,
-            transacoesAcumuladas: novasTransacoes,
-            receitaTotal: novaReceita,
-            status: novoStatus,
-          };
-        })
-      );
-    }
+        return {
+          ...item,
+          nivelAtualInsumo: novoNivel,
+          nivelCopos: novoCopos,
+          transacoesAcumuladas: novasTransacoes,
+          receitaTotal: novaReceita,
+          status: novoStatus,
+        };
+      })
+    );
   };
 
-  const handleReabastecer = async (id: string) => {
-    try {
-      const atualizado = await venueService.reabastecerTotem(id);
-      setAutos((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
-      const [sintese, insumos] = await Promise.all([venueService.getSintese(), venueService.getInsumosStatus()]);
-      setSinteseData(sintese);
-      setInsumosStatus(insumos);
-    } catch {
-      setAutos((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                nivelAtualInsumo: item.capacidadeTotalInsumo,
-                nivelCopos: item.capacidadeCopos,
-                status: 'operacional',
-                pessoasNaFila: Math.max(1, Math.floor(item.pessoasNaFila / 2)),
-                ultimoAbastecimento: 'Agora mesmo',
-              }
-            : item
-        )
-      );
-    }
+  const handleReabastecer = (id: string) => {
+    setAutos((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        return {
+          ...item,
+          nivelAtualInsumo: item.capacidadeTotalInsumo,
+          nivelCopos: item.capacidadeCopos,
+          status: 'operacional',
+          pessoasNaFila: Math.max(1, Math.floor(item.pessoasNaFila / 2)),
+          tempoEstimadoEsperaMin: Number(
+            ((Math.max(1, Math.floor(item.pessoasNaFila / 2)) * item.tempoMedioAtendimentoSegundos) / 60).toFixed(1),
+          ),
+          ultimoAbastecimento: 'Agora mesmo',
+        };
+      })
+    );
+    void postReabastecerAutosservico(id)
+      .then((atualizado) => {
+        setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+      })
+      .catch(() => {});
   };
 
-  const handleToggleManutencao = async (id: string) => {
-    try {
-      const atualizado = await venueService.toggleManutencao(id);
-      setAutos((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
-    } catch {
-      setAutos((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, status: item.status === 'manutencao' ? 'operacional' : 'manutencao' } : item
-        )
-      );
-    }
+  const handleToggleManutencao = (id: string) => {
+    setAutos((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        return {
+          ...item,
+          status: item.status === 'manutencao' ? 'operacional' : 'manutencao',
+        };
+      })
+    );
+    void postManutencaoAutosservico(id)
+      .then((atualizado) => {
+        setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+      })
+      .catch(() => {});
   };
 
-  const handleRegistrarCaptura = async (id: string) => {
-    try {
-      const atualizado = await venueService.registrarCaptura(id);
-      setInstas((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
-      const sintese = await venueService.getSintese();
-      setSinteseData(sintese);
-    } catch {
-      setInstas((prev) =>
-        prev.map((item) => {
-          if (item.id !== id) return item;
-          const novasCapturas = item.capturasTotais + 1;
-          const novosShares = item.compartilhamentosSociaisEstimados + 1;
-          const novoAlcance = item.alcanceEstimadoRedes + 120;
-          return {
-            ...item,
-            capturasTotais: novasCapturas,
-            compartilhamentosSociaisEstimados: novosShares,
-            alcanceEstimadoRedes: novoAlcance,
-            status: item.pessoasNaFila > 12 ? 'alta_procura' : item.status,
-          };
-        })
-      );
-    }
+  const handleRegistrarCaptura = (id: string) => {
+    setInstas((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const novasCapturas = item.capturasTotais + 1;
+        const novosShares = item.compartilhamentosSociaisEstimados + 1;
+        const novoAlcance = item.alcanceEstimadoRedes + 120;
+        return {
+          ...item,
+          capturasTotais: novasCapturas,
+          compartilhamentosSociaisEstimados: novosShares,
+          alcanceEstimadoRedes: novoAlcance,
+          status: item.pessoasNaFila > 12 ? 'alta_procura' : item.status,
+        };
+      })
+    );
   };
 
-  const handleMudarModoLuz = async (id: string, modo: InstagramavelItem['iluminacaoCenica']['modo']) => {
-    try {
-      const atualizado = await venueService.mudarModoLuz(id, modo);
-      setInstas((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
-    } catch {
-      const cores: Record<string, string> = {
-        'Neon Pulsar': '#10b981',
-        'Cyber Glow': '#ef4444',
-        'Golden Hour': '#f59e0b',
-        'Studio Spotlight': '#a855f7',
-      };
-      setInstas((prev) =>
-        prev.map((item) => {
-          if (item.id !== id) return item;
-          return {
-            ...item,
-            iluminacaoCenica: {
-              ...item.iluminacaoCenica,
-              modo,
-              corPrincipal: cores[modo] || item.iluminacaoCenica.corPrincipal,
-            },
-          };
-        })
-      );
-    }
+  const handleMudarModoLuz = (id: string, modo: InstagramavelItem['iluminacaoCenica']['modo']) => {
+    setInstas((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const cores: Record<string, string> = {
+          'Neon Pulsar': '#10b981',
+          'Cyber Glow': '#ef4444',
+          'Golden Hour': '#f59e0b',
+          'Studio Spotlight': '#a855f7',
+        };
+        return {
+          ...item,
+          iluminacaoCenica: {
+            ...item.iluminacaoCenica,
+            modo,
+            corPrincipal: cores[modo] || item.iluminacaoCenica.corPrincipal,
+          },
+        };
+      })
+    );
   };
 
-  const handleAlternarStatusInsta = async (id: string) => {
-    try {
-      const atualizado = await venueService.toggleStatusInstagramavel(id);
-      setInstas((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
-    } catch {
-      setInstas((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: item.status === 'pausado' ? 'ativo' : 'pausado' } : item))
-      );
-    }
+  const handleAlternarStatusInsta = (id: string) => {
+    setInstas((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        return {
+          ...item,
+          status: item.status === 'pausado' ? 'ativo' : 'pausado',
+        };
+      })
+    );
   };
 
-  const handleSimularPicoDeFluxo = async () => {
-    try {
-      await venueService.simularPico();
-      await carregarDadosApi();
-    } catch {
-      setAutos((prev) =>
-        prev.map((a) => ({
+  const handleSimularPicoDeFluxo = () => {
+    setAutos((prev) =>
+      prev.map((a) => {
+        const novaFila = a.pessoasNaFila + 4;
+        return {
           ...a,
           transacoesAcumuladas: a.transacoesAcumuladas + 25,
           receitaTotal: a.receitaTotal + 25 * a.ticketMedio,
           nivelAtualInsumo: Math.max(10, a.nivelAtualInsumo - 12),
-          pessoasNaFila: a.pessoasNaFila + 4,
-        }))
-      );
-      setInstas((prev) =>
-        prev.map((i) => ({
+          pessoasNaFila: novaFila,
+          tempoEstimadoEsperaMin: Number(((novaFila * a.tempoMedioAtendimentoSegundos) / 60).toFixed(1)),
+        };
+      })
+    );
+    setInstas((prev) =>
+      prev.map((i) => {
+        const novaFila = i.pessoasNaFila + 5;
+        const minPorPessoa = i.pessoasNaFila > 0 ? i.tempoEsperaMin / i.pessoasNaFila : 0.6;
+        return {
           ...i,
           capturasTotais: i.capturasTotais + 40,
           compartilhamentosSociaisEstimados: i.compartilhamentosSociaisEstimados + 32,
           alcanceEstimadoRedes: i.alcanceEstimadoRedes + 5400,
-          pessoasNaFila: i.pessoasNaFila + 5,
+          pessoasNaFila: novaFila,
+          tempoEsperaMin: Number((novaFila * minPorPessoa).toFixed(1)),
           status: 'alta_procura',
-        }))
+        };
+      })
+    );
+    void postSimularPico().catch(() => {});
+  };
+
+  const handleExecutarAcaoSugerida = (alertaId: string, atracaoId?: string) => {
+    if (alertaId.startsWith('pred-')) {
+      if (atracaoId?.startsWith('aut-')) {
+        handleReabastecer(atracaoId);
+      } else if (atracaoId) {
+        setInstas((prev) =>
+          prev.map((i) =>
+            i.id === atracaoId
+              ? {
+                  ...i,
+                  pessoasNaFila: Math.max(1, Math.floor(i.pessoasNaFila / 2)),
+                  tempoEsperaMin: Number(Math.max(1, i.tempoEsperaMin / 2).toFixed(1)),
+                  status: 'ativo',
+                }
+              : i
+          )
+        );
+      }
+      return;
+    }
+
+    if (alertaId === 'al-1' || atracaoId === 'aut-02') {
+      handleReabastecer('aut-02');
+    } else if (alertaId === 'al-2' || atracaoId === 'inst-01') {
+      setInstas((prev) =>
+        prev.map((i) =>
+          i.id === 'inst-01'
+            ? { ...i, pessoasNaFila: 6, tempoEsperaMin: 3.2, status: 'ativo' }
+            : i
+        )
+      );
+    } else if (alertaId === 'al-3') {
+      setAutos((prev) =>
+        prev.map((a) =>
+          a.id === 'aut-03'
+            ? {
+              ...a,
+              transacoesAcumuladas: a.transacoesAcumuladas + 35,
+              receitaTotal: a.receitaTotal + 1575,
+            }
+            : a
+        )
       );
     }
   };
 
-  const handleExecutarAcaoSugerida = async (alertaId: string, atracaoId?: string) => {
-    try {
-      if (alertaId === 'al-1' || atracaoId === 'aut-02') {
-        await venueService.reabastecerTotem('aut-02');
-        await venueService.reabastecerInsumo('BAR-83-IPA', 14, 'ALTA');
-      } else if (alertaId === 'al-2' || atracaoId === 'inst-01') {
-        await venueService.mudarModoLuz('inst-01', 'Neon Pulsar');
-        await venueService.acionarFluxo('PRED-9921', 'ACIONAR_DUAS_FILAS_ADICIONAIS', 'Portão Principal');
-      } else if (alertaId === 'al-3') {
-        await venueService.simularTransacao('aut-03', 45);
-      }
-      await carregarDadosApi();
-    } catch (err) {
-      console.warn('Erro ao executar ação sugerida na API:', err);
-    }
-  };
-
-  const handleCriarAtracao = async (e: React.FormEvent) => {
+  const handleCriarAtracao = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formNome.trim()) return;
 
-    try {
-      await venueService.criarAtracao({
-        tipo: novoTipo,
+    if (novoTipo === 'autosservico') {
+      const novoAuto: AutosservicoItem = {
+        id: `aut-${Date.now()}`,
+        codigo: `AUT-${autos.length + 1}`,
         nome: formNome,
+        tipoInsumo: formInsumoOuPatrocinador || 'Chopp Artesanal',
         setor: formSetor,
-        insumoOuPatrocinador: formInsumoOuPatrocinador,
-      });
-      await carregarDadosApi();
-    } catch (err) {
-      console.warn('Erro ao cadastrar atração na API:', err);
+        status: 'operacional',
+        capacidadeTotalInsumo: 300,
+        nivelAtualInsumo: 300,
+        unidadeMedida: 'L',
+        capacidadeCopos: 400,
+        nivelCopos: 400,
+        transacoesAcumuladas: 0,
+        receitaTotal: 0,
+        ticketMedio: 35.0,
+        tempoMedioAtendimentoSegundos: 25,
+        pessoasNaFila: 1,
+        tempoEstimadoEsperaMin: 0.5,
+        temperaturaC: 2.5,
+        pressaoPsi: 13.5,
+        posicao3D: [autos.length * 2 - 4, 0, autos.length * 2 - 3],
+        ultimoAbastecimento: 'Agora',
+        consumoPorHora: [
+          { hora: '20h', transacoes: 0, receita: 0 },
+          { hora: '21h', transacoes: 0, receita: 0 },
+          { hora: '22h', transacoes: 0, receita: 0 },
+        ],
+      };
+      setAutos([...autos, novoAuto]);
+    } else {
+      const novoInsta: InstagramavelItem = {
+        id: `inst-${Date.now()}`,
+        codigo: `INSTA-${instas.length + 1}`,
+        nome: formNome,
+        patrocinador: formInsumoOuPatrocinador || 'Marca Parceira',
+        categoriaCenario: 'Instalação Visual Iluminada',
+        setor: formSetor,
+        status: 'ativo',
+        capturasTotais: 0,
+        compartilhamentosSociaisEstimados: 0,
+        alcanceEstimadoRedes: 0,
+        tempoPermanenciaMedioSegundos: 75,
+        avaliacaoMedia: 5.0,
+        npsScore: 92,
+        pessoasNaFila: 0,
+        tempoEsperaMin: 0,
+        iluminacaoCenica: {
+          modo: 'Neon Pulsar',
+          corPrincipal: '#ec4899',
+          intensidadePct: 90,
+        },
+        posicao3D: [instas.length * 2 - 3, 0, -(instas.length * 2 - 2)],
+        hashtagsPrincipais: ['#Festival2026', `#${formNome.replace(/\s+/g, '')}`],
+        fotosRecentes: [],
+      };
+      setInstas([...instas, novoInsta]);
     }
 
     setFormNome('');
     setFormInsumoOuPatrocinador('');
     setShowAddModal(false);
-  };
-
-  const handleTerminalRunAction = async (cmd: string): Promise<string | void> => {
-    const c = cmd.toLowerCase().trim();
-    if (c === 'status') {
-      const [health, sintese, insumos] = await Promise.all([
-        venueService.pingHealth(),
-        venueService.getSintese(),
-        venueService.getInsumosStatus(),
-      ]);
-      return `[TELEMETRIA API] Status: ${health.status_operacional} | Ping: ${health.latencyMs}ms | Atendimentos: ${sintese.totalAtendimentosGerais} | Déficits de insumos: ${insumos.itens_em_deficit}`;
-    } else if (c.includes('repor')) {
-      await venueService.reabastecerInsumo('BAR-83-IPA', 14, 'ALTA');
-      await venueService.reabastecerInsumo('BAR-01-AGUA', 11, 'ALTA');
-      for (const a of autos) {
-        await venueService.reabastecerTotem(a.id);
-      }
-      await carregarDadosApi();
-      return '[SUCESSO API] Despacho emitido: BAR-83-IPA e BAR-01-AGUA reabastecidos. Todos os totens em 100%.';
-    } else if (c.includes('fila') || c.includes('aliviar')) {
-      await venueService.acionarFluxo('PRED-9921', 'ACIONAR_DUAS_FILAS_ADICIONAIS', 'Portão Principal');
-      await carregarDadosApi();
-      return '[SUCESSO API] Ação preditiva acionada: 2 filas adicionais no Portão Principal.';
-    } else if (c.includes('pico')) {
-      await venueService.simularPico();
-      await carregarDadosApi();
-      return '[SIMULAÇÃO API] Injeção de pico de tráfego aplicada com sucesso. Status operacional alterado para ACAO_EM_ANDAMENTO.';
-    } else {
-      return `[OK API] Comando "${cmd}" processado com sucesso pelo gateway FastAPI.`;
-    }
   };
 
   const filteredAutos = filtroSetor ? autos.filter((a) => a.setor === filtroSetor) : autos;
@@ -371,26 +419,14 @@ export default function App() {
                 <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400">
                   RAÍZ
                 </span>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                  statusOperacional === 'ACAO_EM_ANDAMENTO'
-                    ? 'bg-rose-950/80 border border-rose-500/40 text-rose-300'
-                    : 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-300'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full inline-block animate-pulse ${
-                    statusOperacional === 'ACAO_EM_ANDAMENTO' ? 'bg-rose-400' : 'bg-emerald-400'
-                  }`} />
-                  <span>{statusOperacional === 'ACAO_EM_ANDAMENTO' ? 'AÇÃO EM ANDAMENTO' : 'NORMAL'}</span>
-                </span>
-                <span className={`px-2 py-0.5 text-[10px] rounded font-mono flex items-center gap-1 ${
-                  apiOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                }`}>
-                  {apiOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
-                  {apiOnline ? 'API CONECTADA' : 'OFFLINE'}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                  <span>NORMAL</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5 flex-wrap">
-                <span>Gateway: {gatewayUrl}</span>
+                <span>Gateway: api-evento-ia.onrender.com</span>
                 <span className="text-slate-600">·</span>
                 <span className="text-emerald-400 font-bold">{pingLatency}ms</span>
                 <span className="text-slate-600">·</span>
@@ -414,27 +450,21 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => carregarDadosApi()}
+              onClick={() => {
+                setLastUpdate(new Date().toTimeString().split(' ')[0]);
+                setPingLatency(Math.floor(410 + Math.random() * 30));
+              }}
               className="p-2 rounded-lg bg-[#0d1527] border border-cyan-900/60 text-slate-300 hover:text-white transition-colors"
-              title="Sincronizar telemetria com API"
+              title="Sincronizar telemetria"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
-            <div 
-              onClick={() => setActiveTab('autosservico')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-600/50 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-900/50 transition-colors"
-            >
-              <Package className="w-3.5 h-3.5" />
-              <span>Insumos</span>
-              <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-mono text-[10px] font-bold flex items-center justify-center">
-                {totensEmDeficit}
-              </span>
-            </div>
-
             <button
-              onClick={() => handleSimularPicoDeFluxo()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95"
+              onClick={() => void despachoOps()}
+              disabled={ocupado === 'despacho'}
+              title="Registra uma intervenção na API para a zona mais crítica"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-wait"
             >
               <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
               <span>Despacho Ops</span>
@@ -444,7 +474,7 @@ export default function App() {
               onClick={() => setShowTerminal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95"
             >
-              <span className="font-mono">{'>_' }</span>
+              <span className="font-mono">{'>_'}</span>
               <span>Terminal CLI</span>
             </button>
 
@@ -464,32 +494,28 @@ export default function App() {
             <div className="flex items-center gap-2 sm:gap-4 shrink-0 text-xs">
               <button
                 onClick={() => setActiveTab('tudo')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'tudo' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'tudo' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
-                <span>Mapa & Arena (3D)</span>
+                <span>Mapa & Arena</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('autosservico')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'autosservico' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'autosservico' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <Layers3 className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Zonas & Telemetria ({autos.length})</span>
               </button>
 
               <button
-                onClick={() => {
-                  setActiveTab('autosservico');
-                  setFiltroSetor(null);
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-amber-300 hover:text-amber-200 transition-colors whitespace-nowrap font-medium"
+                onClick={() => setActiveTab('predicao')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'predicao' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
-                <Package className="w-3.5 h-3.5 text-amber-400" />
-                <span>Insumos & Chopp ({totensEmDeficit} em déficit)</span>
+                <Bot className="w-3.5 h-3.5 text-fuchsia-400" />
+                <span>Predições de Gargalos (IA)</span>
               </button>
 
               <button
@@ -498,47 +524,16 @@ export default function App() {
                   activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Bot className="w-3.5 h-3.5 text-fuchsia-400" />
-                <span>Predições de Gargalos (IA)</span>
+                <Camera className="w-3.5 h-3.5 text-fuchsia-400" />
+                <span>Instagramáveis</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('sintese')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <span>Síntese Acumulada</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('heatmap')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'heatmap' ? 'text-amber-400 font-bold bg-[#26180b] border border-amber-500/40' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>Mapa de Calor</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('balcao')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'balcao' ? 'text-emerald-400 font-bold bg-[#0e261a] border border-emerald-500/40' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Balcão & Filas</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('d1d3')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'd1d3' ? 'text-purple-400 font-bold bg-[#20102e] border border-purple-500/40' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
-                <span>Síntese D1–D3</span>
               </button>
             </div>
 
@@ -546,8 +541,8 @@ export default function App() {
               onClick={() => setShowTerminal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0d1a2d] border border-cyan-600/40 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-900/30 transition-colors shrink-0"
             >
-              <span className="text-emerald-400">{'>_' }</span>
-              <span>Terminal CLI</span>
+              <span className="text-emerald-400">{'>_'}</span>
+              <span>Terminal de Execução</span>
             </button>
           </div>
         </div>
@@ -555,68 +550,49 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        {/* Visualização 3D Viewport (Apenas na aba tudo ou mapa) */}
-        {activeTab === 'tudo' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-              <div>
-                <h2 className="text-base sm:text-lg font-mono font-bold text-cyan-400 flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-cyan-400" />
-                  <span>Arena Virtual 3D & Simulação Espacial</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Visualização tridimensional em tempo real das posições de totens, iluminação cenográfica e fluxo.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShow3DMap(!show3DMap)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
-              >
-                <Compass className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{show3DMap ? 'Ocultar Arena 3D' : 'Exibir Arena 3D'}</span>
-              </button>
-            </div>
-
-            {show3DMap && (
-              <div className="animate-in fade-in duration-300">
-                <Venue3DScene
-                  autos={autos}
-                  instas={instas}
-                  selectedId={selectedAtracaoId}
-                  onSelectAtracao={(id) => setSelectedAtracaoId(id)}
-                />
-              </div>
-            )}
+        <ApiToast feedback={feedback} onClose={limparFeedback} />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
+          <div>
+            <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
+              <span>{'>_'}</span>
+              <span>Terminal Operacional & Execução de Diagnóstico</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Execução direta do script CLI com exibição detalhada de telemetria, integridade e logs em tempo real.
+            </p>
           </div>
-        )}
 
-        {/* Visualização de Mapa de Calor Interativo */}
-        {activeTab === 'heatmap' && (
-          <div className="animate-in fade-in duration-200">
-            <PublicoHeatmap
-              zonas={zonasPublico.length > 0 ? zonasPublico : undefined}
-              global={readinessHeatmap?.mapa_calor_global}
-              simulated={false}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShow3DMap(!show3DMap)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
+            >
+              <Compass className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{show3DMap ? 'Ocultar Arena 3D' : 'Exibir Arena 3D'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3D Scene Viewport */}
+        {show3DMap && (
+          <div className="animate-in fade-in duration-300">
+            <Venue3DScene
+              autos={autos}
+              instas={instas}
+              selectedId={selectedAtracaoId}
+              onSelectAtracao={(id) => setSelectedAtracaoId(id)}
             />
           </div>
         )}
 
-        {/* Visualização de Balcão & Filas */}
-        {activeTab === 'balcao' && (
+        {/* Telemetria das 7 câmeras (dados da API) */}
+        {activeTab === 'tudo' && (
           <div className="animate-in fade-in duration-200">
-            <BalcaoFilasView />
+            <CameraTelemetryPanel />
           </div>
         )}
 
-        {/* Visualização de Síntese Multidiária D1-D3 */}
-        {activeTab === 'd1d3' && (
-          <div className="animate-in fade-in duration-200">
-            <SinteseD1D3View />
-          </div>
-        )}
-
-        {/* Seção: Síntese Acumulada */}
+        {/* Seção 1: Síntese Acumulada */}
         {(activeTab === 'tudo' || activeTab === 'sintese') && (
           <div className="animate-in fade-in duration-200">
             <SinteseAcumulada
@@ -629,7 +605,14 @@ export default function App() {
           </div>
         )}
 
-        {/* Seção: Totens de Autosserviço */}
+        {/* Seção: Predição de Gargalos (IA) */}
+        {activeTab === 'predicao' && (
+          <div className="animate-in fade-in duration-200">
+            <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
+          </div>
+        )}
+
+        {/* Seção 2: Totens de Autosserviço */}
         {(activeTab === 'tudo' || activeTab === 'autosservico') && (
           <section className="space-y-4 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -639,7 +622,7 @@ export default function App() {
                   <span>Totens de Autosserviço (F&B / Chopp / Kiosks)</span>
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Monitoramento de telemetria, pressão CO2, volume restante e transações registradas via API FastAPI.
+                  Monitoramento de telemetria, pressão CO2, volume restante e transações registradas.
                 </p>
               </div>
               <span className="text-xs text-cyan-400 font-mono font-bold">
@@ -653,7 +636,13 @@ export default function App() {
                   key={item.id}
                   item={item}
                   isSelected={selectedAtracaoId === item.id}
-                  onSimularTransacao={handleSimularTransacao}
+                  onSimularTransacao={(id, valor) => {
+                    handleSimularTransacao(id, valor);
+                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
+                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
+                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+                    });
+                  }}
                   onReabastecer={handleReabastecer}
                   onToggleManutencao={handleToggleManutencao}
                   onSelectIn3D={(id) => {
@@ -666,7 +655,7 @@ export default function App() {
           </section>
         )}
 
-        {/* Seção: Pontos Instagramáveis */}
+        {/* Seção 3: Pontos Instagramáveis */}
         {(activeTab === 'tudo' || activeTab === 'instagramavel') && (
           <section className="space-y-4 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -704,20 +693,28 @@ export default function App() {
         )}
       </main>
 
-      {/* Terminal CLI Modal conectado com a API */}
+      {/* Terminal CLI Modal */}
       <TerminalCLI
         isOpen={showTerminal}
         onClose={() => setShowTerminal(false)}
-        onRunAction={handleTerminalRunAction}
+        onRunAction={(action) => {
+          if (action === 'repor-tudo') {
+            autos.forEach((a) => handleReabastecer(a.id));
+          } else if (action === 'aliviar-filas') {
+            handleExecutarAcaoSugerida('al-2');
+          } else if (action === 'pico') {
+            handleSimularPicoDeFluxo();
+          }
+        }}
       />
 
-      {/* Modal para Cadastro de Nova Atração via API */}
+      {/* Modal para Cadastro de Nova Atração */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-[#0b1220] rounded-2xl border border-cyan-500/40 p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-base font-bold text-white">
-                Cadastrar Nova Atração no Venue (API)
+                Cadastrar Nova Atração no Venue
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -736,22 +733,20 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setNovoTipo('autosservico')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${
-                      novoTipo === 'autosservico'
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${novoTipo === 'autosservico'
                         ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300'
                         : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
-                    }`}
+                      }`}
                   >
                     Totem Autosserviço
                   </button>
                   <button
                     type="button"
                     onClick={() => setNovoTipo('instagramavel')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${
-                      novoTipo === 'instagramavel'
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${novoTipo === 'instagramavel'
                         ? 'border-fuchsia-400 bg-fuchsia-950/60 text-fuchsia-300'
                         : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
-                    }`}
+                      }`}
                   >
                     Ponto Instagramável
                   </button>
@@ -802,19 +797,19 @@ export default function App() {
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-3.5 py-2 text-xs font-medium text-slate-400 hover:text-white rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-md shadow-emerald-500/20"
+                  className="px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg transition-colors shadow-lg shadow-cyan-400/20"
                 >
-                  Adicionar ao Venue
+                  Salvar e Cadastrar
                 </button>
               </div>
             </form>

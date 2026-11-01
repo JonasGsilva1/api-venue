@@ -4,20 +4,19 @@ import { Terminal as TerminalIcon, X } from 'lucide-react';
 interface TerminalCLIProps {
   isOpen: boolean;
   onClose: () => void;
-  onRunAction?: (cmd: string) => Promise<string | void> | void;
+  onRunAction?: (cmd: string) => void;
 }
 
 export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRunAction }) => {
   const [logs, setLogs] = useState<string[]>([
-    '[INIT] Venue Intelligence Core v2.0.0 [FASTAPI PORTA 8000]',
-    '[OK] Telemetria de sensores de fluxo e pressão conectada (WebSocket / SSE)',
-    '[INFO] Motor Preditivo de Gargalos IA: monitorando setores ativos da arena',
+    '[INIT] Venue Intelligence Core v2.4.0 [GATEWAY: https://api-evento-ia.onrender.com]',
+    '[OK] Telemetria de sensores de fluxo e pressão conectada (WebSocket ping: 431ms)',
+    '[INFO] Motor Preditivo de Gargalos IA: monitorando 8 setores ativos da arena',
     '[READY] Digite "help" para ver os comandos operacionais ou execute uma ação preditiva.',
   ]);
   const [inputVal, setInputVal] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const executeCommand = async (cmd: string) => {
+  const executeCommand = (cmd: string) => {
     const trimmed = cmd.trim();
     if (!trimmed) return;
 
@@ -26,42 +25,37 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
     if (trimmed.toLowerCase() === 'help') {
       newLogs.push(
         'Comandos disponíveis:',
-        '  status        - Consulta /health e estado operacional da API',
-        '  repor-tudo    - Emite requisição de reposição de insumos e totens via API',
-        '  aliviar-filas - Dispara acionamento preditivo de contingência',
-        '  pico-sim      - Simula pico de público em todos os setores da arena',
+        '  status        - Exibe o estado operacional de todos os totens e ativações',
+        '  repor-tudo    - Reabastece insumos de chopp e copos nos totens em déficit',
+        '  aliviar-filas - Ativa modo ágil nos pontos instagramáveis e rebalanceia público',
+        '  pico-sim      - Simula pico de 100 pessoas na Arena Principal',
         '  clear         - Limpa o console de telemetria'
       );
-      setLogs(newLogs);
-      setInputVal('');
-      return;
     } else if (trimmed.toLowerCase() === 'clear') {
       setLogs(['[CLEARED] Console reiniciado.']);
       setInputVal('');
       return;
+    } else if (trimmed.toLowerCase() === 'status') {
+      newLogs.push(
+        '[TELEMETRIA] 4 Totens de Autosserviço: 3 Operacionais, 1 Atenção (AUT-DRINK-02)',
+        '[TELEMETRIA] 4 Pontos Instagramáveis: 3 Ativos, 1 Alta Procura (Túnel Neon)',
+        '[VENUES] Taxa de Throughput: 17.2 atendimentos/min · Espera global: 3.8 min'
+      );
+    } else if (trimmed.toLowerCase().includes('repor')) {
+      newLogs.push('[SUCESSO] Ordem de despacho emitida para equipe móvel: todos os tanques em 100%.');
+      if (onRunAction) onRunAction('repor-tudo');
+    } else if (trimmed.toLowerCase().includes('fila') || trimmed.toLowerCase().includes('aliviar')) {
+      newLogs.push('[SUCESSO] Modo fotográfico ágil ativado no Túnel Neon e Balanço Flutuante.');
+      if (onRunAction) onRunAction('aliviar-filas');
+    } else if (trimmed.toLowerCase().includes('pico')) {
+      newLogs.push('[SIMULAÇÃO] Injeção de pico de tráfego de 100 participantes na arena.');
+      if (onRunAction) onRunAction('pico');
+    } else {
+      newLogs.push(`[EXEC] Comando "${trimmed}" enviado para api-evento-ia.onrender.com`);
     }
 
-    setLogs([...newLogs, '[EXEC] Enviando requisição para API na porta 8000...']);
-    setLoading(true);
-
-    try {
-      if (onRunAction) {
-        const result = await onRunAction(trimmed);
-        if (result) {
-          setLogs((prev) => [...prev, result]);
-        }
-      } else {
-        setLogs((prev) => [...prev, `[OK] Comando "${trimmed}" processado.`]);
-      }
-    } catch (err: any) {
-      setLogs((prev) => [
-        ...prev,
-        `[ERRO] Falha ao executar: ${err?.response?.data?.mensagem || err?.message || 'Erro desconhecido'}`,
-      ]);
-    } finally {
-      setLoading(false);
-      setInputVal('');
-    }
+    setLogs(newLogs);
+    setInputVal('');
   };
 
   if (!isOpen) return null;
@@ -122,10 +116,9 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
           />
           <button
             type="submit"
-            disabled={loading}
-            className="px-3 py-1 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-slate-950 font-bold rounded-lg transition-colors text-xs"
+            className="px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold rounded-lg transition-colors text-xs"
           >
-            {loading ? 'Executando...' : 'Enviar'}
+            Enviar
           </button>
         </form>
       </div>

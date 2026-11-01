@@ -209,20 +209,6 @@ class InstagramavelRecord:
     fotosRecentes: List[FotoRecenteRecord]
 
 
-@dataclass
-class GuicheRecord:
-    id: str
-    codigo: str
-    nome: str
-    tipo: str
-    atendente: str
-    pessoasNaFila: int
-    capacidadeFila: int
-    tempoMedioAtendimentoSeg: int
-    status: str
-    atendimentosConcluidos: int
-
-
 # ════════════════════════════════════════════════════════════════════════════
 # SEEDS OBRIGATÓRIOS (PROJECT_CONTEXT.md §4)
 # ════════════════════════════════════════════════════════════════════════════
@@ -407,14 +393,6 @@ def _seed_instagramavel() -> List[InstagramavelRecord]:
     ]
 
 
-def _seed_guiches() -> List[GuicheRecord]:
-    return [
-        GuicheRecord("g1", "G-01", "Atendimento & Recepção Geral", "Informações & Cadastro RAIZ", "Mariana Costa", 4, 8, 170, "NORMAL", 42),
-        GuicheRecord("g2", "G-02", "Degustação & Experiência", "Bar & Harmonização", "Felipe Alencar", 7, 8, 250, "PRESSAO", 58),
-        GuicheRecord("g3", "G-03", "Retirada Express & Welcome Kit", "Entrega Rápida de Brindes", "Lucas Peixoto", 2, 6, 90, "NORMAL", 64),
-    ]
-
-
 # ════════════════════════════════════════════════════════════════════════════
 # Regras puras compartilhadas (mesmos limiares em TEMPO_REAL e contingências)
 # ════════════════════════════════════════════════════════════════════════════
@@ -503,7 +481,6 @@ class MemoryDB:
             )
             self._autos: Dict[str, AutosservicoRecord] = {a.id: a for a in _seed_autosservico()}
             self._instas: Dict[str, InstagramavelRecord] = {i.id: i for i in _seed_instagramavel()}
-            self._guiches: Dict[str, GuicheRecord] = {g.id: g for g in _seed_guiches()}
             self._seed_historico(agora)
 
     def _seed_historico(self, agora: datetime) -> None:
@@ -671,6 +648,7 @@ class MemoryDB:
                 "velocidade_media_ms": h.velocidade_media_ms,
                 "zonas_atracao": h.zonas_atracao,
                 "hotspots_criticos": h.hotspots_criticos,
+                "pontos_criticos": h.hotspots_criticos,
                 "estado_operacional": self._status_operacional,
             }
 
@@ -989,23 +967,6 @@ class MemoryDB:
                 "fluxoHorario": fluxo_horario,
                 "principaisAlertas": alertas,
             }
-
-    # ── Guichês ──────────────────────────────────────────────────────────────
-    def listar_guiches(self) -> List[GuicheRecord]:
-        with self._lock:
-            return list(self._guiches.values())
-
-    def atualizar_fila_guiche(self, id: str, delta: int) -> Optional[GuicheRecord]:
-        with self._lock:
-            g = self._guiches.get(id)
-            if not g:
-                return None
-            nova_fila = max(0, g.pessoasNaFila + delta)
-            ocupacao = nova_fila / g.capacidadeFila if g.capacidadeFila > 0 else 0.0
-            novo_status = "CRITICO" if ocupacao >= 0.85 else "PRESSAO" if ocupacao >= 0.6 else "NORMAL"
-            atualizado = replace(g, pessoasNaFila=nova_fila, status=novo_status)
-            self._guiches[id] = atualizado
-            return atualizado
 
 
 memory_db = MemoryDB()

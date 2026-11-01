@@ -10,10 +10,8 @@ from app.config import settings
 from app.contracts import (
     AcumuladoEventoContract,
     AnalyticsDropoffResponseContract,
-    AtualizarFilaGuicheRequestContract,
     AutosservicoItemContract,
     CriarAtracaoRequestContract,
-    GuicheItemContract,
     HeatmapGlobalContract,
     InstagramavelItemContract,
     ModoLuzRequestContract,
@@ -137,7 +135,7 @@ async def dropoff_summary(usuario: UsuarioAutenticado = Depends(exigir_leitura))
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Endpoints da Suíte Tática UI — Autosserviço, Instagramáveis, Guichês e Síntese
+# Endpoints da Suíte Tática UI — Autosserviço, Instagramáveis e Síntese
 # ════════════════════════════════════════════════════════════════════════════
 @router.get(
     "/venue/autosservico",
@@ -295,30 +293,3 @@ async def obter_sintese(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -
 async def simular_pico(usuario: UsuarioAutenticado = Depends(exigir_operacao)):
     memory_db.simular_pico_fluxo()
     return {"status": "ok", "mensagem": "Pico de fluxo simulado em todos os setores da arena."}
-
-
-@router.get(
-    "/venue/guiches",
-    response_model=List[GuicheItemContract],
-    status_code=status.HTTP_200_OK,
-    summary="Lista guichês de atendimento do Balcão Principal",
-)
-async def listar_guiches(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> List[GuicheItemContract]:
-    return [GuicheItemContract(**g.__dict__) for g in memory_db.listar_guiches()]
-
-
-@router.post(
-    "/venue/guiches/{id}/fila",
-    response_model=GuicheItemContract,
-    status_code=status.HTTP_200_OK,
-    summary="Incrementa ou decrementa a fila de um guichê",
-)
-async def atualizar_fila_guiche(
-    id: str,
-    payload: AtualizarFilaGuicheRequestContract,
-    usuario: UsuarioAutenticado = Depends(exigir_operacao),
-) -> GuicheItemContract:
-    item = memory_db.atualizar_fila_guiche(id, payload.delta)
-    if not item:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Guichê '{id}' não encontrado.")
-    return GuicheItemContract(**item.__dict__)

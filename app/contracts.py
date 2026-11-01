@@ -412,6 +412,7 @@ class HeatmapGlobalContract(ContratoEstrito):
     velocidade_media_ms: float = Field(..., ge=0, examples=[0.68])
     zonas_atracao: int = Field(..., ge=0, examples=[3])
     hotspots_criticos: int = Field(..., ge=0, examples=[0])
+    pontos_criticos: Optional[int] = Field(None, ge=0, description="Alias para hotspots_criticos compatível com frontend.", examples=[0])
     estado_operacional: StatusOperacional = Field(..., examples=["ESTAVEL"])
 
 
@@ -588,19 +589,6 @@ class SinteseAcumuladaContract(ContratoEstrito):
     principaisAlertas: List[PrincipalAlertaContract] = Field(default_factory=list)
 
 
-class GuicheItemContract(ContratoEstrito):
-    id: str = Field(..., examples=["g1"])
-    codigo: str = Field(..., examples=["G-01"])
-    nome: str = Field(..., examples=["Atendimento & Recepção Geral"])
-    tipo: str = Field(..., examples=["Informações & Cadastro RAIZ"])
-    atendente: str = Field(..., examples=["Mariana Costa"])
-    pessoasNaFila: int = Field(..., ge=0, examples=[4])
-    capacidadeFila: int = Field(..., gt=0, examples=[8])
-    tempoMedioAtendimentoSeg: int = Field(..., ge=0, examples=[170])
-    status: Literal["NORMAL", "PRESSAO", "CRITICO"] = Field(..., examples=["NORMAL"])
-    atendimentosConcluidos: int = Field(..., ge=0, examples=[42])
-
-
 class TransacaoRequestContract(ContratoEstrito):
     valor: float = Field(30.0, gt=0, description="Valor da transação em reais.", examples=[30.0])
 
@@ -614,7 +602,3 @@ class CriarAtracaoRequestContract(ContratoEstrito):
     nome: str = Field(..., min_length=2, max_length=100, examples=["Beer Wall 05 - Express"])
     setor: str = Field("Arena Principal", examples=["Arena Principal"])
     insumoOuPatrocinador: Optional[str] = Field(None, examples=["Chopp IPA 500ml"])
-
-
-class AtualizarFilaGuicheRequestContract(ContratoEstrito):
-    delta: int = Field(1, description="Variação na fila (+1 ou -1)", examples=[1])

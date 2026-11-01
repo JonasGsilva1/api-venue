@@ -504,17 +504,6 @@ def test_venue_criar_atracao():
     assert r.json()["nome"] == "Beer Wall 05 - Express"
 
 
-def test_venue_guiches_e_fila():
-    r = client.get("/api/v1/venue/guiches", headers=AUTH_HEADER)
-    assert r.status_code == 200
-    guiches = r.json()
-    assert len(guiches) == 3
-
-    r_fila = client.post("/api/v1/venue/guiches/g1/fila", headers=AUTH_HEADER, json={"delta": 1})
-    assert r_fila.status_code == 200
-    assert r_fila.json()["pessoasNaFila"] == 5
-
-
 def test_compatibilidade_frontend_campos_adaptados():
     # 1. PDV Status com localizacao_geo e contagem_pessoas
     r_pdv = client.get("/api/v1/pdv/status", headers=AUTH_HEADER)
@@ -523,12 +512,13 @@ def test_compatibilidade_frontend_campos_adaptados():
     assert "planta(x:570,y:440)" in zonas[0]["localizacao_geo"]
     assert zonas[0]["ultima_leitura"]["contagem_pessoas"] == zonas[0]["ultima_leitura"]["pax_count"]
 
-    # 2. Readiness com prontidao e mapa_calor_global
+    # 2. Readiness com prontidao, mapa_calor_global e pontos_criticos
     r_read = client.get("/api/v1/venue/readiness-heatmap", headers=AUTH_HEADER)
     assert r_read.status_code == 200
     dados_read = r_read.json()
     assert "prontidao" in dados_read
     assert "mapa_calor_global" in dados_read
+    assert dados_read["mapa_calor_global"]["pontos_criticos"] == dados_read["heatmap_global"]["hotspots_criticos"]
 
     # 3. Analytics com aliases em português
     r_drop = client.get("/api/v1/analytics/dropoff-summary", headers=AUTH_HEADER)
