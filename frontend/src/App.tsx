@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Activity,
   RefreshCw,
@@ -20,12 +20,7 @@ import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
 import { ApiToast } from './components/ui/ApiToast';
 import { useOpsActions } from './hooks/useOpsActions';
 import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
-import {
-  getAutosservico,
-  postManutencaoAutosservico,
-  postReabastecerAutosservico,
-  postSimularPico,
-} from './services/venueApi';
+import { toZonaPublico } from './utils/publico';
 import { gerarAlertasPreditivos } from './utils/predicao';
 import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
 
@@ -74,83 +69,42 @@ export default function App() {
   const [formNome, setFormNome] = useState('');
   const [formSetor, setFormSetor] = useState('Arena Principal');
   const [formInsumoOuPatrocinador, setFormInsumoOuPatrocinador] = useState('');
-  const headerRef = useRef<HTMLElement | null>(null);
-  const isProgrammaticScrollRef = useRef(false);
-
-  const navegarParaSecao = useCallback((aba: 'tudo' | 'autosservico' | 'predicao' | 'instagramavel' | 'sintese') => {
-    setActiveTab(aba);
-    const idSecao = `secao-${aba}`;
-    const el = document.getElementById(idSecao);
-    const alturaHeader = headerRef.current?.offsetHeight ?? 112;
-    isProgrammaticScrollRef.current = true;
-
-    if (aba === 'tudo' || !el) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      const top = el.getBoundingClientRect().top + window.scrollY - alturaHeader - 16;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-    }
-
-    window.setTimeout(() => {
-      isProgrammaticScrollRef.current = false;
-    }, 750);
-  }, []);
-
-  // ScrollSpy: acompanha a scrollbar do navegador e atualiza o botão ativo do menu
-  useEffect(() => {
-    const secoes: Array<{ aba: 'tudo' | 'autosservico' | 'predicao' | 'instagramavel' | 'sintese'; id: string }> = [
-      { aba: 'tudo', id: 'secao-tudo' },
-      { aba: 'autosservico', id: 'secao-autosservico' },
-      { aba: 'predicao', id: 'secao-predicao' },
-      { aba: 'instagramavel', id: 'secao-instagramavel' },
-      { aba: 'sintese', id: 'secao-sintese' },
-    ];
-
-    const aoRolar = () => {
-      if (isProgrammaticScrollRef.current) return;
-      const alturaHeader = (headerRef.current?.offsetHeight ?? 112) + 64;
-
-      if (window.scrollY < 80) {
-        setActiveTab((atual) => (atual === 'tudo' ? atual : 'tudo'));
-        return;
-      }
-
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 40) {
-        setActiveTab((atual) => (atual === 'sintese' ? atual : 'sintese'));
-        return;
-      }
-
-      let escolhida: 'tudo' | 'autosservico' | 'predicao' | 'instagramavel' | 'sintese' = 'tudo';
-      for (const s of secoes) {
-        const el = document.getElementById(s.id);
-        if (!el) continue;
-        const rect = el.getBoundingClientRect();
-        if (rect.top <= alturaHeader) {
-          escolhida = s.aba;
-        }
-      }
-      setActiveTab((atual) => (atual === escolhida ? atual : escolhida));
-    };
-
-    window.addEventListener('scroll', aoRolar, { passive: true });
-    return () => window.removeEventListener('scroll', aoRolar);
-  }, []);
 
   // '5s' | '10s' | '30s' -> milissegundos (o select "Auto" agora controla o intervalo)
   const intervaloMs = (parseInt(autoRefreshInterval, 10) || 10) * 1000;
 
-  // Passo 6: Sincronização e Busca de Dados Reais do Backend FastAPI
+  // Passo 6: Sincronização e Busca de Dados Reais do Backend
   useEffect(() => {
     const fetchDadosBackend = async () => {
       const startTime = performance.now();
       try {
-        const data = await getAutosservico();
+        const response = await fetch('https://api-evento-ia.onrender.com/status-pdvs');
+        if (!response.ok) {
+          throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Processa os dados recebidos utilizando a função toZonaPublico
         if (Array.isArray(data) && data.length > 0) {
-          setAutos(data);
+          const dadosProcessados: AutosservicoItem[] = data.map((item, index) => {
+            const zonaPub = toZonaPublico(item);
+            const baseMock = INITIAL_AUTOSSERVICO[index] || INITIAL_AUTOSSERVICO[0];
+
+            return {
+              ...baseMock,
+              id: item.id || baseMock.id,
+              nome: item.nome || (zonaPub as any).nome || baseMock.nome,
+              pessoasNaFila: zonaPub.pessoas || baseMock.pessoasNaFila,
+              tempoEstimadoEsperaMin: (zonaPub as any).tempoEstimadoEsperaMin ?? baseMock.tempoEstimadoEsperaMin,
+              nivelAtualInsumo: zonaPub.ocupacaoPct !== undefined ? Math.max(0, baseMock.capacidadeTotalInsumo * (1 - zonaPub.ocupacaoPct / 100)) : baseMock.nivelAtualInsumo,
+            };
+          });
+
+          setAutos(dadosProcessados);
         }
 
         const endTime = performance.now();
-        setPingLatency(Math.max(12, Math.round(endTime - startTime)));
+        setPingLatency(Math.round(endTime - startTime + 400));
         setLastUpdate(new Date().toTimeString().split(' ')[0]);
       } catch (error) {
         console.error('Falha ao sincronizar com backend da IA, mantendo estado atual:', error);
@@ -237,11 +191,6 @@ export default function App() {
         };
       })
     );
-    void postReabastecerAutosservico(id)
-      .then((atualizado) => {
-        setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
-      })
-      .catch(() => {});
   };
 
   const handleToggleManutencao = (id: string) => {
@@ -254,11 +203,6 @@ export default function App() {
         };
       })
     );
-    void postManutencaoAutosservico(id)
-      .then((atualizado) => {
-        setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
-      })
-      .catch(() => {});
   };
 
   const handleRegistrarCaptura = (id: string) => {
@@ -342,7 +286,6 @@ export default function App() {
         };
       })
     );
-    void postSimularPico().catch(() => {});
   };
 
   const handleExecutarAcaoSugerida = (alertaId: string, atracaoId?: string) => {
@@ -464,11 +407,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070c18] text-slate-100 font-sans antialiased pb-16 selection:bg-cyan-500 selection:text-black">
-      {/* 1. TOP HEADER BAR FIXO ACOMPANHANDO O SCROLL */}
-      <header
-        ref={headerRef}
-        className="bg-[#080d1a]/95 backdrop-blur-md border-b border-cyan-950/60 fixed top-0 left-0 right-0 z-50 shadow-xl shadow-black/50"
-      >
+      {/* 1. TOP HEADER BAR */}
+      <header className="bg-[#080d1a] border-b border-cyan-950/60 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0 shadow-lg shadow-cyan-950/40">
@@ -553,11 +493,11 @@ export default function App() {
         </div>
 
         {/* 2. SUB-HEADER HORIZONTAL NAVIGATION BAR */}
-        <div className="bg-[#050912]/95 border-t border-b border-cyan-950/60 px-4 sm:px-6 lg:px-8">
+        <div className="bg-[#050912] border-t border-b border-cyan-950/60 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-x-auto py-2">
             <div className="flex items-center gap-2 sm:gap-4 shrink-0 text-xs">
               <button
-                onClick={() => navegarParaSecao('tudo')}
+                onClick={() => setActiveTab('tudo')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'tudo' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
                   }`}
               >
@@ -565,7 +505,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => navegarParaSecao('autosservico')}
+                onClick={() => setActiveTab('autosservico')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'autosservico' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
                   }`}
               >
@@ -574,8 +514,8 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => navegarParaSecao('predicao')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'predicao' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
+                onClick={() => setActiveTab('instagramavel')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
                   }`}
               >
                 <Bot className="w-3.5 h-3.5 text-fuchsia-400" />
@@ -583,7 +523,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => navegarParaSecao('instagramavel')}
+                onClick={() => setActiveTab('instagramavel')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
                   activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
                 }`}
@@ -593,7 +533,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => navegarParaSecao('sintese')}
+                onClick={() => setActiveTab('sintese')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
                   }`}
               >
@@ -613,141 +553,148 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         <ApiToast feedback={feedback} onClose={limparFeedback} />
-
-        {/* Seção 1: Mapa & Arena + Telemetria das 7 Câmeras */}
-        <section id="secao-tudo" className="space-y-6 scroll-mt-32">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
-            <div>
-              <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
-                <span>{'>_'}</span>
-                <span>Terminal Operacional & Execução de Diagnóstico</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Execução direta do script CLI com exibição detalhada de telemetria, integridade e logs em tempo real.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShow3DMap(!show3DMap)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
-              >
-                <Compass className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{show3DMap ? 'Ocultar Arena 3D' : 'Exibir Arena 3D'}</span>
-              </button>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
+          <div>
+            <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
+              <span>{'>_'}</span>
+              <span>Terminal Operacional & Execução de Diagnóstico</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Execução direta do script CLI com exibição detalhada de telemetria, integridade e logs em tempo real.
+            </p>
           </div>
 
-          {show3DMap && (
-            <div className="animate-in fade-in duration-300">
-              <Venue3DScene
-                autos={autos}
-                instas={instas}
-                selectedId={selectedAtracaoId}
-                onSelectAtracao={(id) => setSelectedAtracaoId(id)}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShow3DMap(!show3DMap)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
+            >
+              <Compass className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{show3DMap ? 'Ocultar Arena 3D' : 'Exibir Arena 3D'}</span>
+            </button>
+          </div>
+        </div>
 
+        {/* 3D Scene Viewport */}
+        {show3DMap && (
+          <div className="animate-in fade-in duration-300">
+            <Venue3DScene
+              autos={autos}
+              instas={instas}
+              selectedId={selectedAtracaoId}
+              onSelectAtracao={(id) => setSelectedAtracaoId(id)}
+            />
+          </div>
+        )}
+
+        {/* Telemetria das 7 câmeras (dados da API) */}
+        {activeTab === 'tudo' && (
           <div className="animate-in fade-in duration-200">
             <CameraTelemetryPanel />
           </div>
-        </section>
+        )}
 
-        {/* Seção 2: Zonas & Telemetria (Totens de Autosserviço) */}
-        <section id="secao-autosservico" className="space-y-4 scroll-mt-32 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <Beer className="w-5 h-5 text-cyan-400" />
-                <span>Totens de Autosserviço (F&B / Chopp / Kiosks)</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Monitoramento de telemetria, pressão CO2, volume restante e transações registradas.
-              </p>
+        {/* Seção 1: Síntese Acumulada */}
+        {(activeTab === 'tudo' || activeTab === 'sintese') && (
+          <div className="animate-in fade-in duration-200">
+            <SinteseAcumulada
+              data={sinteseData}
+              setorAtivo={filtroSetor}
+              onFiltrarSetor={(s) => setFiltroSetor(s)}
+              onSimularPicoDeFluxo={handleSimularPicoDeFluxo}
+              onExecutarAcaoSugerida={handleExecutarAcaoSugerida}
+            />
+          </div>
+        )}
+
+        {/* Seção: Predição de Gargalos (IA) */}
+        {activeTab === 'predicao' && (
+          <div className="animate-in fade-in duration-200">
+            <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
+          </div>
+        )}
+
+        {/* Seção 2: Totens de Autosserviço */}
+        {(activeTab === 'tudo' || activeTab === 'autosservico') && (
+          <section className="space-y-4 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                  <Beer className="w-5 h-5 text-cyan-400" />
+                  <span>Totens de Autosserviço (F&B / Chopp / Kiosks)</span>
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Monitoramento de telemetria, pressão CO2, volume restante e transações registradas.
+                </p>
+              </div>
+              <span className="text-xs text-cyan-400 font-mono font-bold">
+                {filteredAutos.length} de {autos.length} totens ativos
+              </span>
             </div>
-            <span className="text-xs text-cyan-400 font-mono font-bold">
-              {filteredAutos.length} de {autos.length} totens ativos
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredAutos.map((item) => (
-              <AutosservicoCard
-                key={item.id}
-                item={item}
-                isSelected={selectedAtracaoId === item.id}
-                onSimularTransacao={(id, valor) => {
-                  handleSimularTransacao(id, valor);
-                  void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
-                    if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
-                  });
-                }}
-                onReabastecer={handleReabastecer}
-                onToggleManutencao={handleToggleManutencao}
-                onSelectIn3D={(id) => {
-                  setSelectedAtracaoId(id);
-                  setShow3DMap(true);
-                  navegarParaSecao('tudo');
-                }}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Seção 3: Predição de Gargalos (IA) */}
-        <section id="secao-predicao" className="scroll-mt-32 animate-in fade-in duration-200">
-          <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
-        </section>
-
-        {/* Seção 4: Pontos Instagramáveis */}
-        <section id="secao-instagramavel" className="space-y-4 scroll-mt-32 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <Camera className="w-5 h-5 text-fuchsia-400" />
-                <span>Pontos Instagramáveis & Ativações de Marca</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Engajamento social, contagem de fotos, controle de iluminação cenográfica e satisfação.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredAutos.map((item) => (
+                <AutosservicoCard
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedAtracaoId === item.id}
+                  onSimularTransacao={(id, valor) => {
+                    handleSimularTransacao(id, valor);
+                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
+                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
+                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+                    });
+                  }}
+                  onReabastecer={handleReabastecer}
+                  onToggleManutencao={handleToggleManutencao}
+                  onSelectIn3D={(id) => {
+                    setSelectedAtracaoId(id);
+                    setShow3DMap(true);
+                  }}
+                />
+              ))}
             </div>
-            <span className="text-xs text-fuchsia-400 font-mono font-bold">
-              {filteredInstas.length} de {instas.length} ativações ativas
-            </span>
-          </div>
+          </section>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredInstas.map((item) => (
-              <InstagramavelCard
-                key={item.id}
-                item={item}
-                isSelected={selectedAtracaoId === item.id}
-                onRegistrarCaptura={handleRegistrarCaptura}
-                onMudarModoLuz={handleMudarModoLuz}
-                onAlternarStatus={handleAlternarStatusInsta}
-                onSelectIn3D={(id) => {
-                  setSelectedAtracaoId(id);
-                  setShow3DMap(true);
-                  navegarParaSecao('tudo');
-                }}
-              />
-            ))}
-          </div>
-        </section>
+        {/* Seção 3: Pontos Instagramáveis */}
+        {(activeTab === 'tudo' || activeTab === 'instagramavel') && (
+          <section className="space-y-4 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-fuchsia-400" />
+                  <span>Pontos Instagramáveis & Ativações de Marca</span>
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Engajamento social, contagem de fotos, controle de iluminação cenográfica e satisfação.
+                </p>
+              </div>
+              <span className="text-xs text-fuchsia-400 font-mono font-bold">
+                {filteredInstas.length} de {instas.length} ativações ativas
+              </span>
+            </div>
 
-        {/* Seção 5: Síntese Acumulada */}
-        <section id="secao-sintese" className="scroll-mt-32 animate-in fade-in duration-200">
-          <SinteseAcumulada
-            data={sinteseData}
-            setorAtivo={filtroSetor}
-            onFiltrarSetor={(s) => setFiltroSetor(s)}
-            onSimularPicoDeFluxo={handleSimularPicoDeFluxo}
-            onExecutarAcaoSugerida={handleExecutarAcaoSugerida}
-          />
-        </section>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredInstas.map((item) => (
+                <InstagramavelCard
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedAtracaoId === item.id}
+                  onRegistrarCaptura={handleRegistrarCaptura}
+                  onMudarModoLuz={handleMudarModoLuz}
+                  onAlternarStatus={handleAlternarStatusInsta}
+                  onSelectIn3D={(id) => {
+                    setSelectedAtracaoId(id);
+                    setShow3DMap(true);
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Terminal CLI Modal */}

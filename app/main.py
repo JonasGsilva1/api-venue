@@ -9,9 +9,8 @@ Executar:  uvicorn app.main:app --reload --port 8000   →   http://localhost:80
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
-
 from pathlib import Path
+from typing import Any, Dict
 
 from fastapi import Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +22,7 @@ from app.config import settings
 from app.contracts import HealthResponseContract
 from app.errors import registrar_handlers, sem_query_params
 from app.repositories.memory_db import agora_utc, memory_db
-from app.routers import auth, insumos, ops, predicoes, stream, telemetry, venue
+from app.routers import auth, ops, predicoes, stream, telemetry, venue
 from app.services.event_bus import event_bus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -32,6 +31,7 @@ VERSAO = "2.0.0"
 
 DESCRICAO = f"""
 Suíte operacional **Venue Intelligence / RaizEvento** — 100% Python (FastAPI + Pydantic v2), porta `8000`.
+Monitoramento exclusivo por **visão computacional e câmeras de hardware** para detecção e predição de gargalos de público.
 
 ### 🔐 Como autenticar (cadeado)
 1. Clique em **Authorize** (canto superior direito).
@@ -49,7 +49,7 @@ Todos os modelos usam `ConfigDict(extra="forbid")`. Campos extras, tipos ou limi
 | 400 | contrato inválido | pacote descartado |
 | 502 | `sensor_status = OFFLINE` | `FALLBACK_502` (média 15 min) |
 | 504 | `simular_falha_ia = TIMEOUT_504` / IA > {settings.ai_timeout_seg}s | `MEDIA_MOVEL_504` (média 3 min) |
-| 503 | `simular_falha_ia = DOWN_503` | `CONTINGENCIA_503` (POS) |
+| 503 | `simular_falha_ia = DOWN_503` | `CONTINGENCIA_503` (catraca/NFC) |
 
 ### 📡 Tempo real
 - WebSocket: `ws://localhost:8000/api/v1/live/stream?token={settings.dev_token}`
@@ -58,11 +58,10 @@ Todos os modelos usam `ConfigDict(extra="forbid")`. Campos extras, tipos ou limi
 
 TAGS = [
     {"name": "Autenticação (JWT / RBAC)", "description": "Emissão de tokens de desenvolvimento por papel."},
-    {"name": "Módulo A · Telemetria & Resiliência", "description": "Ingestão de sensores, motor de IA e códigos 400/502/503/504."},
-    {"name": "Módulo B · Produto 1 — Insumos", "description": "Métrica de insumos e reabastecimento (Parte 5)."},
-    {"name": "Módulo C · Produto 2 — Predição & Despacho", "description": "Acionamento preditivo e despacho tático (Partes 5 e 6)."},
-    {"name": "Módulo D · Painel, Heatmap & Analytics", "description": "Estande RAIZ — Slides S01 a S10."},
-    {"name": "Módulo E · Tempo Real (WebSocket & SSE)", "description": "Push de eventos com latência de 10 ms a 400 ms."},
+    {"name": "Módulo A · Telemetria & Resiliência", "description": "Ingestão de frames das câmeras, motor de IA e códigos 400/502/503/504."},
+    {"name": "Módulo B · Predição de Gargalos & Despacho", "description": "Acionamento preditivo de gargalos e despacho tático de equipe."},
+    {"name": "Módulo C · Câmeras, Heatmap & Analytics", "description": "Telemetria das 7 câmeras, mapa de calor global, ativações e analytics."},
+    {"name": "Módulo D · Tempo Real (WebSocket & SSE)", "description": "Push de eventos com latência de 10 ms a 400 ms."},
     {"name": "Infraestrutura", "description": "Liveness e status operacional."},
 ]
 
@@ -88,7 +87,7 @@ app.add_middleware(
 
 registrar_handlers(app)
 
-for modulo in (auth, telemetry, insumos, predicoes, ops, venue, stream):
+for modulo in (auth, telemetry, predicoes, ops, venue, stream):
     app.include_router(modulo.router)
 
 
@@ -107,6 +106,19 @@ async def raiz() -> Response:
     if index_html.is_file():
         return FileResponse(index_html)
     return RedirectResponse(url="/docs")
+
+
+@app.get(
+    "/status-pdvs",
+    response_model=list[ Any ],
+    status_code=status.HTTP_200_OK,
+    tags=["Módulo C · Câmeras, Heatmap & Analytics"],
+    summary="Compatibilidade com o polling do cabeçalho do frontend (/status-pdvs)",
+    description="Retorna lista vazia `[]` para alimentar o polling de latência e timestamp do cabeçalho do frontend sem gestão de insumos.",
+    dependencies=[Depends(sem_query_params)],
+)
+async def status_pdvs_compat() -> list[Any]:
+    return []
 
 
 @app.get(

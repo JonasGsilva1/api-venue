@@ -8,7 +8,7 @@ Formas aceitas de credencial:
 
 Papéis (RBAC):
 - `visualizador` → apenas leitura (GET).
-- `operador`     → leitura + ações operacionais (telemetria, despacho, reabastecimento, acionamento).
+- `operador`     → leitura + ações operacionais (telemetria de câmeras, despacho, acionamento preditivo).
 - `admin`        → acesso total.
 """
 from __future__ import annotations

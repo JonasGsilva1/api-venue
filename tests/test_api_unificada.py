@@ -1,10 +1,10 @@
 """
 Suíte de Testes Automatizada da API Unificada Venue Intelligence / RaizEvento (100% Python FastAPI).
 Valida integralmente todos os requisitos do PROJECT_CONTEXT.md e PROGRESS_LOG.md:
-- Módulos A, B, C, D e E
+- Monitoramento exclusivo por câmeras (gargalos e fluxo) + ativações instagramáveis
+- Ausência total de rotas de gestão de insumos e gastronomia/autosserviço
 - Contratos estritos Pydantic v2 (ConfigDict(extra="forbid"))
 - Matriz de resiliência HTTP (201, 400, 502, 503, 504)
-- Objeto raiz de insumos sem colchetes externos (incluindo BAR-83-IPA e BAR-01-AGUA)
 - Autenticação Bearer Token JWT e RBAC
 - WebSocket e SSE
 """
@@ -54,14 +54,14 @@ def test_raiz_e_documentacao_swagger():
 # ── Autenticação & RBAC ──────────────────────────────────────────────────────
 
 def test_acesso_sem_token_rejeitado_com_401():
-    response = client.get("/api/v1/insumos/status")
+    response = client.get("/api/v1/venue/cameras")
     assert response.status_code == 401
     dados = response.json()
     assert dados["erro"] == "NAO_AUTENTICADO"
 
 
 def test_acesso_com_token_invalido_rejeitado_com_401():
-    response = client.get("/api/v1/insumos/status", headers={"Authorization": "Bearer token-falso"})
+    response = client.get("/api/v1/venue/cameras", headers={"Authorization": "Bearer token-falso"})
     assert response.status_code == 401
     assert response.json()["erro"] == "NAO_AUTENTICADO"
 
@@ -81,7 +81,7 @@ def test_emissao_jwt_e_rbac_por_papel():
     r_post = client.post(
         "/api/v1/ops/dispatch",
         headers=h_vis,
-        json={"pdv_id": 1, "nivel_critico": "ALTO", "sugestao_acao": "Reforço urgente de estoque"},
+        json={"pdv_id": 1, "nivel_critico": "ALTO", "sugestao_acao": "Remanejar orientadores de fluxo para o acesso"},
     )
     assert r_post.status_code == 403
     assert r_post.json()["erro"] == "ACESSO_NEGADO"
@@ -96,7 +96,7 @@ def test_emissao_jwt_e_rbac_por_papel():
     r_op_post = client.post(
         "/api/v1/ops/dispatch",
         headers=h_op,
-        json={"pdv_id": 1, "nivel_critico": "ALTO", "sugestao_acao": "Reforço urgente de estoque"},
+        json={"pdv_id": 1, "nivel_critico": "ALTO", "sugestao_acao": "Remanejar orientadores de fluxo para o acesso"},
     )
     assert r_op_post.status_code == 201
 
@@ -107,7 +107,7 @@ def test_dev_tokens_funcionam_como_admin():
         assert r.status_code == 200
 
 
-# ── Módulo A: Telemetria, IA e Resiliência ──────────────────────────────────
+# ── Módulo A: Telemetria de Câmeras, IA e Resiliência ────────────────────────
 
 def test_telemetria_201_tempo_real():
     payload = {
@@ -119,7 +119,6 @@ def test_telemetria_201_tempo_real():
             {"x": 125.3, "y": 179.9},
         ],
         "transacoes_pos_ultimos_3m": 4,
-        "estoque_percentual": 42,
         "taxa_nfc_seg_por_pessoa": None,
         "simular_falha_ia": "NENHUMA",
     }
@@ -131,6 +130,7 @@ def test_telemetria_201_tempo_real():
     assert dados["leitura"]["pax_count"] == 3
     assert dados["leitura"]["status_cor"] == "VERDE"
     assert dados["leitura"]["confianca_ia"] >= 0.90
+    assert dados["leitura"]["alerta_ruptura_estoque"] is False
 
 
 def test_telemetria_400_contrato_violado_com_campo_extra():
@@ -139,7 +139,6 @@ def test_telemetria_400_contrato_violado_com_campo_extra():
         "sensor_status": "ONLINE",
         "coordenadas_simuladas": [{"x": 100, "y": 200}],
         "transacoes_pos_ultimos_3m": 2,
-        "estoque_percentual": 50,
         "simular_falha_ia": "NENHUMA",
         "rosto_id": "face_xyz",  # Campo extra proibido por extra='forbid'
     }
@@ -156,7 +155,6 @@ def test_telemetria_400_coordenada_fora_do_limite():
         "sensor_status": "ONLINE",
         "coordenadas_simuladas": [{"x": 1500.0, "y": 200.0}],  # x > 1000
         "transacoes_pos_ultimos_3m": 2,
-        "estoque_percentual": 50,
         "simular_falha_ia": "NENHUMA",
     }
     r = client.post("/api/v1/telemetry/frame-analysis", headers=AUTH_HEADER, json=payload)
@@ -170,7 +168,6 @@ def test_telemetria_502_sensor_offline_fallback():
         "sensor_status": "OFFLINE",
         "coordenadas_simuladas": [],
         "transacoes_pos_ultimos_3m": 4,
-        "estoque_percentual": 42,
         "simular_falha_ia": "NENHUMA",
     }
     r = client.post("/api/v1/telemetry/frame-analysis", headers=AUTH_HEADER, json=payload)
@@ -189,7 +186,6 @@ def test_telemetria_504_timeout_ia_media_movel():
         "sensor_status": "ONLINE",
         "coordenadas_simuladas": [{"x": 100, "y": 200}],
         "transacoes_pos_ultimos_3m": 4,
-        "estoque_percentual": 42,
         "simular_falha_ia": "TIMEOUT_504",
     }
     r = client.post("/api/v1/telemetry/frame-analysis", headers=AUTH_HEADER, json=payload)
@@ -201,13 +197,12 @@ def test_telemetria_504_timeout_ia_media_movel():
     assert "Graceful Degradation" in dados["aviso_contingencia"]
 
 
-def test_telemetria_503_ia_down_contingencia_pos():
+def test_telemetria_503_ia_down_contingencia_catraca():
     payload = {
         "pdv_id": 1,
         "sensor_status": "ONLINE",
         "coordenadas_simuladas": [{"x": 100, "y": 200}],
         "transacoes_pos_ultimos_3m": 6,
-        "estoque_percentual": 42,
         "simular_falha_ia": "DOWN_503",
     }
     r = client.post("/api/v1/telemetry/frame-analysis", headers=AUTH_HEADER, json=payload)
@@ -220,72 +215,33 @@ def test_telemetria_503_ia_down_contingencia_pos():
     assert "Circuit Breaker" in dados["aviso_contingencia"]
 
 
-def test_inferencia_isolada():
+def test_inferencia_isolada_gargalos():
     payload = {
-        "pdv_id": 5,  # Bar Principal Norte
-        "coordenadas_simuladas": [{"x": 10, "y": 20}] * 84,  # 84 pax
+        "pdv_id": 5,  # Corredor de Acesso Norte (120 m2)
+        "coordenadas_simuladas": [{"x": 10, "y": 20}] * 190,  # 190 pax -> 1.58 pax/m2 (SATURACAO)
         "transacoes_pos_ultimos_3m": 0,
-        "estoque_percentual": 12,  # Chopp IPA #83 a 12%
-        "taxa_nfc_seg_por_pessoa": 45,  # Anomalia NFC lento
+        "taxa_nfc_seg_por_pessoa": 45,  # Anomalia NFC lento na catraca
     }
     r = client.post("/api/v1/inferencia", headers=AUTH_HEADER, json=payload)
     assert r.status_code == 200
     dados = r.json()
-    assert dados["pax_count"] == 84
+    assert dados["pax_count"] == 190
     assert dados["status_cor"] == "VERMELHO"
-    assert dados["alerta_ruptura_estoque"] is True
     assert "NFC_LENTO" in dados["anomalias"]
-    assert "RUPTURA_MASCARADA" in dados["anomalias"]
-    assert "ESTOQUE_CRITICO" in dados["anomalias"]
+    assert "SATURACAO" in dados["anomalias"]
+    assert "alerta_ruptura_estoque" not in dados
 
 
-# ── Módulo B: Produto 1 — Insumos ───────────────────────────────────────────
+# ── Validação da Remoção Total de Gestão de Insumos e Gastronomia ────────────
 
-def test_insumos_status_retorna_objeto_raiz_com_seeds():
-    r = client.get("/api/v1/insumos/status", headers=AUTH_HEADER)
-    assert r.status_code == 200
-    dados = r.json()
-
-    # Diretriz inegociável: deve ser um OBJETO RAIZ { ... }, NUNCA uma lista [ ... ]
-    assert isinstance(dados, dict)
-    assert "total_itens_monitorados" in dados
-    assert "itens_em_deficit" in dados
-    assert "insumos" in dados
-    assert isinstance(dados["insumos"], list)
-    assert dados["total_itens_monitorados"] == 150
-
-    # Verifica os seeds obrigatórios
-    itens = {i["item_id"]: i for i in dados["insumos"]}
-    assert "BAR-83-IPA" in itens
-    assert itens["BAR-83-IPA"]["nome"] == "Chopp IPA (Barril 50L)"
-    assert itens["BAR-83-IPA"]["localizacao"] == "Bar Principal Norte"
-    assert itens["BAR-83-IPA"]["quantidade_atual"] == 6
-    assert itens["BAR-83-IPA"]["quantidade_minima"] == 20
-    assert itens["BAR-83-IPA"]["status"] == "DEFICIT_CRITICO"
-    assert itens["BAR-83-IPA"]["deficit_estimado"] == 14
-
-    assert "BAR-01-AGUA" in itens
-    assert itens["BAR-01-AGUA"]["nome"] == "Água Mineral 500ml"
-    assert itens["BAR-01-AGUA"]["status"] == "DEFICIT_CRITICO"
-    assert itens["BAR-01-AGUA"]["deficit_estimado"] == 11
-
-    assert "BAR-02-CAFE" in itens
-    assert itens["BAR-02-CAFE"]["status"] == "ESTAVEL"
-    assert itens["BAR-02-CAFE"]["deficit_estimado"] == 0
+def test_rotas_insumos_e_autosservico_removidas():
+    spec = client.get("/openapi.json").json()
+    rotas_ativas = list(spec["paths"].keys())
+    assert all("insumo" not in rota for rota in rotas_ativas)
+    assert all("autosservico" not in rota for rota in rotas_ativas)
 
 
-def test_insumos_reabastecimento():
-    payload = {"item_id": "BAR-83-IPA", "quantidade_solicitada": 14, "prioridade": "ALTA"}
-    r = client.post("/api/v1/insumos/reabastecimento", headers=AUTH_HEADER, json=payload)
-    assert r.status_code == 201
-    dados = r.json()
-    assert dados["protocolo_id"] == "REAB-2026-0042"
-    assert dados["item_id"] == "BAR-83-IPA"
-    assert dados["quantidade_solicitada"] == 14
-    assert dados["status_pedido"] == "SOLICITADO"
-
-
-# ── Módulo C: Produto 2 — Predições e Despacho ──────────────────────────────
+# ── Módulo B: Predições de Gargalos e Despacho Tático ────────────────────────
 
 def test_predicoes_gargalos():
     r = client.get("/api/v1/predicoes/gargalos", headers=AUTH_HEADER)
@@ -298,7 +254,6 @@ def test_predicoes_gargalos():
 
 
 def test_predicoes_acionar_fluxo_transita_estado_operacional():
-    # Verifica estado inicial
     assert client.get("/health").json()["status_operacional_evento"] == "ESTAVEL"
 
     payload = {
@@ -311,7 +266,6 @@ def test_predicoes_acionar_fluxo_transita_estado_operacional():
     dados = r.json()
     assert dados["status_operacional_evento"] == "ACAO_EM_ANDAMENTO"
 
-    # Confirma que /health e /venue/readiness-heatmap refletem o novo estado
     assert client.get("/health").json()["status_operacional_evento"] == "ACAO_EM_ANDAMENTO"
 
 
@@ -319,23 +273,22 @@ def test_ops_dispatch_transita_estado_operacional():
     payload = {
         "pdv_id": 5,
         "nivel_critico": "CRITICO",
-        "sugestao_acao": "Abrir 2 caixas extras no Bar Principal Norte",
+        "sugestao_acao": "Abrir 2 faixas extras no Corredor de Acesso Norte",
     }
     r = client.post("/api/v1/ops/dispatch", headers=AUTH_HEADER, json=payload)
     assert r.status_code == 201
     dados = r.json()
     assert dados["status_operacional_evento"] == "ACAO_EM_ANDAMENTO"
-    assert dados["nome_zona"] == "Bar Principal Norte"
+    assert dados["nome_zona"] == "Corredor de Acesso Norte"
 
-    # Listar despachos
     r_list = client.get("/api/v1/ops/dispatch", headers=AUTH_HEADER)
     assert r_list.status_code == 200
     assert r_list.json()["total_ordens"] >= 1
 
 
-# ── Módulo D: Painel do Estande, Heatmap e Analytics ─────────────────────────
+# ── Módulo C: Painel de Câmeras, Heatmap e Analytics ─────────────────────────
 
-def test_pdv_status_e_paradoxo_roteamento_push():
+def test_pdv_status_e_roteamento_push():
     r = client.get("/api/v1/pdv/status", headers=AUTH_HEADER)
     assert r.status_code == 200
     dados = r.json()
@@ -354,13 +307,13 @@ def test_venue_readiness_heatmap():
     assert r.status_code == 200
     dados = r.json()
     readiness = dados["readiness"]
-    assert readiness["sensores_ativos"] == 5
-    assert readiness["fontes_online_str"] == "5/6" or readiness["fontes_online_str"] == "6/6"
-    assert readiness["cameras_neurais_ativas"] == 12
-    assert readiness["sensores_iot_barris"] == 54
+    assert readiness["sensores_ativos"] == 7
+    assert readiness["fontes_online_str"] in ("7/7", "6/7")
+    assert readiness["cameras_neurais_ativas"] == 7
     assert readiness["lidar_fps"] == 60
-    assert readiness["estoque_inicial_ok"] is True
     assert readiness["motor_ia_online"] is True
+    assert "sensores_iot_barris" not in readiness
+    assert "estoque_inicial_ok" not in readiness
 
     heatmap = dados["heatmap_global"]
     assert heatmap["pessoas_presentes"] == 24
@@ -387,12 +340,12 @@ def test_analytics_dropoff_summary():
     assert acumulado["publico_por_dia"]["D2"] == 320
     assert acumulado["publico_por_dia"]["D3"] == 400
     assert acumulado["atendimentos_cortesia"] == 720
-    assert acumulado["bebidas_unidades"] == 840
-    assert acumulado["autosservico_retiradas"] == 660
     assert acumulado["engajamento_interacoes"] == 360
+    assert "bebidas_unidades" not in acumulado
+    assert "autosservico_retiradas" not in acumulado
 
 
-# ── Módulo E: Streaming em Tempo Real (SSE e WebSocket) ─────────────────────
+# ── Módulo D: Streaming em Tempo Real (SSE e WebSocket) ─────────────────────
 
 def test_sse_stream_snapshot():
     r = client.get("/api/v1/telemetry/stream?limite_eventos=1", headers=AUTH_HEADER)
@@ -400,7 +353,7 @@ def test_sse_stream_snapshot():
     assert "text/event-stream" in r.headers["content-type"]
     conteudo = r.text
     assert "event: snapshot" in conteudo
-    assert "BAR-83-IPA" in conteudo
+    assert "ESTAVEL" in conteudo
 
 
 def test_websocket_stream_snapshot():
@@ -417,7 +370,7 @@ def test_websocket_stream_snapshot():
 
 def test_rejeicao_query_params_nao_mapeados():
     # Endpoints GET devem rejeitar query params não mapeados com 400 (Contract-First)
-    r = client.get("/api/v1/insumos/status?param_invalido=123", headers=AUTH_HEADER)
+    r = client.get("/api/v1/venue/cameras?param_invalido=123", headers=AUTH_HEADER)
     assert r.status_code == 400
     assert r.json()["erro"] == "CONTRATO_VIOLADO"
 
@@ -431,31 +384,6 @@ def test_auth_login_frontend():
     assert "token" in dados
     assert dados["user"]["email"] == "operador@raizevento.com"
     assert dados["user"]["role"] == "admin"
-
-
-def test_venue_autosservico_fluxo():
-    r = client.get("/api/v1/venue/autosservico", headers=AUTH_HEADER)
-    assert r.status_code == 200
-    totens = r.json()
-    assert len(totens) >= 4
-    beer_wall = next(t for t in totens if t["id"] == "aut-01")
-    assert beer_wall["codigo"] == "AUT-BEER-01"
-
-    # Transação
-    r_tx = client.post("/api/v1/venue/autosservico/aut-01/transacao", headers=AUTH_HEADER, json={"valor": 30.0})
-    assert r_tx.status_code == 200
-    assert r_tx.json()["transacoesAcumuladas"] == 613
-
-    # Manutenção
-    r_man = client.post("/api/v1/venue/autosservico/aut-01/manutencao", headers=AUTH_HEADER)
-    assert r_man.status_code == 200
-    assert r_man.json()["status"] == "manutencao"
-    client.post("/api/v1/venue/autosservico/aut-01/manutencao", headers=AUTH_HEADER)
-
-    # Reabastecer
-    r_reab = client.post("/api/v1/venue/autosservico/aut-01/reabastecer", headers=AUTH_HEADER)
-    assert r_reab.status_code == 200
-    assert r_reab.json()["nivelAtualInsumo"] == 500.0
 
 
 def test_venue_instagramavel_fluxo():
@@ -484,8 +412,11 @@ def test_venue_sintese_e_simular_pico():
     assert r.status_code == 200
     sintese = r.json()
     assert sintese["eventoNome"] == "Festival Som & Luz Arena 2026"
+    assert sintese["camerasMonitoradasAtivas"] == 7
     assert sintese["totalAtendimentosGerais"] > 0
-    assert len(sintese["principaisAlertas"]) >= 3
+    alertas = sintese["principaisAlertas"]
+    assert len(alertas) >= 2
+    assert any(a["atracaoId"] == "cam-int-01" for a in alertas)
 
     # Simular pico
     r_pico = client.post("/api/v1/venue/simular-pico", headers=AUTH_HEADER)
@@ -494,14 +425,14 @@ def test_venue_sintese_e_simular_pico():
 
 def test_venue_criar_atracao():
     payload = {
-        "tipo": "autosservico",
-        "nome": "Beer Wall 05 - Express",
+        "tipo": "instagramavel",
+        "nome": "Portal Holográfico Arena",
         "setor": "Arena Principal",
-        "insumoOuPatrocinador": "Chopp Pilsen",
+        "patrocinador": "Marca Parceira",
     }
     r = client.post("/api/v1/venue/atracao", headers=AUTH_HEADER, json=payload)
     assert r.status_code == 201
-    assert r.json()["nome"] == "Beer Wall 05 - Express"
+    assert r.json()["nome"] == "Portal Holográfico Arena"
 
 
 def test_venue_cameras_endpoint_dedicado():
@@ -517,18 +448,33 @@ def test_venue_cameras_endpoint_dedicado():
     assert cam_ent["tipo"] == "entrada_perimetro"
     assert cam_ent["zona"]["ultima_leitura"]["contagem_pessoas"] == 18
 
-    r_detalhe = client.get("/api/v1/venue/cameras/cam-fb-01", headers=AUTH_HEADER)
+    r_detalhe = client.get("/api/v1/venue/cameras/cam-int-01", headers=AUTH_HEADER)
     assert r_detalhe.status_code == 200
-    assert r_detalhe.json()["zona"]["id"] == 5
+    detalhe = r_detalhe.json()
+    assert detalhe["codigo"] == "CAM-INT-01"
+    assert detalhe["tipo"] == "fluxo_interno"
+    assert detalhe["zona"]["id"] == 5
+
+    # Alias cam-fb-01..03 usado no mapa de câmeras do frontend original
+    r_alias = client.get("/api/v1/venue/cameras/cam-fb-01", headers=AUTH_HEADER)
+    assert r_alias.status_code == 200
+    assert r_alias.json()["zona"]["id"] == 5
 
 
 def test_compatibilidade_frontend_campos_adaptados():
-    # 1. PDV Status com localizacao_geo e contagem_pessoas
+    # 0. Polling /status-pdvs do App.tsx
+    r_status_pdvs = client.get("/status-pdvs")
+    assert r_status_pdvs.status_code == 200
+    assert r_status_pdvs.json() == []
+
+    # 1. PDV Status com localizacao_geo, contagem_pessoas e alerta_ruptura_estoque=False
     r_pdv = client.get("/api/v1/pdv/status", headers=AUTH_HEADER)
     assert r_pdv.status_code == 200
     zonas = r_pdv.json()["zonas"]
     assert "planta(x:570,y:440)" in zonas[0]["localizacao_geo"]
     assert zonas[0]["ultima_leitura"]["contagem_pessoas"] == zonas[0]["ultima_leitura"]["pax_count"]
+    assert zonas[0]["ultima_leitura"]["alerta_ruptura_estoque"] is False
+    assert all(z["tipo"] in ("BAR", "BANHEIRO", "CATRACA", "ESTANDE") for z in zonas)
 
     # 2. Readiness com prontidao, mapa_calor_global e pontos_criticos
     r_read = client.get("/api/v1/venue/readiness-heatmap", headers=AUTH_HEADER)

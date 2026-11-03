@@ -1,4 +1,4 @@
-"""Módulo C — Produto 2: Acionamento Preditivo (Partes 5 e 6)."""
+"""Módulo B — Acionamento Preditivo de Gargalos."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
@@ -14,7 +14,7 @@ from app.repositories.memory_db import memory_db
 from app.services.event_bus import criar_evento, event_bus
 
 router = APIRouter(
-    prefix="/api/v1/predicoes", tags=["Módulo C · Produto 2 — Predição & Despacho"], responses=RESPOSTAS_PADRAO
+    prefix="/api/v1/predicoes", tags=["Módulo B · Predição de Gargalos & Despacho"], responses=RESPOSTAS_PADRAO
 )
 
 
@@ -22,7 +22,7 @@ router = APIRouter(
     "/gargalos",
     response_model=PredicaoGargaloResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Predição de gargalo operacional e ação recomendada",
+    summary="Predição de gargalo operacional por câmeras e ação recomendada",
     description="Predição ativa do motor de IA (alerta `PRED-9921`, Portão Principal / Entrada Norte). Qualquer papel autenticado.",
     dependencies=[Depends(sem_query_params)],
 )

@@ -27,15 +27,13 @@ StatusCor = Literal["VERDE", "AMARELO", "VERMELHO"]
 ModoLeitura = Literal["TEMPO_REAL", "FALLBACK_502", "MEDIA_MOVEL_504", "CONTINGENCIA_503"]
 SensorStatus = Literal["ONLINE", "OFFLINE"]
 SimularFalhaIA = Literal["NENHUMA", "TIMEOUT_504", "DOWN_503"]
-TipoZona = Literal["BAR", "ESTANDE"]
+TipoZona = Literal["BAR", "BANHEIRO", "CATRACA", "ESTANDE"]
 StatusOperacional = Literal["ESTAVEL", "ACAO_EM_ANDAMENTO"]
-StatusInsumo = Literal["ESTAVEL", "ATENCAO", "DEFICIT_CRITICO"]
-Prioridade = Literal["BAIXA", "MEDIA", "ALTA", "URGENTE"]
 NivelPredito = Literal["BAIXO", "MEDIO", "ALTO", "CRITICO"]
 NivelCritico = Literal["BAIXO", "MEDIO", "ALTO", "CRITICO", "CRITICO_PCD_CLIMA"]
 StatusDispatch = Literal["PENDENTE", "EM_ANDAMENTO", "RESOLVIDO"]
 Papel = Literal["visualizador", "operador", "admin"]
-TipoAnomalia = Literal["NFC_LENTO", "RUPTURA_MASCARADA", "ESTOQUE_CRITICO", "SATURACAO"]
+TipoAnomalia = Literal["NFC_LENTO", "SATURACAO"]
 CodigoErro = Literal[
     "CONTRATO_VIOLADO",
     "NAO_AUTENTICADO",
@@ -50,7 +48,6 @@ TipoEvento = Literal[
     "leitura",
     "mudanca_cor",
     "dispatch",
-    "reabastecimento",
     "acionamento_preditivo",
     "heartbeat",
 ]
@@ -128,7 +125,7 @@ class HealthResponseContract(ContratoEstrito):
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Módulo A — Telemetria, Motor de IA e Resiliência
+# Módulo A — Telemetria de Câmeras, Motor de IA e Resiliência
 # ════════════════════════════════════════════════════════════════════════════
 class CoordinateContract(ContratoEstrito):
     x: float = Field(..., ge=0.0, le=1000.0, description="Coordenada X anônima na planta (0..1000).", examples=[120.5])
@@ -155,7 +152,6 @@ class TelemetryAnalysisRequestContract(ContratoEstrito):
                     "sensor_status": "ONLINE",
                     "coordenadas_simuladas": _EXEMPLO_COORDENADAS,
                     "transacoes_pos_ultimos_3m": 4,
-                    "estoque_percentual": 42,
                     "taxa_nfc_seg_por_pessoa": None,
                     "simular_falha_ia": "NENHUMA",
                 }
@@ -163,18 +159,19 @@ class TelemetryAnalysisRequestContract(ContratoEstrito):
         },
     )
 
-    pdv_id: int = Field(..., gt=0, description="ID da zona/PDV monitorado (ver GET /api/v1/pdv/status).", examples=[1])
+    pdv_id: int = Field(..., gt=0, description="ID da zona monitorada por câmera (ver GET /api/v1/pdv/status).", examples=[1])
     sensor_status: SensorStatus = Field("ONLINE", description="OFFLINE aciona o FALLBACK_502.", examples=["ONLINE"])
     coordenadas_simuladas: List[CoordinateContract] = Field(
         ...,
         max_length=MAX_COORDENADAS_POR_FRAME,
-        description="Posições anônimas e agregadas (LiDAR/câmeras). Cada ponto = 1 pax.",
+        description="Posições anônimas e agregadas captadas pelas câmeras/LiDAR. Cada ponto = 1 pax.",
         examples=[_EXEMPLO_COORDENADAS],
     )
-    transacoes_pos_ultimos_3m: int = Field(..., ge=0, description="Vendas/retiradas no POS nos últimos 3 min.", examples=[4])
-    estoque_percentual: int = Field(100, ge=0, le=100, description="Nível do estoque/barril da zona (0..100).", examples=[42])
+    transacoes_pos_ultimos_3m: int = Field(
+        ..., ge=0, description="Validações de acesso/passagens no leitor NFC/catraca nos últimos 3 min.", examples=[4]
+    )
     taxa_nfc_seg_por_pessoa: Optional[int] = Field(
-        None, ge=1, le=600, description="Ritmo medido no leitor NFC/POS (anomalia a partir de 45 s/pessoa).", examples=[45]
+        None, ge=1, le=600, description="Ritmo medido no leitor NFC/catraca (anomalia a partir de 45 s/pessoa).", examples=[45]
     )
     simular_falha_ia: SimularFalhaIA = Field(
         "NENHUMA", description="Injeção de falha no motor de IA: TIMEOUT_504 ou DOWN_503.", examples=["NENHUMA"]
@@ -191,12 +188,15 @@ class TelemetryReadingContract(ContratoEstrito):
     densidade_m2: float = Field(..., ge=0.0, examples=[0.26])
     status_cor: StatusCor = Field(..., examples=["VERDE"])
     confianca_ia: float = Field(..., ge=0.0, le=1.0, examples=[0.94])
-    alerta_ruptura_estoque: bool = Field(..., examples=[False])
     anomalias: List[TipoAnomalia] = Field(default_factory=list, examples=[["NFC_LENTO"]])
     modo_leitura: ModoLeitura = Field(..., examples=["TEMPO_REAL"])
     sensor_status: SensorStatus = Field(..., examples=["ONLINE"])
     transacoes_pos_ultimos_3m: int = Field(..., ge=0, examples=[4])
-    estoque_percentual: int = Field(..., ge=0, le=100, examples=[42])
+    alerta_ruptura_estoque: bool = Field(
+        False,
+        description="Mantido como False fixo para compatibilidade com o contrato LeituraV2 do frontend (sem gestão de insumos).",
+        examples=[False],
+    )
     contagem_pessoas: Optional[int] = Field(None, ge=0, description="Alias para pax_count compatível com frontend.", examples=[6])
 
 
@@ -217,7 +217,6 @@ class InferenceRequestContract(ContratoEstrito):
                     "pdv_id": 1,
                     "coordenadas_simuladas": _EXEMPLO_COORDENADAS,
                     "transacoes_pos_ultimos_3m": 0,
-                    "estoque_percentual": 12,
                     "taxa_nfc_seg_por_pessoa": 45,
                 }
             ]
@@ -227,7 +226,6 @@ class InferenceRequestContract(ContratoEstrito):
     pdv_id: int = Field(..., gt=0, description="Zona usada para calibrar área e ritmo de atendimento.", examples=[1])
     coordenadas_simuladas: List[CoordinateContract] = Field(..., max_length=MAX_COORDENADAS_POR_FRAME, examples=[_EXEMPLO_COORDENADAS])
     transacoes_pos_ultimos_3m: int = Field(..., ge=0, examples=[0])
-    estoque_percentual: int = Field(100, ge=0, le=100, examples=[12])
     taxa_nfc_seg_por_pessoa: Optional[int] = Field(None, ge=1, le=600, examples=[45])
 
 
@@ -239,61 +237,16 @@ class InferenceResponseContract(ContratoEstrito):
     densidade_m2: float = Field(..., ge=0.0, examples=[0.26])
     status_cor: StatusCor = Field(..., description="VERDE < 300s · AMARELO 300..720s · VERMELHO > 720s.", examples=["VERDE"])
     confianca_ia: float = Field(..., ge=0.0, le=1.0, examples=[0.94])
-    alerta_ruptura_estoque: bool = Field(..., description="pax >= 6 com 0 vendas no POS, ou barril <= 12%.", examples=[True])
-    anomalias: List[TipoAnomalia] = Field(default_factory=list, examples=[["NFC_LENTO", "RUPTURA_MASCARADA"]])
-    tempo_estimado_reposicao_min: Optional[int] = Field(None, ge=0, examples=[18])
+    anomalias: List[TipoAnomalia] = Field(default_factory=list, examples=[["NFC_LENTO", "SATURACAO"]])
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Módulo B — Produto 1: Métrica de Insumos
-# ════════════════════════════════════════════════════════════════════════════
-class InsumoItemContract(ContratoEstrito):
-    item_id: str = Field(..., examples=["BAR-83-IPA"])
-    nome: str = Field(..., examples=["Chopp IPA (Barril 50L)"])
-    localizacao: str = Field(..., examples=["Bar Principal Norte"])
-    quantidade_atual: int = Field(..., ge=0, examples=[6])
-    quantidade_minima: int = Field(..., ge=0, examples=[20])
-    status: StatusInsumo = Field(..., examples=["DEFICIT_CRITICO"])
-    deficit_estimado: int = Field(..., ge=0, examples=[14])
-
-
-class InsumosStatusResponseContract(ContratoEstrito):
-    """Objeto raiz `{ ... }` — NUNCA uma lista `[ { ... } ]` (PROJECT_CONTEXT.md §5, Módulo B)."""
-
-    total_itens_monitorados: int = Field(..., ge=0, examples=[150])
-    itens_em_deficit: int = Field(..., ge=0, examples=[2])
-    insumos: List[InsumoItemContract]
-
-
-class ReabastecimentoRequestContract(ContratoEstrito):
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"examples": [{"item_id": "BAR-83-IPA", "quantidade_solicitada": 14, "prioridade": "ALTA"}]},
-    )
-
-    item_id: str = Field(..., pattern=r"^[A-Z0-9]+(-[A-Z0-9]+)+$", examples=["BAR-83-IPA"])
-    quantidade_solicitada: int = Field(..., gt=0, le=10000, examples=[14])
-    prioridade: Prioridade = Field(..., examples=["ALTA"])
-
-
-class ReabastecimentoResponseContract(ContratoEstrito):
-    protocolo_id: str = Field(..., examples=["REAB-2026-0042"])
-    item_id: str = Field(..., examples=["BAR-83-IPA"])
-    nome_item: str = Field(..., examples=["Chopp IPA (Barril 50L)"])
-    localizacao: str = Field(..., examples=["Bar Principal Norte"])
-    quantidade_solicitada: int = Field(..., gt=0, examples=[14])
-    prioridade: Prioridade = Field(..., examples=["ALTA"])
-    status_pedido: Literal["SOLICITADO"] = Field("SOLICITADO", examples=["SOLICITADO"])
-    solicitado_em: datetime = Field(..., examples=["2026-10-14T20:30:00Z"])
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# Módulo C — Produto 2: Acionamento Preditivo e Despacho Tático
+# Módulo B — Acionamento Preditivo de Gargalos e Despacho Tático
 # ════════════════════════════════════════════════════════════════════════════
 class PredicaoGargaloResponseContract(ContratoEstrito):
     setor: str = Field(..., examples=["Portão Principal / Entrada Norte"])
     nivel_predito: NivelPredito = Field(..., examples=["CRITICO"])
-    motivo: str = Field(..., examples=["Aumento repentino de fluxo detectado por IA"])
+    motivo: str = Field(..., examples=["Aumento repentino de fluxo detectado por IA nas câmeras"])
     acao_recomendada: str = Field(..., examples=["Acionar 2 filas adicionais"])
     tempo_estimado_formacao_fila: str = Field(..., examples=["03m 30s"])
 
@@ -330,7 +283,7 @@ class DispatchRequestContract(ContratoEstrito):
                 {
                     "pdv_id": 5,
                     "nivel_critico": "CRITICO",
-                    "sugestao_acao": "Remanejar 2 bartenders do Z2 para o Bar Principal Norte e abrir caixa extra",
+                    "sugestao_acao": "Remanejar 2 orientadores de fluxo para o Corredor de Acesso Norte e abrir faixa extra",
                 }
             ]
         },
@@ -338,15 +291,17 @@ class DispatchRequestContract(ContratoEstrito):
 
     pdv_id: int = Field(..., gt=0, examples=[5])
     nivel_critico: NivelCritico = Field(..., examples=["CRITICO"])
-    sugestao_acao: str = Field(..., min_length=5, max_length=500, examples=["Remanejar 2 bartenders para o Bar Principal Norte"])
+    sugestao_acao: str = Field(
+        ..., min_length=5, max_length=500, examples=["Remanejar 2 orientadores de fluxo para o Corredor de Acesso Norte"]
+    )
 
 
 class DispatchResponseContract(ContratoEstrito):
     id: int = Field(..., gt=0, examples=[1])
     pdv_id: int = Field(..., gt=0, examples=[5])
-    nome_zona: str = Field(..., examples=["Bar Principal Norte"])
+    nome_zona: str = Field(..., examples=["Corredor de Acesso Norte"])
     nivel_critico: NivelCritico = Field(..., examples=["CRITICO"])
-    sugestao_acao: str = Field(..., examples=["Remanejar 2 bartenders para o Bar Principal Norte"])
+    sugestao_acao: str = Field(..., examples=["Remanejar 2 orientadores de fluxo para o Corredor de Acesso Norte"])
     status: StatusDispatch = Field(..., examples=["EM_ANDAMENTO"])
     criado_em: datetime = Field(..., examples=["2026-10-14T20:30:00Z"])
     status_operacional_evento: StatusOperacional = Field(..., examples=["ACAO_EM_ANDAMENTO"])
@@ -359,14 +314,11 @@ class DispatchListResponseContract(ContratoEstrito):
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Módulo D — Painel do Estande, Mapa de Calor e Analytics (S01–S10)
+# Módulo C — Painel de Câmeras, Mapa de Calor e Analytics (S01–S10)
 # ════════════════════════════════════════════════════════════════════════════
 class IndicadoresZonaContract(ContratoEstrito):
     fila_pax: Optional[int] = Field(None, ge=0, examples=[6])
     tempo_espera_seg: Optional[int] = Field(None, ge=0, examples=[228])
-    estoque_pct: Optional[int] = Field(None, ge=0, le=100, examples=[42])
-    reposicao_min: Optional[int] = Field(None, ge=0, examples=[18])
-    retiradas: Optional[int] = Field(None, ge=0, examples=[48])
     variacao_pct: Optional[int] = Field(None, examples=[12])
     permanencia_media_seg: Optional[int] = Field(None, ge=0, examples=[204])
     reunioes_ativas: Optional[int] = Field(None, ge=0, examples=[1])
@@ -376,8 +328,8 @@ class IndicadoresZonaContract(ContratoEstrito):
 class ZonaStatusContract(ContratoEstrito):
     id: int = Field(..., gt=0, examples=[1])
     codigo_zona: str = Field(..., examples=["Z1"])
-    nome: str = Field(..., examples=["Z1 | Balcão Principal de Drinks"])
-    tipo: TipoZona = Field(..., examples=["BAR"])
+    nome: str = Field(..., examples=["Z1 | Acesso Estande Principal"])
+    tipo: TipoZona = Field(..., examples=["CATRACA"])
     area_m2: float = Field(..., gt=0, examples=[23.0])
     capacidade: int = Field(..., gt=0, examples=[40])
     indicadores: IndicadoresZonaContract
@@ -394,12 +346,10 @@ class PdvStatusResponseContract(ContratoEstrito):
 
 
 class ReadinessContract(ContratoEstrito):
-    sensores_ativos: int = Field(..., ge=0, examples=[5])
-    fontes_online_str: str = Field(..., examples=["6/6"])
-    cameras_neurais_ativas: int = Field(..., ge=0, examples=[12])
-    sensores_iot_barris: int = Field(..., ge=0, examples=[54])
+    sensores_ativos: int = Field(..., ge=0, examples=[7])
+    fontes_online_str: str = Field(..., examples=["7/7"])
+    cameras_neurais_ativas: int = Field(..., ge=0, examples=[7])
     lidar_fps: int = Field(..., ge=0, examples=[60])
-    estoque_inicial_ok: bool = Field(..., examples=[True])
     rota_livre_ok: bool = Field(..., examples=[True])
     motor_ia_online: bool = Field(..., examples=[True])
 
@@ -434,14 +384,12 @@ class AcumuladoEventoContract(ContratoEstrito):
     publico_acumulado: int = Field(..., ge=0, examples=[960])
     publico_por_dia: PublicoPorDiaContract
     atendimentos_cortesia: int = Field(..., ge=0, examples=[720])
-    bebidas_unidades: int = Field(..., ge=0, examples=[840])
-    autosservico_retiradas: int = Field(..., ge=0, examples=[660])
     engajamento_interacoes: int = Field(..., ge=0, examples=[360])
 
 
 class AnalyticsDropoffResponseContract(ContratoEstrito):
     window_time_min: int = Field(..., gt=0, description="Janela de tempo útil do visitante.", examples=[30])
-    queue_time_medio_min: float = Field(..., ge=0, description="Média das filas das zonas BAR.", examples=[7.08])
+    queue_time_medio_min: float = Field(..., ge=0, description="Média das filas das zonas de acesso/circulação.", examples=[7.08])
     density_point_atingido: bool = Field(..., description="Alguma zona em VERMELHO.", examples=[True])
     dropoff_rate_estimado_pct: float = Field(..., ge=0, le=100, examples=[28.9])
     ces_score: float = Field(..., ge=1, le=5, description="Customer Effort Score (1 = baixo esforço, 5 = alto).", examples=[3.0])
@@ -454,7 +402,7 @@ class AnalyticsDropoffResponseContract(ContratoEstrito):
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Módulo E — Tempo Real (WebSocket e SSE)
+# Módulo D — Tempo Real (WebSocket e SSE)
 # ════════════════════════════════════════════════════════════════════════════
 class EventoTempoRealContract(ContratoEstrito):
     tipo: TipoEvento = Field(..., examples=["leitura"])
@@ -463,49 +411,15 @@ class EventoTempoRealContract(ContratoEstrito):
     mensagem: Optional[str] = Field(None, examples=["Nova leitura TEMPO_REAL no PDV 1"])
     leitura: Optional[TelemetryReadingContract] = None
     dispatch: Optional[DispatchResponseContract] = None
-    reabastecimento: Optional[ReabastecimentoResponseContract] = None
     acionamento: Optional[AcionarFluxoResponseContract] = None
-    insumos: Optional[InsumosStatusResponseContract] = None
     readiness: Optional[ReadinessContract] = None
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Venue Tactical Suite UI — Atrações, Totens & Síntese Integrada
+# Venue Tactical Suite UI — Câmeras, Atrações Instagramáveis & Síntese
 # ════════════════════════════════════════════════════════════════════════════
-StatusAutosservico = Literal["operacional", "atencao", "critico", "manutencao"]
 StatusInstagramavel = Literal["ativo", "alta_procura", "limpeza", "pausado"]
 ModoIluminacao = Literal["Neon Pulsar", "Cyber Glow", "Golden Hour", "Studio Spotlight"]
-
-
-class ConsumoHoraContract(ContratoEstrito):
-    hora: str = Field(..., examples=["18h"])
-    transacoes: int = Field(..., ge=0, examples=[45])
-    receita: float = Field(..., ge=0.0, examples=[1350.0])
-
-
-class AutosservicoItemContract(ContratoEstrito):
-    id: str = Field(..., examples=["aut-01"])
-    codigo: str = Field(..., examples=["AUT-BEER-01"])
-    nome: str = Field(..., examples=["Beer Wall Master 01"])
-    tipoInsumo: str = Field(..., examples=["Chopp Artesanal IPA & Pilsen"])
-    setor: str = Field(..., examples=["Arena Principal"])
-    status: StatusAutosservico = Field(..., examples=["operacional"])
-    capacidadeTotalInsumo: float = Field(..., gt=0, examples=[500.0])
-    nivelAtualInsumo: float = Field(..., ge=0.0, examples=[385.0])
-    unidadeMedida: Literal["L", "un"] = Field("L", examples=["L"])
-    capacidadeCopos: int = Field(..., ge=0, examples=[600])
-    nivelCopos: int = Field(..., ge=0, examples=[490])
-    transacoesAcumuladas: int = Field(..., ge=0, examples=[612])
-    receitaTotal: float = Field(..., ge=0.0, examples=[18360.0])
-    ticketMedio: float = Field(..., ge=0.0, examples=[30.0])
-    tempoMedioAtendimentoSegundos: int = Field(..., ge=0, examples=[24])
-    pessoasNaFila: int = Field(..., ge=0, examples=[4])
-    tempoEstimadoEsperaMin: float = Field(..., ge=0.0, examples=[1.6])
-    temperaturaC: Optional[float] = Field(None, examples=[2.1])
-    pressaoPsi: Optional[float] = Field(None, examples=[14.2])
-    posicao3D: List[float] = Field(..., examples=[[-6.0, 0.0, 4.0]])
-    ultimoAbastecimento: str = Field(..., examples=["Há 45 min"])
-    consumoPorHora: List[ConsumoHoraContract] = Field(default_factory=list)
 
 
 class IluminacaoCenicaContract(ContratoEstrito):
@@ -543,30 +457,28 @@ class InstagramavelItemContract(ContratoEstrito):
     fotosRecentes: List[FotoRecenteContract] = Field(default_factory=list)
 
 
-class FaturamentoSetorContract(ContratoEstrito):
+class FluxoSetorContract(ContratoEstrito):
     setor: str = Field(..., examples=["Arena Principal"])
-    receita: float = Field(..., ge=0.0, examples=[18360.0])
-    volume: int = Field(..., ge=0, examples=[612])
-    pct: float = Field(..., ge=0.0, le=100.0, examples=[26.5])
+    volume: int = Field(..., ge=0, examples=[1800])
+    pct: float = Field(..., ge=0.0, le=100.0, examples=[35.2])
 
 
 class FluxoHorarioContract(ContratoEstrito):
     hora: str = Field(..., examples=["18h"])
-    autosservico: int = Field(..., ge=0, examples=[115])
+    acessosCameras: int = Field(..., ge=0, examples=[410])
     instagramavel: int = Field(..., ge=0, examples=[320])
-    receita: float = Field(..., ge=0.0, examples=[4725.0])
 
 
 class PrincipalAlertaContract(ContratoEstrito):
     id: str = Field(..., examples=["al-1"])
-    tipo: Literal["aviso", "urgente", "info"] = Field(..., examples=["aviso"])
-    mensagem: str = Field(..., examples=["Nível de Chopp Gin Tônica em 22% no Totem AUT-DRINK-02."])
+    tipo: Literal["aviso", "urgente", "info"] = Field(..., examples=["urgente"])
+    mensagem: str = Field(..., examples=["Concentração elevada captada pela câmera CAM-INT-01 no Corredor de Acesso Norte (84 pessoas)."])
     hora: str = Field(..., examples=["22:45"])
-    atracao: str = Field(..., examples=["Dispenser Cocktails & Gin 02"])
-    atracaoId: Optional[str] = Field(None, examples=["aut-02"])
-    direcionamento: str = Field(..., examples=["Despachar equipe de reabastecimento móvel..."])
-    impactoEstimado: Optional[str] = Field(None, examples=["Evita perda projetada de R$ 3.800..."])
-    acaoRapidaLabel: Optional[str] = Field(None, examples=["Despachar Reposição Móvel"])
+    atracao: str = Field(..., examples=["Corredor de Acesso Norte (CAM-INT-01)"])
+    atracaoId: Optional[str] = Field(None, examples=["cam-int-01"])
+    direcionamento: str = Field(..., examples=["Acionar 2 faixas adicionais de escoamento e redirecionar fluxo pelo Perímetro Leste."])
+    impactoEstimado: Optional[str] = Field(None, examples=["Reduz o tempo estimado de retenção em 40% nos próximos 10 minutos."])
+    acaoRapidaLabel: Optional[str] = Field(None, examples=["Abrir Faixas Extras"])
 
 
 class SinteseAcumuladaContract(ContratoEstrito):
@@ -574,23 +486,18 @@ class SinteseAcumuladaContract(ContratoEstrito):
     dataEvento: str = Field(..., examples=["19 de Outubro de 2026"])
     tempoDecorridoHoras: float = Field(..., ge=0.0, examples=[4.8])
     publicoTotalEstimadoVenue: int = Field(..., ge=0, examples=[18500])
-    totalAtendimentosGerais: int = Field(..., ge=0, examples=[5527])
-    receitaTotalAutosservico: float = Field(..., ge=0.0, examples=[69310.0])
+    totalAtendimentosGerais: int = Field(..., ge=0, examples=[6180])
+    camerasMonitoradasAtivas: int = Field(..., ge=0, examples=[7])
     totalCapturasInstagramavel: int = Field(..., ge=0, examples=[3860])
     alcanceTotalRedes: int = Field(..., ge=0, examples=[519000])
-    ticketMedioGeral: float = Field(..., ge=0.0, examples=[41.58])
-    vazaoMediaAtendimentosPorMin: float = Field(..., ge=0.0, examples=[18.4])
+    vazaoMediaAtendimentosPorMin: float = Field(..., ge=0.0, examples=[20.6])
     tempoMedioEsperaGlobalMin: float = Field(..., ge=0.0, examples=[4.2])
     satisfacaoGeralScore: float = Field(..., ge=0.0, le=5.0, examples=[4.91])
-    autosservicoPorStatus: Dict[str, int] = Field(..., examples=[{"operacional": 3, "atencao": 1, "critico": 0, "manutencao": 0}])
+    camerasPorStatus: Dict[str, int] = Field(..., examples=[{"operacional": 7, "atencao": 0, "critico": 0}])
     instagramavelPorStatus: Dict[str, int] = Field(..., examples=[{"ativo": 3, "alta_procura": 1, "limpeza": 0, "pausado": 0}])
-    faturamentoPorSetor: List[FaturamentoSetorContract] = Field(default_factory=list)
+    fluxoPorSetor: List[FluxoSetorContract] = Field(default_factory=list)
     fluxoHorario: List[FluxoHorarioContract] = Field(default_factory=list)
     principaisAlertas: List[PrincipalAlertaContract] = Field(default_factory=list)
-
-
-class TransacaoRequestContract(ContratoEstrito):
-    valor: float = Field(30.0, gt=0, description="Valor da transação em reais.", examples=[30.0])
 
 
 class ModoLuzRequestContract(ContratoEstrito):
@@ -598,13 +505,13 @@ class ModoLuzRequestContract(ContratoEstrito):
 
 
 class CriarAtracaoRequestContract(ContratoEstrito):
-    tipo: Literal["autosservico", "instagramavel"] = Field(..., examples=["autosservico"])
-    nome: str = Field(..., min_length=2, max_length=100, examples=["Beer Wall 05 - Express"])
+    tipo: Literal["instagramavel"] = Field("instagramavel", examples=["instagramavel"])
+    nome: str = Field(..., min_length=2, max_length=100, examples=["Portal Holográfico Arena"])
     setor: str = Field("Arena Principal", examples=["Arena Principal"])
-    insumoOuPatrocinador: Optional[str] = Field(None, examples=["Chopp IPA 500ml"])
+    patrocinador: Optional[str] = Field(None, examples=["Marca Parceira"])
 
 
-TipoCameraHardware = Literal["entrada_perimetro", "fb_liquid"]
+TipoCameraHardware = Literal["entrada_perimetro", "fluxo_interno", "fb_liquid"]
 StatusCameraHardware = Literal["operacional", "atencao", "critico"]
 
 
