@@ -236,9 +236,9 @@ async def simular_pico(usuario: UsuarioAutenticado = Depends(exigir_operacao)):
     "/venue/cameras",
     response_model=CamerasResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Telemetria em tempo real das 7 câmeras de monitoramento de gargalos (4 Entradas + 3 Fluxo Interno)",
+    summary="Telemetria em tempo real das 7 câmeras de monitoramento de gargalos (4 Entradas + 3 Fluxo)",
     description=(
-        "Retorna todas as 7 câmeras de hardware (`CAM-ENT-01`..`04` de acesso/perímetro e `CAM-INT-01`..`03` de fluxo interno), "
+        "Retorna todas as 7 câmeras de hardware (`CAM-ENT-01`..`04` de acesso/perímetro e `CAM-FLUXO-01`..`03` de fluxo interno), "
         "incluindo coordenadas 3D (`posicao`, `alvo`), taxa de quadros (`fps`), métricas operacionais e a respectiva "
         "`zona` com `ultima_leitura` completa (contagem de pessoas, tempo de espera, densidade/m² e confiança da IA)."
     ),
@@ -262,7 +262,7 @@ async def listar_cameras(usuario: UsuarioAutenticado = Depends(exigir_leitura)) 
     response_model=CameraTelemetryItemContract,
     status_code=status.HTTP_200_OK,
     summary="Telemetria detalhada de uma câmera de hardware específica",
-    description="Consulta uma câmera individual pelo seu ID (`cam-ent-01`..`04` ou `cam-int-01`..`03`).",
+    description="Consulta uma câmera individual pelo seu ID (`cam-ent-01`..`04` ou `cam-fluxo-01`..`03`).",
     dependencies=[Depends(sem_query_params)],
 )
 async def obter_camera(

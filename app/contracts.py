@@ -472,10 +472,10 @@ class FluxoHorarioContract(ContratoEstrito):
 class PrincipalAlertaContract(ContratoEstrito):
     id: str = Field(..., examples=["al-1"])
     tipo: Literal["aviso", "urgente", "info"] = Field(..., examples=["urgente"])
-    mensagem: str = Field(..., examples=["Concentração elevada captada pela câmera CAM-INT-01 no Corredor de Acesso Norte (84 pessoas)."])
+    mensagem: str = Field(..., examples=["Concentração elevada captada pela câmera CAM-FLUXO-01 no Corredor de Acesso Norte (84 pessoas)."])
     hora: str = Field(..., examples=["22:45"])
-    atracao: str = Field(..., examples=["Corredor de Acesso Norte (CAM-INT-01)"])
-    atracaoId: Optional[str] = Field(None, examples=["cam-int-01"])
+    atracao: str = Field(..., examples=["Controlo de Acesso & Densidade Oeste (CAM-FLUXO-01)"])
+    atracaoId: Optional[str] = Field(None, examples=["cam-fluxo-01"])
     direcionamento: str = Field(..., examples=["Acionar 2 faixas adicionais de escoamento e redirecionar fluxo pelo Perímetro Leste."])
     impactoEstimado: Optional[str] = Field(None, examples=["Reduz o tempo estimado de retenção em 40% nos próximos 10 minutos."])
     acaoRapidaLabel: Optional[str] = Field(None, examples=["Abrir Faixas Extras"])

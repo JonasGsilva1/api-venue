@@ -416,7 +416,7 @@ def test_venue_sintese_e_simular_pico():
     assert sintese["totalAtendimentosGerais"] > 0
     alertas = sintese["principaisAlertas"]
     assert len(alertas) >= 2
-    assert any(a["atracaoId"] == "cam-int-01" for a in alertas)
+    assert any(a["atracaoId"] == "cam-fluxo-01" for a in alertas)
 
     # Simular pico
     r_pico = client.post("/api/v1/venue/simular-pico", headers=AUTH_HEADER)
@@ -448,17 +448,23 @@ def test_venue_cameras_endpoint_dedicado():
     assert cam_ent["tipo"] == "entrada_perimetro"
     assert cam_ent["zona"]["ultima_leitura"]["contagem_pessoas"] == 18
 
-    r_detalhe = client.get("/api/v1/venue/cameras/cam-int-01", headers=AUTH_HEADER)
+    cam_fluxo = next(c for c in dados["cameras"] if c["id"] == "cam-fluxo-01")
+    assert cam_fluxo["codigo"] == "CAM-FLUXO-01"
+    assert cam_fluxo["zona"]["id"] == 5
+
+    r_detalhe = client.get("/api/v1/venue/cameras/cam-fluxo-01", headers=AUTH_HEADER)
     assert r_detalhe.status_code == 200
     detalhe = r_detalhe.json()
-    assert detalhe["codigo"] == "CAM-INT-01"
+    assert detalhe["codigo"] == "CAM-FLUXO-01"
     assert detalhe["tipo"] == "fluxo_interno"
     assert detalhe["zona"]["id"] == 5
 
-    # Alias cam-fb-01..03 usado no mapa de câmeras do frontend original
-    r_alias = client.get("/api/v1/venue/cameras/cam-fb-01", headers=AUTH_HEADER)
-    assert r_alias.status_code == 200
-    assert r_alias.json()["zona"]["id"] == 5
+    # Aliases de retrocompatibilidade (cam-int-01..03 e cam-fb-01..03)
+    for alias in ("cam-int-01", "cam-fb-01"):
+        r_alias = client.get(f"/api/v1/venue/cameras/{alias}", headers=AUTH_HEADER)
+        assert r_alias.status_code == 200
+        assert r_alias.json()["id"] == "cam-fluxo-01"
+        assert r_alias.json()["zona"]["id"] == 5
 
 
 def test_compatibilidade_frontend_campos_adaptados():
