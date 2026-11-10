@@ -22,7 +22,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### Terminal 2 — Worker de Visão Computacional YOLOv8:
 ```powershell
-cd eventoai-main-mecanism-ia/eventoai-main
+cd eventoai-main-mecanism-ia
 python video_analyzer.py
 ```
 Opções úteis do `video_analyzer.py`:
@@ -32,6 +32,6 @@ Opções úteis do `video_analyzer.py`:
 
 ### Alternativa — Simulador de Cenários (S01–S10):
 ```powershell
-cd eventoai-main-mecanism-ia/eventoai-main
+cd eventoai-main-mecanism-ia
 python simulator.py
 ```

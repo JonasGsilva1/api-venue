@@ -5,7 +5,6 @@ import {
   Thermometer, 
   Gauge, 
   RefreshCw, 
-  PlayCircle, 
   Wrench, 
   ChevronDown, 
   ChevronUp, 
@@ -19,7 +18,6 @@ import type { AutosservicoItem, StatusAutosservico } from '../types/venue';
 interface AutosservicoCardProps {
   item: AutosservicoItem;
   isSelected?: boolean;
-  onSimularTransacao: (id: string, valor?: number) => void;
   onReabastecer: (id: string) => void;
   onToggleManutencao: (id: string) => void;
   onSelectIn3D?: (id: string) => void;
@@ -28,33 +26,15 @@ interface AutosservicoCardProps {
 export const AutosservicoCard: React.FC<AutosservicoCardProps> = ({
   item,
   isSelected = false,
-  onSimularTransacao,
   onReabastecer,
   onToggleManutencao,
   onSelectIn3D,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [dispensando, setDispensando] = useState(false);
   const [toastFeedback, setToastFeedback] = useState<string | null>(null);
 
   const pctInsumo = Math.round((item.nivelAtualInsumo / item.capacidadeTotalInsumo) * 100);
   const pctCopos = Math.round((item.nivelCopos / item.capacidadeCopos) * 100);
-
-  const handleDispense = () => {
-    if (item.status === 'manutencao' || item.nivelAtualInsumo <= 0) {
-      setToastFeedback('Terminal indisponível no momento');
-      setTimeout(() => setToastFeedback(null), 2500);
-      return;
-    }
-    setDispensando(true);
-    setToastFeedback('Dispensando chopp/item...');
-    setTimeout(() => {
-      onSimularTransacao(item.id, item.ticketMedio);
-      setDispensando(false);
-      setToastFeedback('Transação concluída com sucesso!');
-      setTimeout(() => setToastFeedback(null), 2500);
-    }, 500);
-  };
 
   const handleRefill = () => {
     onReabastecer(item.id);
@@ -320,15 +300,6 @@ export const AutosservicoCard: React.FC<AutosservicoCardProps> = ({
             <span className="hidden sm:inline">
               {item.status === 'manutencao' ? 'Reativar' : 'Pausar'}
             </span>
-          </button>
-
-          <button
-            onClick={handleDispense}
-            disabled={dispensando || item.status === 'manutencao' || item.nivelAtualInsumo <= 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed rounded-lg shadow-md shadow-emerald-500/20 transition-all active:scale-95"
-          >
-            <PlayCircle className={`w-3.5 h-3.5 ${dispensando ? 'animate-spin' : ''}`} />
-            <span>{dispensando ? 'Dispensando...' : 'Venda Express'}</span>
           </button>
         </div>
       </div>

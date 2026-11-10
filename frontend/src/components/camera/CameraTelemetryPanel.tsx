@@ -2,6 +2,8 @@ import React from 'react';
 import { Camera, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useCameraTelemetry } from '../../hooks/useCameraTelemetry';
 import type { CameraTelemetria } from '../../hooks/useCameraTelemetry';
+import { STATUS_FLUXO } from '../Venue3DScene';
+import type { StatusFluxo } from '../Venue3DScene';
 import { formatarDuracao, separarNome } from '../../utils/publico';
 import { SeloSimulado } from '../publico/SeloSimulado';
 
@@ -13,7 +15,7 @@ const COR_STATUS = {
 
 const ROTULO_TIPO = {
   entrada_perimetro: 'Entrada',
-  fb_liquid: 'F&B',
+  fluxo_densidade: 'Fluxo',
 } as const;
 
 // "Z1 | Balcão Principal de Drinks" vira "Z1 · Balcão Principal de Drinks".
@@ -35,6 +37,14 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
   const { camera, zona } = item;
   const leitura = zona?.ultima_leitura ?? null;
   const semZona = zona === null;
+  const statusFluxo: StatusFluxo = leitura
+    ? leitura.status_cor === 'VERDE'
+      ? 'operacional'
+      : leitura.status_cor === 'AMARELO'
+        ? 'atencao'
+        : 'critico'
+    : camera.status;
+  const seloStatus = STATUS_FLUXO[statusFluxo];
 
   return (
     <div className="rounded-xl border border-cyan-900/60 bg-[#0d1527] p-3.5 space-y-2.5">
@@ -59,16 +69,20 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
         ) : null}
       </div>
 
+      <div>
+        <span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-bold tracking-wide ${seloStatus.classes}`}>
+          {seloStatus.rotulo}
+        </span>
+      </div>
+
       {leitura && zona ? (
         <div className="space-y-1">
           <Linha rotulo="Zona" valor={nomeCurto(zona.nome)} />
           <Linha rotulo="Pessoas" valor={`${leitura.contagem_pessoas} / ${zona.capacidade}`} />
           <Linha rotulo="Espera" valor={formatarDuracao(leitura.tempo_espera_seg)} />
           <Linha rotulo="Densidade" valor={`${leitura.densidade_m2.toFixed(2)} pess./m²`} />
+          <Linha rotulo="Taxa de passagem" valor={`${camera.metricas.taxaPassagemPessoasMinuto} pessoas/min`} />
           <Linha rotulo="Confiança IA" valor={`${Math.round(leitura.confianca_ia * 100)}%`} />
-          {leitura.alerta_ruptura_estoque && (
-            <p className="text-[11px] font-semibold text-rose-300">Alerta de ruptura de estoque</p>
-          )}
           {leitura.modo_leitura !== 'TEMPO_REAL' && (
             <p className="text-[10px] text-amber-300">Leitura em contingência: {leitura.modo_leitura}</p>
           )}
@@ -86,7 +100,16 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
             {!carregando && <SeloSimulado detalhe="Valores fictícios do hardware: a API não mede esta câmera." />}
           </div>
           {!carregando && (
-            <Linha rotulo={camera.metricas.rotulo} valor={camera.metricas.valor} />
+            <div className="space-y-1">
+              <Linha
+                rotulo="Pessoas / Densidade"
+                valor={`${camera.metricas.contagemPessoas} pessoas / ${camera.metricas.densidadePessoasM2.toFixed(1)} p/m²`}
+              />
+              <Linha
+                rotulo="Taxa de passagem"
+                valor={`${camera.metricas.taxaPassagemPessoasMinuto} pessoas/min`}
+              />
+            </div>
           )}
         </div>
       )}
@@ -94,7 +117,7 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
   );
 };
 
-// Painel com a telemetria das 7 câmeras (4 de entrada e 3 de F&B), lida da API.
+// Painel com a telemetria das 7 câmeras (4 de entrada e 3 de fluxo), lida da API.
 export const CameraTelemetryPanel: React.FC = () => {
   const { cameras, loading, error, atualizadoEm, refetch } = useCameraTelemetry();
 
@@ -107,7 +130,7 @@ export const CameraTelemetryPanel: React.FC = () => {
             <span>Telemetria das Câmeras ({cameras.length})</span>
           </h2>
           <p className="text-xs text-slate-400">
-            Leitura por zona da API: pessoas, espera e densidade. Câmeras sem zona usam valores fictícios.
+            Leitura por zona da API: pessoas, espera e densidade. Câmeras sem zona usam valores simulados de fluxo.
           </p>
         </div>
         <div className="flex items-center gap-2">

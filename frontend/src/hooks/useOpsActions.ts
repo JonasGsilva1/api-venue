@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
-import { getPdvStatus, mensagemDeErro, postDespacho, postTransacaoAutosservico } from '../services/venueApi';
+import { getPdvStatus, mensagemDeErro, postDespacho } from '../services/venueApi';
 import type { NivelCritico } from '../types/ops';
 import type { PdvStatusItem } from '../types/publico';
-import type { AutosservicoItem } from '../types/venue';
 import { separarNome } from '../utils/publico';
 
 export interface OpsFeedback {
@@ -29,12 +28,11 @@ function zonaMaisCritica(zonas: PdvStatusItem[]): PdvStatusItem | null {
 }
 
 /**
- * Ações operacionais que falam com a API de verdade:
- * - despachoOps: registra uma intervenção para a zona mais crítica (POST /ops/dispatch);
- * - vendaExpress: registra uma venda no totem de autosserviço (POST /venue/autosservico/{id}/transacao).
+ * Ação operacional que fala com a API de verdade:
+ * - despachoOps: registra uma intervenção para a zona mais crítica (POST /ops/dispatch).
  */
 export function useOpsActions() {
-  const [ocupado, setOcupado] = useState<'despacho' | 'venda' | null>(null);
+  const [ocupado, setOcupado] = useState<'despacho' | null>(null);
   const [feedback, setFeedback] = useState<OpsFeedback | null>(null);
 
   const despachoOps = useCallback(async () => {
@@ -65,23 +63,7 @@ export function useOpsActions() {
     }
   }, []);
 
-  /** Devolve o totem atualizado pela API, ou null se a chamada falhou. */
-  const vendaExpress = useCallback(async (id: string, valor: number): Promise<AutosservicoItem | null> => {
-    setOcupado('venda');
-    setFeedback({ tipo: 'info', texto: 'Registrando venda na API...' });
-    try {
-      const totem = await postTransacaoAutosservico(id, valor);
-      setFeedback({ tipo: 'ok', texto: `Venda registrada na API em ${totem.nome}.` });
-      return totem;
-    } catch (err) {
-      setFeedback({ tipo: 'erro', texto: `${mensagemDeErro(err)} A venda ficou só na tela.` });
-      return null;
-    } finally {
-      setOcupado(null);
-    }
-  }, []);
-
   const limparFeedback = useCallback(() => setFeedback(null), []);
 
-  return { ocupado, feedback, despachoOps, vendaExpress, limparFeedback };
+  return { ocupado, feedback, despachoOps, limparFeedback };
 }

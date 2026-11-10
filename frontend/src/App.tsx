@@ -4,14 +4,11 @@ import {
   RefreshCw,
   Radio,
   Plus,
-  Layers3,
   Bot,
   Compass,
-  Beer,
   Camera,
   X
 } from 'lucide-react';
-import { AutosservicoCard } from './components/AutosservicoCard';
 import { InstagramavelCard } from './components/InstagramavelCard';
 import { Venue3DScene } from './components/Venue3DScene';
 import { SinteseAcumulada } from './components/SinteseAcumulada';
@@ -25,7 +22,7 @@ import { gerarAlertasPreditivos } from './utils/predicao';
 import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
 
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
-import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
+import type { AutosservicoItem, InstagramavelItem } from './types/venue';
 
 export interface ZoneData {
   id: string;
@@ -54,7 +51,7 @@ export function getHeatmapColor(occupancy: number): string {
 export default function App() {
   const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
   const [instas, setInstas] = useState<InstagramavelItem[]>(INITIAL_INSTAGRAMAVEL);
-  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'predicao' | 'mapa'>('tudo');
+  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'instagramavel' | 'predicao' | 'mapa'>('tudo');
   const [show3DMap, setShow3DMap] = useState(true);
   const [selectedAtracaoId, setSelectedAtracaoId] = useState<string | null>(null);
   const [filtroSetor, setFiltroSetor] = useState<string | null>(null);
@@ -63,7 +60,7 @@ export default function App() {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('10s');
   const [lastUpdate, setLastUpdate] = useState('04:15:40');
   const [pingLatency, setPingLatency] = useState(431);
-  const { ocupado, feedback, despachoOps, vendaExpress, limparFeedback } = useOpsActions();
+  const { ocupado, feedback, despachoOps, limparFeedback } = useOpsActions();
 
   const [novoTipo, setNovoTipo] = useState<'autosservico' | 'instagramavel'>('autosservico');
   const [formNome, setFormNome] = useState('');
@@ -146,34 +143,17 @@ export default function App() {
   }, [intervaloMs]);
 
   const sinteseBase = computeSinteseAcumulada(autos, instas);
-  // Alertas da IA primeiro, depois os alertas fixos já existentes
+  const idsAutosservico = new Set(autos.map((auto) => auto.id));
+  const alertasFocadosEmFluxo = [...alertasPreditivos, ...sinteseBase.principaisAlertas].filter((alerta) => {
+    const atracaoId = alerta.atracaoId ?? '';
+    const ligadoAUmTotem = idsAutosservico.has(atracaoId) || atracaoId.startsWith('aut-');
+    const previsaoDeTotem = alerta.id.startsWith('pred-aut-');
+    return !ligadoAUmTotem && !previsaoDeTotem;
+  });
   const sinteseData = {
     ...sinteseBase,
-    principaisAlertas: [...alertasPreditivos, ...sinteseBase.principaisAlertas],
+    principaisAlertas: alertasFocadosEmFluxo,
   };
-  const handleSimularTransacao = (id: string, valor = 30) => {
-    setAutos((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const novoNivel = Math.max(0, item.nivelAtualInsumo - 0.5);
-        const novoCopos = Math.max(0, item.nivelCopos - 1);
-        const novasTransacoes = item.transacoesAcumuladas + 1;
-        const novaReceita = item.receitaTotal + valor;
-        const novoStatus: StatusAutosservico =
-          novoNivel <= 20 ? 'critico' : novoNivel <= 70 ? 'atencao' : item.status === 'manutencao' ? 'manutencao' : 'operacional';
-
-        return {
-          ...item,
-          nivelAtualInsumo: novoNivel,
-          nivelCopos: novoCopos,
-          transacoesAcumuladas: novasTransacoes,
-          receitaTotal: novaReceita,
-          status: novoStatus,
-        };
-      })
-    );
-  };
-
   const handleReabastecer = (id: string) => {
     setAutos((prev) =>
       prev.map((item) => {
@@ -188,18 +168,6 @@ export default function App() {
             ((Math.max(1, Math.floor(item.pessoasNaFila / 2)) * item.tempoMedioAtendimentoSegundos) / 60).toFixed(1),
           ),
           ultimoAbastecimento: 'Agora mesmo',
-        };
-      })
-    );
-  };
-
-  const handleToggleManutencao = (id: string) => {
-    setAutos((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        return {
-          ...item,
-          status: item.status === 'manutencao' ? 'operacional' : 'manutencao',
         };
       })
     );
@@ -319,18 +287,6 @@ export default function App() {
             : i
         )
       );
-    } else if (alertaId === 'al-3') {
-      setAutos((prev) =>
-        prev.map((a) =>
-          a.id === 'aut-03'
-            ? {
-              ...a,
-              transacoesAcumuladas: a.transacoesAcumuladas + 35,
-              receitaTotal: a.receitaTotal + 1575,
-            }
-            : a
-        )
-      );
     }
   };
 
@@ -402,7 +358,6 @@ export default function App() {
     setShowAddModal(false);
   };
 
-  const filteredAutos = filtroSetor ? autos.filter((a) => a.setor === filtroSetor) : autos;
   const filteredInstas = filtroSetor ? instas.filter((i) => i.setor === filtroSetor) : instas;
 
   return (
@@ -502,15 +457,6 @@ export default function App() {
                   }`}
               >
                 <span>Mapa & Arena</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('autosservico')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'autosservico' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                  }`}
-              >
-                <Layers3 className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Zonas & Telemetria ({autos.length})</span>
               </button>
 
               <button
@@ -614,49 +560,6 @@ export default function App() {
           <div className="animate-in fade-in duration-200">
             <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
           </div>
-        )}
-
-        {/* Seção 2: Totens de Autosserviço */}
-        {(activeTab === 'tudo' || activeTab === 'autosservico') && (
-          <section className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  <Beer className="w-5 h-5 text-cyan-400" />
-                  <span>Totens de Autosserviço (F&B / Chopp / Kiosks)</span>
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Monitoramento de telemetria, pressão CO2, volume restante e transações registradas.
-                </p>
-              </div>
-              <span className="text-xs text-cyan-400 font-mono font-bold">
-                {filteredAutos.length} de {autos.length} totens ativos
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredAutos.map((item) => (
-                <AutosservicoCard
-                  key={item.id}
-                  item={item}
-                  isSelected={selectedAtracaoId === item.id}
-                  onSimularTransacao={(id, valor) => {
-                    handleSimularTransacao(id, valor);
-                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
-                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
-                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
-                    });
-                  }}
-                  onReabastecer={handleReabastecer}
-                  onToggleManutencao={handleToggleManutencao}
-                  onSelectIn3D={(id) => {
-                    setSelectedAtracaoId(id);
-                    setShow3DMap(true);
-                  }}
-                />
-              ))}
-            </div>
-          </section>
         )}
 
         {/* Seção 3: Pontos Instagramáveis */}
@@ -782,7 +685,6 @@ export default function App() {
                 >
                   <option value="Arena Principal">Arena Principal</option>
                   <option value="Palco Sunset">Palco Sunset</option>
-                  <option value="Vila Gastronômica">Vila Gastronômica</option>
                   <option value="Camarote VIP">Camarote VIP</option>
                   <option value="Vila das Marcas">Vila das Marcas</option>
                 </select>

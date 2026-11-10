@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { api } from './api';
 import type { PdvStatusItem, PdvStatusResponse, TelemetryReading } from '../types/publico';
-import type { AutosservicoItem } from '../types/venue';
 import type {
+  CamerasResponseV2,
   OperationalDispatchRequest,
   OperationalDispatchResponse,
   PdvStatusResponseV2,
@@ -65,6 +65,16 @@ export async function getPdvStatus(signal?: AbortSignal): Promise<PdvStatusRespo
   return Array.isArray(data) ? data : data.zonas.map(normalizarZona);
 }
 
+/** Zona e última leitura de cada câmera de hardware, indexadas pelo id da câmera (ex.: "cam-ent-01"). */
+export async function getCameras(signal?: AbortSignal): Promise<Record<string, PdvStatusItem>> {
+  const { data } = await api.get<CamerasResponseV2>('/api/v1/venue/cameras', {
+    signal,
+    headers: authHeaders(),
+    timeout: TIMEOUT_MS,
+  });
+  return Object.fromEntries(data.cameras.map((c) => [c.id, normalizarZona(c.zona)]));
+}
+
 /** Registra uma intervenção operacional humana. */
 export async function postDespacho(
   body: OperationalDispatchRequest,
@@ -73,16 +83,6 @@ export async function postDespacho(
     headers: authHeaders(),
     timeout: TIMEOUT_MS,
   });
-  return data;
-}
-
-/** Registra uma venda no totem de autosserviço (Venda Express) e devolve o totem atualizado. */
-export async function postTransacaoAutosservico(id: string, valor: number): Promise<AutosservicoItem> {
-  const { data } = await api.post<AutosservicoItem>(
-    `/api/v1/venue/autosservico/${encodeURIComponent(id)}/transacao`,
-    { valor },
-    { headers: authHeaders(), timeout: TIMEOUT_MS },
-  );
   return data;
 }
 

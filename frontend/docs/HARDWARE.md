@@ -9,20 +9,24 @@ Este documento detalha o inventário de hardware, o fluxo de dados, os modos de 
 
 | Código da Câmera | Nome / Descrição | Setor / Localização | FPS Padrão | Posição no Ambiente (3D) | Status da Métrica |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **CAM-FB-01** | Câmera Principal F&B | Praça de Alimentação | 30 FPS | Coordenadas 3D (Setor Norte) | Simulada (Fixa) |
-| **CAM-FB-02** | Câmera Bar Chopeira | Bar Central (Pressão: ~32 PSI / ~2.2 bar) | 30 FPS | Coordenadas 3D (Setor Central) | Simulada (Fixa) |
-| **CAM-ENT-01** | Câmera Acesso Principal | Entrada / Recepção | 30 FPS | Coordenadas 3D (Portal Norte) | Simulada (Fixa) |
+| **CAM-ENT-01** | Câmera de Acesso Portão A | Acesso / Perímetro Norte | 30 FPS | Coordenadas 3D (Setor Norte) | Simulada (Fixa) |
+| **CAM-ENT-02** | Câmera de Acesso VIP | Acesso / VIP | 30 FPS | Coordenadas 3D (Setor Norte) | Simulada (Fixa) |
+| **CAM-ENT-03** | Câmera de Acesso Geral | Acesso / Geral | 30 FPS | Coordenadas 3D (Setor Norte) | Simulada (Fixa) |
+| **CAM-ENT-04** | Câmera de Acesso Leste | Acesso / Leste | 30 FPS | Coordenadas 3D (Setor Norte) | Simulada (Fixa) |
+| **CAM-FLUXO-01** | Controlo de Acesso & Densidade Oeste | Controlo de Acesso & Densidade Oeste | 60 FPS | Coordenadas 3D (Setor Oeste) | Simulada (Fixa) |
+| **CAM-FLUXO-02** | Controlo de Acesso & Densidade Central | Controlo de Acesso & Densidade Central | 60 FPS | Coordenadas 3D (Setor Central) | Simulada (Fixa) |
+| **CAM-FLUXO-03** | Controlo de Acesso & Densidade Leste | Controlo de Acesso & Densidade Leste | 60 FPS | Coordenadas 3D (Setor Leste) | Simulada (Fixa) |
 
 > **Nota de Implementação:** Atualmente, as métricas exibidas pelas câmeras são strings/valores fixos simulados no código-fonte do front-end.
 
 ---
 
-## 2. Sensores dos Totens de Autosserviço
-*Extraído das definições de `AutosservicoItem` em `src/types/venue.ts`.*
+## 2. Métricas de Fluxo de Pessoas
+*Exibidas na telemetria das câmeras interativas da Arena 3D.*
 
-* **Temperatura do Chiller:** Monitoramento térmico operacional dos barris/chillers de autosserviço (faixa ideal: 2°C a 4°C).
-* **Pressão de CO₂ (Padronizada em PSI):** Leituras de pressão estabilizadas para extração correta de bebidas (conversão padronizada de bar para PSI: $1 \text{ bar} \approx 14.5 \text{ PSI}$).
-* **Nível de Insumo:** Percentual volumétrico remanescente nos reservatórios dos totens (0% a 100%).
+* **Contagem e densidade:** pessoas identificadas no setor e pessoas por metro quadrado.
+* **Taxa de passagem:** quantidade de pessoas que atravessa o setor por minuto.
+* **Nível de lotação:** estado operacional apresentado como fluxo normal, atenção ou lotação crítica.
 
 ---
 

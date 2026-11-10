@@ -49,6 +49,25 @@ export interface ZonaStatusV2 {
   localizacao_geo?: string | null;
 }
 
+// GET /api/v1/venue/cameras: cada câmera de hardware já vem com a zona e a última leitura dela.
+export interface CameraApiItem {
+  id: string;
+  codigo: string;
+  nome: string;
+  tipo: 'entrada_perimetro' | 'fb_liquid';
+  setor: string;
+  status: 'operacional' | 'atencao' | 'critico';
+  fps: number;
+  zona: ZonaStatusV2;
+}
+
+export interface CamerasResponseV2 {
+  total_cameras: number;
+  cameras_online: number;
+  atualizado_em: string;
+  cameras: CameraApiItem[];
+}
+
 export interface PdvStatusResponseV2 {
   total_zonas: number;
   status_operacional_evento: 'ESTAVEL' | 'ACAO_EM_ANDAMENTO';

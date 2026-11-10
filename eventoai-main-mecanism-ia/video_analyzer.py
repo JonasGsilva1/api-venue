@@ -96,7 +96,7 @@ def localizar_arquivo_video(video_arg: str) -> Optional[str]:
     candidatos = [
         Path(video_arg),
         Path(__file__).resolve().parent / video_arg,
-        Path(__file__).resolve().parent.parent.parent / video_arg,
+        Path(__file__).resolve().parent.parent / video_arg,
     ]
     for caminho in candidatos:
         if caminho.is_file():

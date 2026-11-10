@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { HARDWARE_CAMERAS } from '../components/Venue3DScene';
 import type { HardwareCamera } from '../components/Venue3DScene';
-import { CAMERA_PDV_MAP } from '../config/cameraPdvMap';
-import { getPdvStatus, mensagemDeErro } from '../services/venueApi';
+import { getCameras, mensagemDeErro } from '../services/venueApi';
 import type { PdvStatusItem } from '../types/publico';
 
 const INTERVALO_PADRAO_MS = 10_000;
@@ -22,11 +21,11 @@ export interface CameraTelemetryState {
 }
 
 /**
- * Lê a telemetria das 7 câmeras a partir das zonas da API (pdv/status).
+ * Lê a telemetria das 7 câmeras na API (GET /api/v1/venue/cameras), que já liga cada câmera à sua zona.
  * Repete a busca sozinho, pausa com a aba escondida e mantém os últimos dados em caso de erro.
  */
 export function useCameraTelemetry(intervaloMs: number = INTERVALO_PADRAO_MS): CameraTelemetryState {
-  const [zonas, setZonas] = useState<PdvStatusItem[]>([]);
+  const [zonas, setZonas] = useState<Record<string, PdvStatusItem>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
@@ -48,7 +47,7 @@ export function useCameraTelemetry(intervaloMs: number = INTERVALO_PADRAO_MS): C
 
     async function carregar() {
       try {
-        const dados = await getPdvStatus(signal);
+        const dados = await getCameras(signal);
         if (signal.aborted) return;
         setZonas(dados);
         setAtualizadoEm(new Date());
@@ -68,10 +67,10 @@ export function useCameraTelemetry(intervaloMs: number = INTERVALO_PADRAO_MS): C
     };
   }, [intervaloMs, tentativa]);
 
-  const cameras: CameraTelemetria[] = HARDWARE_CAMERAS.map((camera) => {
-    const pdvId = CAMERA_PDV_MAP[camera.id] ?? null;
-    return { camera, zona: pdvId === null ? null : (zonas.find((z) => z.id === pdvId) ?? null) };
-  });
+  const cameras: CameraTelemetria[] = HARDWARE_CAMERAS.map((camera) => ({
+    camera,
+    zona: zonas[camera.id] ?? null,
+  }));
 
   return { cameras, loading, error, atualizadoEm, refetch };
 }

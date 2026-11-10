@@ -12,13 +12,35 @@ import {
   ChevronUp,
   Camera,
   X,
-  Activity,
   Radio,
   Eye,
 } from 'lucide-react';
 import { HeatmapLegendControls } from './HeatmapLegendControls';
 
-export type TipoCamera = 'entrada_perimetro' | 'fb_liquid';
+export type TipoCamera = 'entrada_perimetro' | 'fluxo_densidade';
+
+export type StatusFluxo = 'operacional' | 'atencao' | 'critico';
+
+export interface MetricasFluxo {
+  contagemPessoas: number;
+  densidadePessoasM2: number;
+  taxaPassagemPessoasMinuto: number;
+}
+
+export const STATUS_FLUXO: Record<StatusFluxo, { rotulo: string; classes: string }> = {
+  operacional: {
+    rotulo: 'FLUXO NORMAL',
+    classes: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+  },
+  atencao: {
+    rotulo: 'ATENÇÃO',
+    classes: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  },
+  critico: {
+    rotulo: 'LOTAÇÃO CRÍTICA',
+    classes: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+  },
+};
 
 export interface HardwareCamera {
   id: string;
@@ -28,14 +50,16 @@ export interface HardwareCamera {
   setor: string;
   posicao: [number, number, number];
   alvo: [number, number, number];
-  status: 'operacional' | 'atencao' | 'critico';
+  status: StatusFluxo;
   fps: number;
-  metricas: {
-    rotulo: string;
-    valor: string;
-    detalhe?: string;
-  };
+  metricas: MetricasFluxo;
 }
+
+const metricasFluxo = (
+  contagemPessoas: number,
+  densidadePessoasM2: number,
+  taxaPassagemPessoasMinuto: number
+): MetricasFluxo => ({ contagemPessoas, densidadePessoasM2, taxaPassagemPessoasMinuto });
 
 export const HARDWARE_CAMERAS: HardwareCamera[] = [
   {
@@ -48,11 +72,7 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     alvo: [-4, 0, 12],
     status: 'operacional',
     fps: 30,
-    metricas: {
-      rotulo: 'Fluxo Acesso',
-      valor: '380 pess/h',
-      detalhe: 'Tempo fila: 1.5 min',
-    },
+    metricas: metricasFluxo(86, 0.6, 32),
   },
   {
     id: 'cam-ent-02',
@@ -64,11 +84,7 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     alvo: [-1, 0, 12],
     status: 'operacional',
     fps: 30,
-    metricas: {
-      rotulo: 'Fluxo VIP',
-      valor: '120 pess/h',
-      detalhe: 'Tempo fila: 0.5 min',
-    },
+    metricas: metricasFluxo(34, 0.4, 12),
   },
   {
     id: 'cam-ent-03',
@@ -80,11 +96,7 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     alvo: [1, 0, 12],
     status: 'operacional',
     fps: 30,
-    metricas: {
-      rotulo: 'Fluxo Geral',
-      valor: '490 pess/h',
-      detalhe: 'Tempo fila: 2.8 min',
-    },
+    metricas: metricasFluxo(196, 1.3, 54),
   },
   {
     id: 'cam-ent-04',
@@ -96,59 +108,43 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     alvo: [4, 0, 12],
     status: 'operacional',
     fps: 30,
-    metricas: {
-      rotulo: 'Fluxo Leste',
-      valor: '210 pess/h',
-      detalhe: 'Tempo fila: 1.1 min',
-    },
+    metricas: metricasFluxo(72, 0.7, 26),
   },
   {
-    id: 'cam-fb-01',
-    codigo: 'CAM-FB-01',
-    nome: 'F&B Chopp Hub 1 (IPA & Pilsen)',
-    tipo: 'fb_liquid',
-    setor: 'Liquid / F&B Oeste',
+    id: 'cam-fluxo-01',
+    codigo: 'CAM-FLUXO-01',
+    nome: 'Controlo de Acesso & Densidade Oeste',
+    tipo: 'fluxo_densidade',
+    setor: 'Controlo de Acesso & Densidade Oeste',
     posicao: [-5, 4.8, 2],
     alvo: [-5, 0.8, 2],
     status: 'operacional',
     fps: 60,
-    metricas: {
-      rotulo: 'Vazão de Chopp',
-      valor: '6.4 L/min',
-      detalhe: 'Nível barril: 94% · 3.2°C',
-    },
+    metricas: metricasFluxo(142, 0.8, 45),
   },
   {
-    id: 'cam-fb-02',
-    codigo: 'CAM-FB-02',
-    nome: 'F&B Estação Central Liquid',
-    tipo: 'fb_liquid',
-    setor: 'Liquid / F&B Centro',
+    id: 'cam-fluxo-02',
+    codigo: 'CAM-FLUXO-02',
+    nome: 'Controlo de Acesso & Densidade Central',
+    tipo: 'fluxo_densidade',
+    setor: 'Controlo de Acesso & Densidade Central',
     posicao: [0, 5.0, -2],
     alvo: [0, 1.0, -2],
-    status: 'operacional',
+    status: 'atencao',
     fps: 60,
-    metricas: {
-      rotulo: 'Atendimentos F&B',
-      valor: '4.8 atend/min',
-      detalhe: 'Pressão Chopp: 2.2 bar',
-    },
+    metricas: metricasFluxo(218, 1.4, 68),
   },
   {
-    id: 'cam-fb-03',
-    codigo: 'CAM-FB-03',
-    nome: 'F&B Chopp Hub 3 (Artesanais & Retirada)',
-    tipo: 'fb_liquid',
-    setor: 'Liquid / F&B Leste',
+    id: 'cam-fluxo-03',
+    codigo: 'CAM-FLUXO-03',
+    nome: 'Controlo de Acesso & Densidade Leste',
+    tipo: 'fluxo_densidade',
+    setor: 'Controlo de Acesso & Densidade Leste',
     posicao: [5, 4.8, 2],
     alvo: [5, 0.8, 2],
-    status: 'operacional',
+    status: 'critico',
     fps: 60,
-    metricas: {
-      rotulo: 'Vazão de Chopp',
-      valor: '5.1 L/min',
-      detalhe: 'Nível barril: 88% · 2.9°C',
-    },
+    metricas: metricasFluxo(326, 2.1, 91),
   },
 ];
 
@@ -254,7 +250,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   const mountRef = useRef<HTMLDivElement>(null);
 
   const [isNightMode, setIsNightMode] = useState(true);
-  const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent'>('geral');
+  const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fluxo' | 'cams_ent'>('geral');
   const [hudCollapsed, setHudCollapsed] = useState(false);
 
   const [selectedCamera, setSelectedCamera] = useState<HardwareCamera | null>(() => {
@@ -345,7 +341,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     }
   };
 
-  const applyPreset = (preset: 'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent') => {
+  const applyPreset = (preset: 'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fluxo' | 'cams_ent') => {
     setActivePreset(preset);
     if (preset === 'geral') {
       targetCamPosRef.current.set(0, 18, 25);
@@ -359,11 +355,11 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     } else if (preset === 'aerea') {
       targetCamPosRef.current.set(0, 30, 2.5);
       targetLookAtRef.current.set(0, 0, 2.5);
-    } else if (preset === 'cams_fb') {
+    } else if (preset === 'cams_fluxo') {
       targetCamPosRef.current.set(0, 12, 16);
       targetLookAtRef.current.set(0, 1.8, 2.5);
-      const firstFb = HARDWARE_CAMERAS.find((c) => c.tipo === 'fb_liquid');
-      if (firstFb) handleSelectCamera(firstFb);
+      const firstFluxo = HARDWARE_CAMERAS.find((c) => c.tipo === 'fluxo_densidade');
+      if (firstFluxo) handleSelectCamera(firstFluxo);
     } else if (preset === 'cams_ent') {
       targetCamPosRef.current.set(0, 11, 23);
       targetLookAtRef.current.set(0, 2, 13.5);
@@ -416,7 +412,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     cameraMeshesRef.current.forEach((group, id) => {
       const isSelected = selectedCamera?.id === id;
       const camData = HARDWARE_CAMERAS.find((c) => c.id === id);
-      const isFB = camData?.tipo === 'fb_liquid';
+      const isFluxo = camData?.tipo === 'fluxo_densidade';
 
       const bodyMesh = group.getObjectByName(`${id}-body`) as THREE.Mesh | undefined;
       const ringMesh = group.getObjectByName(`${id}-ring`) as THREE.Mesh | undefined;
@@ -430,17 +426,17 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
           mat.emissive.set(0x00ffcc);
           mat.emissiveIntensity = 2.0;
         } else {
-          const colorHex = isFB ? 0x34d399 : 0x38bdf8;
-          const emissiveHex = isFB ? 0x059669 : 0x0284c7;
+          const colorHex = isFluxo ? 0x34d399 : 0x38bdf8;
+          const emissiveHex = isFluxo ? 0x059669 : 0x0284c7;
           mat.color.set(colorHex);
           mat.emissive.set(emissiveHex);
-          mat.emissiveIntensity = isFB ? 0.9 : 0.75;
+          mat.emissiveIntensity = isFluxo ? 0.9 : 0.75;
         }
       }
 
       if (ringMesh && ringMesh.material) {
         const rMat = ringMesh.material as THREE.MeshBasicMaterial;
-        rMat.color.set(isSelected ? 0x00ffcc : isFB ? 0x34d399 : 0x38bdf8);
+        rMat.color.set(isSelected ? 0x00ffcc : isFluxo ? 0x34d399 : 0x38bdf8);
       }
 
       if (fovCone) fovCone.visible = isSelected;
@@ -755,10 +751,10 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       camGroup.userData = { isCamera: true, camera: cam };
       camGroup.position.set(cam.posicao[0], cam.posicao[1], cam.posicao[2]);
 
-      const isFB = cam.tipo === 'fb_liquid';
+      const isFluxo = cam.tipo === 'fluxo_densidade';
       const isSelected = selectedCameraRef.current?.id === cam.id;
-      const defaultColor = isSelected ? 0x00ffcc : isFB ? 0x34d399 : 0x38bdf8;
-      const defaultEmissive = isSelected ? 0x00ffcc : isFB ? 0x059669 : 0x0284c7;
+      const defaultColor = isSelected ? 0x00ffcc : isFluxo ? 0x34d399 : 0x38bdf8;
+      const defaultEmissive = isSelected ? 0x00ffcc : isFluxo ? 0x059669 : 0x0284c7;
 
       const mountArm = new THREE.Mesh(
         new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8),
@@ -770,7 +766,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       const bodyMat = new THREE.MeshStandardMaterial({
         color: defaultColor,
         emissive: defaultEmissive,
-        emissiveIntensity: isSelected ? 2.0 : isFB ? 0.9 : 0.75,
+        emissiveIntensity: isSelected ? 2.0 : isFluxo ? 0.9 : 0.75,
         metalness: 0.4,
         roughness: 0.2,
       });
@@ -1231,7 +1227,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-xs text-white shadow-md">
         <Compass className="w-4 h-4 text-cyan-400 animate-spin-slow" />
         <span className="font-semibold text-slate-100">Arena 3D Interativa</span>
-        <span className="text-slate-400 hidden sm:inline">· 7 Câmeras & F&B Liquid</span>
+        <span className="text-slate-400 hidden sm:inline">· 7 Câmeras de Fluxo e Acesso</span>
       </div>
 
       {/* Controles do Canto Superior Direito: Modo Noturno e Componente Flutuante de Concentração / Heatmap */}
@@ -1280,22 +1276,29 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
+            <div className="col-span-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
               <span className="text-slate-400 block text-[10px]">Setor / Área</span>
               <span className="font-semibold text-slate-200 truncate block">{selectedCamera.setor}</span>
             </div>
             <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">{selectedCamera.metricas.rotulo}</span>
-              <span className="font-semibold text-cyan-300 block">{selectedCamera.metricas.valor}</span>
+              <span className="text-slate-400 block text-[10px]">Pessoas / Densidade</span>
+              <span className="font-semibold text-cyan-300 block">
+                {selectedCamera.metricas.contagemPessoas} pessoas / {selectedCamera.metricas.densidadePessoasM2.toFixed(1)} p/m²
+              </span>
+            </div>
+            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">Taxa de Passagem</span>
+              <span className="font-semibold text-cyan-300 block">
+                {selectedCamera.metricas.taxaPassagemPessoasMinuto} pessoas/min
+              </span>
+            </div>
+            <div className="col-span-2 flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
+              <span className="text-slate-400">Nível de Lotação</span>
+              <span className={`rounded-md border px-2 py-1 text-[10px] font-bold tracking-wide ${STATUS_FLUXO[selectedCamera.status].classes}`}>
+                {STATUS_FLUXO[selectedCamera.status].rotulo}
+              </span>
             </div>
           </div>
-
-          {selectedCamera.metricas.detalhe && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-950/40 border border-emerald-800/30 text-[10px] text-emerald-300">
-              <Activity className="w-3 h-3 shrink-0" />
-              <span className="truncate">{selectedCamera.metricas.detalhe}</span>
-            </div>
-          )}
 
           <div className="flex items-center justify-between pt-1">
             <span className="text-[10px] text-slate-400 flex items-center gap-1">
@@ -1350,15 +1353,15 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
             </button>
 
             <button
-              onClick={() => applyPreset('cams_fb')}
+              onClick={() => applyPreset('cams_fluxo')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activePreset === 'cams_fb'
+                activePreset === 'cams_fluxo'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40 hover:bg-emerald-900/50'
               }`}
             >
               <Camera className="w-3 h-3" />
-              <span>Câmeras F&B (3)</span>
+              <span>Câmeras de Fluxo (3)</span>
             </button>
 
             <button

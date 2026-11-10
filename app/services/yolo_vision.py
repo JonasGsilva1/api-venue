@@ -59,6 +59,7 @@ def _localizar_recurso(nome_arquivo: str) -> Optional[Path]:
     candidatos = [
         Path(nome_arquivo),
         raiz / nome_arquivo,
+        raiz / "eventoai-main-mecanism-ia" / nome_arquivo,
         raiz / "eventoai-main-mecanism-ia" / "eventoai-main" / nome_arquivo,
     ]
     for c in candidatos:
