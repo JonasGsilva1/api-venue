@@ -619,6 +619,50 @@ class MemoryDB:
                 self._sensores_offline.add(registro.pdv_id)
             else:
                 self._sensores_offline.discard(registro.pdv_id)
+
+            # Sincroniza a câmera de hardware vinculada à zona (ex.: CAM-FLUXO-01..03)
+            for cam_id, cam in list(self._cameras.items()):
+                if cam.pdv_id_vinculado == registro.pdv_id:
+                    if registro.status_cor == "VERMELHO" or "SATURACAO" in registro.anomalias:
+                        novo_status = "critico"
+                    elif registro.status_cor == "AMARELO" or registro.tempo_espera_seg >= 210:
+                        novo_status = "atencao"
+                    else:
+                        novo_status = "operacional"
+                    espera_min = round(registro.tempo_espera_seg / 60.0, 1)
+                    self._cameras[cam_id] = replace(
+                        cam,
+                        status=novo_status,
+                        valor_metrica=f"{registro.pax_count} pessoas / {registro.densidade_m2:.2f} p/m²",
+                        detalhe_metrica=f"Tempo fila: {espera_min} min",
+                    )
+
+            # Atualiza o Heatmap global do estande (Z1..Z4) em tempo real conforme as leituras das câmeras
+            pax_estande = sum(
+                (self.ultima_leitura(zid).pax_count if self.ultima_leitura(zid) else 0)
+                for zid in (1, 2, 3, 4)
+            )
+            ocupacao = min(100, max(0, round(pax_estande * 46 / 24)))
+            densidades = [
+                ult.densidade_m2
+                for zid in self._zonas
+                if (ult := self.ultima_leitura(zid)) is not None
+            ]
+            dens_max = round(max([0.78] + densidades), 2)
+            hotspots = sum(
+                1
+                for zid in (1, 2, 3, 4)
+                if (ult := self.ultima_leitura(zid)) is not None
+                and (ult.status_cor == "VERMELHO" or "SATURACAO" in ult.anomalias)
+            )
+            self._heatmap = replace(
+                self._heatmap,
+                pessoas_presentes=pax_estande,
+                ocupacao_estimada_pct=ocupacao,
+                densidade_maxima_m2=dens_max,
+                hotspots_criticos=hotspots,
+            )
+
             return registro
 
     # ── Estado operacional / motor de IA ─────────────────────────────────────

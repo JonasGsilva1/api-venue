@@ -496,3 +496,65 @@ def test_compatibilidade_frontend_campos_adaptados():
     dados_drop = r_drop.json()
     assert dados_drop["janela_tempo_min"] == dados_drop["window_time_min"]
     assert dados_drop["taxa_abandono_estimada_pct"] == dados_drop["dropoff_rate_estimado_pct"]
+
+
+def test_integracao_worker_yolo_formato_a_atualiza_camera_e_zona():
+    """
+    Valida que o payload enviado pelo Worker YOLOv8 (`video_analyzer.py` / `simulator.py` no Formato A)
+    com coordenadas normalizadas (0..1000) atualiza a Zona Z1 e sincroniza a câmera vinculada (`cam-fluxo-02`).
+    """
+    coordenadas_yolo_fila = [
+        {"x": round((360 + i * 25) / 640.0 * 1000.0, 1), "y": round((220 + i * 10) / 360.0 * 1000.0, 1)}
+        for i in range(9)  # 9 pessoas na fila -> 9 * 38s = 342s (5m 42s -> AMARELO / atencao)
+    ]
+    payload_yolo = {
+        "pdv_id": 1,
+        "sensor_status": "ONLINE",
+        "coordenadas_simuladas": coordenadas_yolo_fila,
+        "transacoes_pos_ultimos_3m": 8,
+        "taxa_nfc_seg_por_pessoa": None,
+        "simular_falha_ia": "NENHUMA",
+    }
+    r_post = client.post("/api/v1/telemetry/frame-analysis", headers=AUTH_HEADER, json=payload_yolo)
+    assert r_post.status_code == 201
+    leitura = r_post.json()["leitura"]
+    assert leitura["pax_count"] == 9
+    assert leitura["status_cor"] == "AMARELO"
+
+    # Verifica que a câmera CAM-FLUXO-02 (vinculada ao pdv_id=1) refletiu a leitura do YOLO
+    r_cam = client.get("/api/v1/venue/cameras/cam-fluxo-02", headers=AUTH_HEADER)
+    assert r_cam.status_code == 200
+    cam = r_cam.json()
+    assert cam["zona"]["ultima_leitura"]["pax_count"] == 9
+    assert cam["status"] == "atencao"
+    assert "9 pessoas" in cam["metricas"]["valor"]
+
+
+def test_yolo_scan_unificado_in_process_render_safe():
+    """
+    Valida o endpoint unificado `POST /api/v1/telemetry/yolo-scan` (`app/services/yolo_vision.py`),
+    garantindo que roda em processo dentro da API principal e funciona tanto com YOLOv8 local quanto
+    em nuvem (Render) sem exigir PyTorch pesado na imagem Docker.
+    """
+    payload = {
+        "video_origem": "video_teste_04.mp4",
+        "frame_indice": 6,
+        "pdv_fila_id": 1,
+        "pdv_estande_id": 3,
+        "pessoas_fila_simuladas": 7,
+        "pessoas_estande_simuladas": 10,
+    }
+    r = client.post("/api/v1/telemetry/yolo-scan", headers=AUTH_HEADER, json=payload)
+    assert r.status_code == 201
+    dados = r.json()
+    assert dados["resolucao_frame"] == "640x360"
+    assert dados["pessoas_zona_fila"] == 7
+    assert dados["pessoas_zona_estande"] == 10
+    assert dados["pessoas_detectadas_total"] == 17
+    assert dados["alerta_assistido_ativo"] is True
+    assert len(dados["coordenadas_fila"]) == 7
+    assert len(dados["coordenadas_estande"]) == 10
+    assert dados["leitura_fila"]["pax_count"] == 7
+    assert dados["leitura_estande"]["pax_count"] == 10
+
+

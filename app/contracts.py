@@ -240,6 +240,87 @@ class InferenceResponseContract(ContratoEstrito):
     anomalias: List[TipoAnomalia] = Field(default_factory=list, examples=[["NFC_LENTO", "SATURACAO"]])
 
 
+class YoloScanRequestContract(ContratoEstrito):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "video_origem": "video_teste_04.mp4",
+                    "frame_indice": 3,
+                    "pdv_fila_id": 1,
+                    "pdv_estande_id": 3,
+                    "pessoas_fila_simuladas": 6,
+                    "pessoas_estande_simuladas": 8,
+                }
+            ]
+        },
+    )
+
+    video_origem: str = Field(
+        "video_teste_04.mp4",
+        min_length=1,
+        max_length=120,
+        description="Arquivo de vídeo ou fonte óptica analisada pelo motor YOLOv8n.",
+        examples=["video_teste_04.mp4"],
+    )
+    frame_indice: int = Field(
+        3,
+        ge=1,
+        le=100000,
+        description="Índice do frame analisado (processamento padrão a cada 3 frames).",
+        examples=[3],
+    )
+    pdv_fila_id: int = Field(
+        1,
+        gt=0,
+        description="ID da zona monitorada para o polígono de fila (padrão: 1 = Z1 | Acesso Estande Principal).",
+        examples=[1],
+    )
+    pdv_estande_id: int = Field(
+        3,
+        gt=0,
+        description="ID da zona monitorada para o polígono do estande/lounge (padrão: 3 = Z3 | Lounge).",
+        examples=[3],
+    )
+    pessoas_fila_simuladas: Optional[int] = Field(
+        None,
+        ge=0,
+        le=500,
+        description="Opcional: força contagem na fila para calibração em nuvem (Render) quando o arquivo .mp4 não está no container.",
+        examples=[6],
+    )
+    pessoas_estande_simuladas: Optional[int] = Field(
+        None,
+        ge=0,
+        le=500,
+        description="Opcional: força contagem no estande para calibração em nuvem (Render) quando o arquivo .mp4 não está no container.",
+        examples=[8],
+    )
+
+
+class YoloScanResponseContract(ContratoEstrito):
+    motor_visao: Literal["YOLOv8n_REAL", "SIMULACAO_OPTICA_BORDA"] = Field(
+        ...,
+        description="Indica se a extração usou o peso local YOLOv8n + OpenCV ou a simulação óptica calibrada para nuvem (Render).",
+        examples=["SIMULACAO_OPTICA_BORDA"],
+    )
+    resolucao_frame: str = Field(..., examples=["640x360"])
+    frame_processado: int = Field(..., ge=1, examples=[3])
+    pessoas_detectadas_total: int = Field(..., ge=0, examples=[14])
+    pessoas_zona_fila: int = Field(..., ge=0, examples=[6])
+    pessoas_zona_estande: int = Field(..., ge=0, examples=[8])
+    alerta_assistido_ativo: bool = Field(
+        ...,
+        description="True quando fila >= 6 pax ou tempo de espera >= 3.5 min (210s), conforme regra do VenueEngine.",
+        examples=[True],
+    )
+    coordenadas_fila: List[CoordinateContract]
+    coordenadas_estande: List[CoordinateContract]
+    leitura_fila: TelemetryReadingContract
+    leitura_estande: TelemetryReadingContract
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # Módulo B — Acionamento Preditivo de Gargalos e Despacho Tático
 # ════════════════════════════════════════════════════════════════════════════

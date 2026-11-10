@@ -23,10 +23,12 @@ from app.contracts import (
     InferenceResponseContract,
     TelemetryAnalysisRequestContract,
     TelemetryAnalysisResponseContract,
+    YoloScanRequestContract,
+    YoloScanResponseContract,
 )
 from app.errors import RESPOSTA_404, RESPOSTAS_PADRAO, ResilienciaHTTPException, sem_query_params
 from app.repositories.memory_db import LeituraRecord, agora_utc, memory_db
-from app.services import ai_engine
+from app.services import ai_engine, yolo_vision
 from app.services.ai_engine import MotorIAIndisponivelError, ResultadoInferencia, formatar_tempo
 from app.services.event_bus import criar_evento, event_bus
 from app.services.mappers import leitura_para_contrato
@@ -210,4 +212,114 @@ async def processar_inferencia(
         status_cor=r.status_cor,  # type: ignore[arg-type]
         confianca_ia=r.confianca_ia,
         anomalias=r.anomalias,  # type: ignore[arg-type]
+    )
+
+
+@router.post(
+    "/telemetry/yolo-scan",
+    response_model=YoloScanResponseContract,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Módulo A · Telemetria & Resiliência"],
+    summary="Motor YOLOv8 Unificado na API: detecção óptica por polígonos de fila/estande (compatível com Render)",
+    description=(
+        "Executa o mecanismo de visão computacional YOLOv8 (`app/services/yolo_vision.py`) diretamente na API unificada:\n"
+        "- Se o ambiente possuir `ultralytics`, `opencv` e o arquivo de vídeo (`video_teste_04.mp4`), roda a inferência real "
+        "`YOLOv8n_REAL` em `640x360`, classifica cada pessoa nos polígonos `ZONA_FILA` e `ZONA_BALCAO` via `pointPolygonTest` e "
+        "normaliza os pontos dos pés `(x, y)` para `0..1000`.\n"
+        "- Em nuvem/Render (onde PyTorch/OpenCV não são carregados na imagem para preservar o limite de 512 MB de RAM), "
+        "opera automaticamente em `SIMULACAO_OPTICA_BORDA` sem quebrar o deploy.\n"
+        "- Persiste as leituras em `memory_db`, sincroniza as câmeras `CAM-FLUXO-01..03`, atualiza o Heatmap e transmite via WebSocket/SSE."
+    ),
+    responses=RESPOSTA_404,
+    dependencies=[Depends(sem_query_params)],
+)
+async def escanear_frame_yolo(
+    payload: YoloScanRequestContract,
+    usuario: UsuarioAutenticado = Depends(exigir_operacao),
+) -> YoloScanResponseContract:
+    zona_fila = memory_db.obter_zona(payload.pdv_fila_id)
+    if zona_fila is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Zona de fila {payload.pdv_fila_id} não existe.")
+    zona_estande = memory_db.obter_zona(payload.pdv_estande_id)
+    if zona_estande is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Zona de estande {payload.pdv_estande_id} não existe.")
+
+    visao = yolo_vision.processar_frame_yolo(
+        video_origem=payload.video_origem,
+        frame_indice=payload.frame_indice,
+        pessoas_fila_simuladas=payload.pessoas_fila_simuladas,
+        pessoas_estande_simuladas=payload.pessoas_estande_simuladas,
+    )
+
+    pax_fila = len(visao.coordenadas_fila)
+    pax_estande = len(visao.coordenadas_estande)
+
+    inf_fila = ai_engine.calcular_inferencia(zona_fila, pax_fila, None)
+    inf_estande = ai_engine.calcular_inferencia(zona_estande, pax_estande, None)
+
+    reg_fila = memory_db.registrar_leitura(
+        LeituraRecord(
+            id=0,
+            pdv_id=zona_fila.id,
+            timestamp=agora_utc(),
+            pax_count=inf_fila.pax_count,
+            tempo_espera_seg=inf_fila.tempo_espera_seg,
+            densidade_m2=inf_fila.densidade_m2,
+            status_cor=inf_fila.status_cor,
+            confianca_ia=inf_fila.confianca_ia,
+            anomalias=inf_fila.anomalias,
+            modo_leitura="TEMPO_REAL",
+            sensor_status="ONLINE",
+            transacoes_pos_ultimos_3m=max(1, pax_estande * 2),
+        )
+    )
+    reg_estande = memory_db.registrar_leitura(
+        LeituraRecord(
+            id=0,
+            pdv_id=zona_estande.id,
+            timestamp=agora_utc(),
+            pax_count=inf_estande.pax_count,
+            tempo_espera_seg=inf_estande.tempo_espera_seg,
+            densidade_m2=inf_estande.densidade_m2,
+            status_cor=inf_estande.status_cor,
+            confianca_ia=inf_estande.confianca_ia,
+            anomalias=inf_estande.anomalias,
+            modo_leitura="TEMPO_REAL",
+            sensor_status="ONLINE",
+            transacoes_pos_ultimos_3m=pax_estande,
+        )
+    )
+
+    leitura_fila_contrato = leitura_para_contrato(reg_fila)
+    leitura_estande_contrato = leitura_para_contrato(reg_estande)
+
+    event_bus.publicar(
+        criar_evento(
+            "leitura",
+            f"Leitura YOLO ({visao.motor_visao}) na zona {zona_fila.id} ({zona_fila.nome})",
+            leitura=leitura_fila_contrato,
+        )
+    )
+    event_bus.publicar(
+        criar_evento(
+            "leitura",
+            f"Leitura YOLO ({visao.motor_visao}) na zona {zona_estande.id} ({zona_estande.nome})",
+            leitura=leitura_estande_contrato,
+        )
+    )
+
+    alerta_assistido = pax_fila >= 6 or inf_fila.tempo_espera_seg >= 210
+
+    return YoloScanResponseContract(
+        motor_visao=visao.motor_visao,  # type: ignore[arg-type]
+        resolucao_frame=visao.resolucao_frame,
+        frame_processado=visao.frame_processado,
+        pessoas_detectadas_total=pax_fila + pax_estande,
+        pessoas_zona_fila=pax_fila,
+        pessoas_zona_estande=pax_estande,
+        alerta_assistido_ativo=alerta_assistido,
+        coordenadas_fila=visao.coordenadas_fila,
+        coordenadas_estande=visao.coordenadas_estande,
+        leitura_fila=leitura_fila_contrato,
+        leitura_estande=leitura_estande_contrato,
     )
