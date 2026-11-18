@@ -53,6 +53,16 @@ const COR_SEMAFORO: Record<LeituraV2['status_cor'], string> = {
   VERMELHO: 'border-rose-500/40 bg-rose-950/60 text-rose-300',
 };
 
+const CAMERA_DEFAULT_PDV_ID: Record<string, { pdvId: number; areaM2: number; capacidade: number; tempoServicoSeg: number }> = {
+  'cam-ent-01': { pdvId: 101, areaM2: 45, capacidade: 80, tempoServicoSeg: 5 },
+  'cam-ent-02': { pdvId: 102, areaM2: 30, capacidade: 40, tempoServicoSeg: 5 },
+  'cam-ent-03': { pdvId: 103, areaM2: 60, capacidade: 120, tempoServicoSeg: 5 },
+  'cam-ent-04': { pdvId: 104, areaM2: 40, capacidade: 60, tempoServicoSeg: 6 },
+  'cam-fluxo-01': { pdvId: 5, areaM2: 120, capacidade: 300, tempoServicoSeg: 12 },
+  'cam-fluxo-02': { pdvId: 1, areaM2: 23, capacidade: 40, tempoServicoSeg: 38 },
+  'cam-fluxo-03': { pdvId: 2, areaM2: 12, capacidade: 15, tempoServicoSeg: 23 },
+};
+
 function clonePolygon(poly: Point2D[]): Point2D[] {
   return poly.map((p) => ({ x: p.x, y: p.y }));
 }
@@ -108,7 +118,11 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
   const [dispatchBusy, setDispatchBusy] = useState(false);
   const [dispatchFeedback, setDispatchFeedback] = useState<string | null>(null);
 
-  const pdvId = item?.zona?.id ?? null;
+  const fallbackConfig = item ? CAMERA_DEFAULT_PDV_ID[item.camera.id] : undefined;
+  const pdvId = item?.zona?.id ?? fallbackConfig?.pdvId ?? 1;
+  const zonaAreaM2 = item?.zona?.area_m2 ?? fallbackConfig?.areaM2 ?? 35;
+  const zonaCapacidade = item?.zona?.capacidade ?? fallbackConfig?.capacidade ?? 40;
+  const zonaTempoServico = fallbackConfig?.tempoServicoSeg ?? 25;
 
   // Pré-carrega o modelo YOLOv8n ONNX ao abrir o modal
   useEffect(() => {
@@ -226,7 +240,6 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
 
   const syncWithApi = useCallback(
     async (dets: PersonDetection[], stats: TrackerStats, videoSec: number) => {
-      if (pdvId === null) return;
       const filaCoords = dets
         .filter((d) => d.zona === 'fila')
         .map((d) => toApiCoordinate({ x: d.footX, y: d.footY }));
@@ -234,7 +247,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
         .filter((d) => d.zona === 'estande')
         .map((d) => toApiCoordinate({ x: d.footX, y: d.footY }));
 
-      // Para câmeras de fluxo/fila envia coords da fila; se vazia mas houver estande, mantém 0 na fila
+      // Para câmeras de fluxo/fila envia coords da fila; para entradas/estandes envia total nas zonas
       const isFilaZone = item?.camera.tipo === 'fluxo_densidade' || pdvId === 1 || pdvId === 5;
       const coordsToSend = isFilaZone ? filaCoords : [...filaCoords, ...estandeCoords];
 
@@ -260,10 +273,44 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
         ]);
         onTelemetrySynced();
       } catch (err) {
+        // Fallback local caso a API esteja offline ou inacessível, mantendo as métricas visíveis
+        const pax = coordsToSend.length;
+        const esperaEst = Math.round(pax * zonaTempoServico);
+        const densidadeEst = Number((pax / Math.max(1, zonaAreaM2)).toFixed(2));
+        const corEst: LeituraV2['status_cor'] =
+          esperaEst < 300 ? 'VERDE' : esperaEst <= 720 ? 'AMARELO' : 'VERMELHO';
+        setApiResult({
+          sucesso: false,
+          http_status: 503,
+          modo_leitura: 'CONTINGENCIA_503',
+          aviso_contingencia: mensagemDeErro(err),
+          leitura: {
+            id: 0,
+            pdv_id: pdvId,
+            timestamp: new Date().toISOString(),
+            pax_count: pax,
+            contagem_pessoas: pax,
+            tempo_espera_seg: esperaEst,
+            densidade_m2: densidadeEst,
+            status_cor: corEst,
+            confianca_ia: 0.9,
+            alerta_ruptura_estoque: false,
+            modo_leitura: 'CONTINGENCIA_503',
+          },
+        });
+        setTimeline((prev) => [
+          ...prev.slice(-59),
+          {
+            timeSec: videoSec,
+            fila: filaCoords.length,
+            estande: estandeCoords.length,
+            esperaSeg: esperaEst,
+          },
+        ]);
         setApiError(mensagemDeErro(err));
       }
     },
-    [pdvId, item?.camera.tipo, onTelemetrySynced],
+    [pdvId, item?.camera.tipo, zonaTempoServico, zonaAreaM2, onTelemetrySynced],
   );
 
   // Loop de análise em tempo real durante a reprodução do vídeo
@@ -427,7 +474,6 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
   };
 
   const handleDispatchFromModal = async () => {
-    if (pdvId === null) return;
     setDispatchBusy(true);
     setDispatchFeedback(null);
     try {
@@ -451,7 +497,17 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
 
   const filaCount = detections.filter((d) => d.zona === 'fila').length;
   const estandeCount = detections.filter((d) => d.zona === 'estande').length;
+  const totalNaCena = detections.length;
   const leitura = apiResult?.leitura ?? item.zona?.ultima_leitura ?? null;
+  const ocupacaoPct = Math.min(100, Math.round(((filaCount + estandeCount) / Math.max(1, zonaCapacidade)) * 100));
+  const taxaPassagemMin =
+    currentTimeSec > 0.5 ? Math.round((trackerStats.entradas / currentTimeSec) * 60) : 0;
+  const confiancaMediaPct =
+    detections.length > 0
+      ? Math.round((detections.reduce((acc, d) => acc + d.confidence, 0) / detections.length) * 100)
+      : leitura
+        ? Math.round(leitura.confianca_ia * 100)
+        : 0;
   const alertaAssistido =
     filaCount >= 6 ||
     (leitura !== null && (leitura.tempo_espera_seg >= 180 || leitura.status_cor !== 'VERDE'));
@@ -487,7 +543,9 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] font-mono text-slate-400 truncate">
-                {item.zona ? `Zona vinculada: ${item.zona.nome} (ID ${item.zona.id})` : 'Câmera sem zona na API'}
+                {item.zona
+                  ? `Zona vinculada: ${item.zona.nome} (ID ${item.zona.id})`
+                  : `Zona padrão mapeada: PDV #${pdvId} (${zonaAreaM2} m² · cap. ${zonaCapacidade} pax)`}
               </p>
             </div>
           </div>
@@ -714,6 +772,18 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                     {leitura ? `${leitura.densidade_m2.toFixed(2)} p/m²` : '—'}
                   </p>
                 </div>
+                <div className="rounded-lg border border-slate-800 bg-[#0d1527] p-2.5">
+                  <span className="text-[10px] font-mono text-slate-400">OCUPAÇÃO ({zonaCapacidade} MAX)</span>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-white">
+                    {ocupacaoPct}% <span className="text-xs font-normal text-slate-400">({totalNaCena} na cena)</span>
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-800 bg-[#0d1527] p-2.5">
+                  <span className="text-[10px] font-mono text-slate-400">PASSAGEM / CONFIANÇA</span>
+                  <p className="mt-0.5 font-mono text-sm font-bold text-cyan-300">
+                    {taxaPassagemMin} p/min · {confiancaMediaPct}%
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-2.5 text-center font-mono">
@@ -759,7 +829,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => void handleDispatchFromModal()}
-                  disabled={dispatchBusy || pdvId === null}
+                  disabled={dispatchBusy}
                   className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-rose-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-rose-400 disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
