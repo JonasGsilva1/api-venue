@@ -428,8 +428,8 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setActiveTab('instagramavel')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
+                onClick={() => setActiveTab('predicao')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'predicao' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
                   }`}
               >
                 <Bot className="w-3.5 h-3.5 text-fuchsia-400" />
@@ -492,7 +492,7 @@ export default function App() {
         </div>
 
         {/* 3D Scene Viewport */}
-        {show3DMap && (
+        {show3DMap && activeTab === 'tudo' && (
           <div className="animate-in fade-in duration-300">
             <Venue3DScene
               autos={autos}
@@ -559,6 +559,7 @@ export default function App() {
                   onAlternarStatus={handleAlternarStatusInsta}
                   onSelectIn3D={(id) => {
                     setSelectedAtracaoId(id);
+                    setActiveTab('tudo');
                     setShow3DMap(true);
                   }}
                 />
