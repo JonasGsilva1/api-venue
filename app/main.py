@@ -9,8 +9,13 @@ Executar:  uvicorn app.main:app --reload --port 8000   →   http://localhost:80
 from __future__ import annotations
 
 import logging
+import mimetypes
 from pathlib import Path
 from typing import Any, Dict
+
+mimetypes.add_type("application/javascript", ".mjs")
+mimetypes.add_type("application/wasm", ".wasm")
+mimetypes.add_type("application/octet-stream", ".onnx")
 
 from fastapi import Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
