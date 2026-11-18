@@ -558,3 +558,26 @@ def test_yolo_scan_unificado_in_process_render_safe():
     assert dados["leitura_estande"]["pax_count"] == 10
 
 
+def test_frame_analysis_para_camera_entrada_dedicada():
+    """
+    Valida que o player YOLOv8 no navegador pode enviar coordenadas anônimas
+    para qualquer câmera de entrada (`cam-ent-01`, zona dedicada `pdv_id=101`)
+    e que `GET /api/v1/venue/cameras/cam-ent-01` reflete a atualização.
+    """
+    payload = {
+        "pdv_id": 101,
+        "sensor_status": "ONLINE",
+        "coordenadas_simuladas": [{"x": 450.0, "y": 520.0} for _ in range(12)],
+        "transacoes_pos_ultimos_3m": 10,
+        "taxa_nfc_seg_por_pessoa": None,
+        "simular_falha_ia": "NENHUMA",
+    }
+    r_post = client.post("/api/v1/telemetry/frame-analysis", headers=AUTH_HEADER, json=payload)
+    assert r_post.status_code == 201
+    assert r_post.json()["leitura"]["pax_count"] == 12
+
+    r_cam = client.get("/api/v1/venue/cameras/cam-ent-01", headers=AUTH_HEADER)
+    assert r_cam.status_code == 200
+    assert r_cam.json()["zona"]["ultima_leitura"]["pax_count"] == 12
+
+

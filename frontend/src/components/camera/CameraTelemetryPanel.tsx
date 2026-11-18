@@ -1,11 +1,12 @@
-import React from 'react';
-import { Camera, RefreshCw, TriangleAlert } from 'lucide-react';
+import React, { useState } from 'react';
+import { Camera, RefreshCw, TriangleAlert, Video } from 'lucide-react';
 import { useCameraTelemetry } from '../../hooks/useCameraTelemetry';
 import type { CameraTelemetria } from '../../hooks/useCameraTelemetry';
 import { STATUS_FLUXO } from '../Venue3DScene';
 import type { StatusFluxo } from '../Venue3DScene';
 import { formatarDuracao, separarNome } from '../../utils/publico';
 import { SeloSimulado } from '../publico/SeloSimulado';
+import { CameraVideoModal } from './CameraVideoModal';
 
 const COR_STATUS = {
   VERDE: 'bg-emerald-400',
@@ -33,7 +34,11 @@ const Linha: React.FC<{ rotulo: string; valor: string }> = ({ rotulo, valor }) =
   </div>
 );
 
-const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({ item, carregando }) => {
+const CameraCard: React.FC<{
+  item: CameraTelemetria;
+  carregando: boolean;
+  onOpenVideo: (item: CameraTelemetria) => void;
+}> = ({ item, carregando, onOpenVideo }) => {
   const { camera, zona } = item;
   const leitura = zona?.ultima_leitura ?? null;
   const semZona = zona === null;
@@ -47,7 +52,18 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
   const seloStatus = STATUS_FLUXO[statusFluxo];
 
   return (
-    <div className="rounded-xl border border-cyan-900/60 bg-[#0d1527] p-3.5 space-y-2.5">
+    <div
+      onClick={() => onOpenVideo(item)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpenVideo(item);
+        }
+      }}
+      className="group cursor-pointer rounded-xl border border-cyan-900/60 bg-[#0d1527] p-3.5 space-y-2.5 transition-colors hover:border-cyan-400/70 hover:bg-[#101b33]"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-cyan-300">
@@ -113,6 +129,14 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
           )}
         </div>
       )}
+
+      <div className="pt-1 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-semibold text-cyan-300 group-hover:text-cyan-200">
+        <span className="inline-flex items-center gap-1.5">
+          <Video className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Enviar vídeo &amp; analisar (YOLO)</span>
+        </span>
+        <span aria-hidden="true">→</span>
+      </div>
     </div>
   );
 };
@@ -120,6 +144,8 @@ const CameraCard: React.FC<{ item: CameraTelemetria; carregando: boolean }> = ({
 // Painel com a telemetria das 7 câmeras (4 de entrada e 3 de fluxo), lida da API.
 export const CameraTelemetryPanel: React.FC = () => {
   const { cameras, loading, error, atualizadoEm, refetch } = useCameraTelemetry();
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const selectedItem = cameras.find((c) => c.camera.id === selectedCameraId) ?? null;
 
   return (
     <section className="space-y-3" aria-labelledby="cameras-titulo">
@@ -163,9 +189,20 @@ export const CameraTelemetryPanel: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cameras.map((item) => (
-          <CameraCard key={item.camera.id} item={item} carregando={loading} />
+          <CameraCard
+            key={item.camera.id}
+            item={item}
+            carregando={loading}
+            onOpenVideo={(camItem) => setSelectedCameraId(camItem.camera.id)}
+          />
         ))}
       </div>
+
+      <CameraVideoModal
+        item={selectedItem}
+        onClose={() => setSelectedCameraId(null)}
+        onTelemetrySynced={refetch}
+      />
     </section>
   );
 };

@@ -74,3 +74,25 @@ export interface PdvStatusResponseV2 {
   atualizado_em: string;
   zonas: ZonaStatusV2[];
 }
+
+export interface CoordinatePoint {
+  x: number;
+  y: number;
+}
+
+export interface FrameAnalysisRequest {
+  pdv_id: number;
+  sensor_status: 'ONLINE' | 'OFFLINE';
+  coordenadas_simuladas: CoordinatePoint[];
+  transacoes_pos_ultimos_3m: number;
+  taxa_nfc_seg_por_pessoa?: number | null;
+  simular_falha_ia?: 'NENHUMA' | 'TIMEOUT_504' | 'DOWN_503';
+}
+
+export interface FrameAnalysisResponse {
+  sucesso: boolean;
+  http_status: 201 | 502 | 503 | 504;
+  modo_leitura: 'TEMPO_REAL' | 'FALLBACK_502' | 'MEDIA_MOVEL_504' | 'CONTINGENCIA_503';
+  aviso_contingencia?: string | null;
+  leitura: LeituraV2;
+}

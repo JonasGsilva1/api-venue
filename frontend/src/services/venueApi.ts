@@ -3,6 +3,8 @@ import { api } from './api';
 import type { PdvStatusItem, PdvStatusResponse, TelemetryReading } from '../types/publico';
 import type {
   CamerasResponseV2,
+  FrameAnalysisRequest,
+  FrameAnalysisResponse,
   OperationalDispatchRequest,
   OperationalDispatchResponse,
   PdvStatusResponseV2,
@@ -80,6 +82,19 @@ export async function postDespacho(
   body: OperationalDispatchRequest,
 ): Promise<OperationalDispatchResponse> {
   const { data } = await api.post<OperationalDispatchResponse>('/api/v1/ops/dispatch', body, {
+    headers: authHeaders(),
+    timeout: TIMEOUT_MS,
+  });
+  return data;
+}
+
+/** Envia coordenadas anônimas detectadas no navegador (YOLOv8 ONNX) para cálculo de fila e densidade na API. */
+export async function postFrameAnalysis(
+  body: FrameAnalysisRequest,
+  signal?: AbortSignal,
+): Promise<FrameAnalysisResponse> {
+  const { data } = await api.post<FrameAnalysisResponse>('/api/v1/telemetry/frame-analysis', body, {
+    signal,
     headers: authHeaders(),
     timeout: TIMEOUT_MS,
   });

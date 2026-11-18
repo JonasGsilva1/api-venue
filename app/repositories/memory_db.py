@@ -580,7 +580,7 @@ class MemoryDB:
     def _append_leitura(self, leitura: LeituraRecord) -> LeituraRecord:
         self._seq_leitura += 1
         registro = replace(leitura, id=self._seq_leitura)
-        self._leituras[registro.pdv_id].append(registro)
+        self._leituras.setdefault(registro.pdv_id, []).append(registro)
         return registro
 
     # ── Zonas / leituras ─────────────────────────────────────────────────────
@@ -590,12 +590,23 @@ class MemoryDB:
 
     def obter_zona(self, pdv_id: int) -> Optional[ZonaRecord]:
         with self._lock:
-            return self._zonas.get(pdv_id)
+            zona = self._zonas.get(pdv_id)
+            if zona is not None:
+                return zona
+            for cam in self._cameras.values():
+                if cam.zona_dedicada is not None and cam.zona_dedicada.id == pdv_id:
+                    return cam.zona_dedicada
+            return None
 
     def ultima_leitura(self, pdv_id: int) -> Optional[LeituraRecord]:
         with self._lock:
             historico = self._leituras.get(pdv_id) or []
-            return historico[-1] if historico else None
+            if historico:
+                return historico[-1]
+            for cam in self._cameras.values():
+                if cam.zona_dedicada is not None and cam.zona_dedicada.id == pdv_id:
+                    return cam.leitura_dedicada
+            return None
 
     def historico(self, pdv_id: int, janela: timedelta) -> List[LeituraRecord]:
         """Leituras do PDV dentro da janela, desconsiderando estimativas de contingência (evita retroalimentação)."""
@@ -609,20 +620,23 @@ class MemoryDB:
     def registrar_leitura(self, leitura: LeituraRecord) -> LeituraRecord:
         with self._lock:
             registro = self._append_leitura(leitura)
-            zona = self._zonas[registro.pdv_id]
-            ind = zona.indicadores
-            if "fila_pax" in ind:
-                ind["fila_pax"] = registro.pax_count
-            if "tempo_espera_seg" in ind:
-                ind["tempo_espera_seg"] = registro.tempo_espera_seg
+            zona = self.obter_zona(registro.pdv_id)
+            if zona is not None:
+                ind = zona.indicadores
+                if "fila_pax" in ind:
+                    ind["fila_pax"] = registro.pax_count
+                if "tempo_espera_seg" in ind:
+                    ind["tempo_espera_seg"] = registro.tempo_espera_seg
             if registro.sensor_status == "OFFLINE":
                 self._sensores_offline.add(registro.pdv_id)
             else:
                 self._sensores_offline.discard(registro.pdv_id)
 
-            # Sincroniza a câmera de hardware vinculada à zona (ex.: CAM-FLUXO-01..03)
+            # Sincroniza a câmera de hardware vinculada à zona (ex.: CAM-FLUXO-01..03 ou CAM-ENT-01..04)
             for cam_id, cam in list(self._cameras.items()):
-                if cam.pdv_id_vinculado == registro.pdv_id:
+                vinculada = cam.pdv_id_vinculado == registro.pdv_id
+                dedicada = cam.zona_dedicada is not None and cam.zona_dedicada.id == registro.pdv_id
+                if vinculada or dedicada:
                     if registro.status_cor == "VERMELHO" or "SATURACAO" in registro.anomalias:
                         novo_status = "critico"
                     elif registro.status_cor == "AMARELO" or registro.tempo_espera_seg >= 210:
@@ -635,6 +649,7 @@ class MemoryDB:
                         status=novo_status,
                         valor_metrica=f"{registro.pax_count} pessoas / {registro.densidade_m2:.2f} p/m²",
                         detalhe_metrica=f"Tempo fila: {espera_min} min",
+                        leitura_dedicada=registro if dedicada else cam.leitura_dedicada,
                     )
 
             # Atualiza o Heatmap global do estande (Z1..Z4) em tempo real conforme as leituras das câmeras
