@@ -62,10 +62,9 @@ export default function App() {
   const [pingLatency, setPingLatency] = useState(431);
   const { ocupado, feedback, despachoOps, limparFeedback } = useOpsActions();
 
-  const [novoTipo, setNovoTipo] = useState<'autosservico' | 'instagramavel'>('autosservico');
   const [formNome, setFormNome] = useState('');
   const [formSetor, setFormSetor] = useState('Arena Principal');
-  const [formInsumoOuPatrocinador, setFormInsumoOuPatrocinador] = useState('');
+  const [formPatrocinador, setFormPatrocinador] = useState('');
 
   // '5s' | '10s' | '30s' -> milissegundos (o select "Auto" agora controla o intervalo)
   const intervaloMs = (parseInt(autoRefreshInterval, 10) || 10) * 1000;
@@ -75,7 +74,8 @@ export default function App() {
     const fetchDadosBackend = async () => {
       const startTime = performance.now();
       try {
-        const response = await fetch('https://api-evento-ia.onrender.com/status-pdvs');
+        const base = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000');
+        const response = await fetch(`${base}/status-pdvs`);
         if (!response.ok) {
           throw new Error(`Erro HTTP: ${response.status}`);
         }
@@ -294,67 +294,35 @@ export default function App() {
     e.preventDefault();
     if (!formNome.trim()) return;
 
-    if (novoTipo === 'autosservico') {
-      const novoAuto: AutosservicoItem = {
-        id: `aut-${Date.now()}`,
-        codigo: `AUT-${autos.length + 1}`,
-        nome: formNome,
-        tipoInsumo: formInsumoOuPatrocinador || 'Chopp Artesanal',
-        setor: formSetor,
-        status: 'operacional',
-        capacidadeTotalInsumo: 300,
-        nivelAtualInsumo: 300,
-        unidadeMedida: 'L',
-        capacidadeCopos: 400,
-        nivelCopos: 400,
-        transacoesAcumuladas: 0,
-        receitaTotal: 0,
-        ticketMedio: 35.0,
-        tempoMedioAtendimentoSegundos: 25,
-        pessoasNaFila: 1,
-        tempoEstimadoEsperaMin: 0.5,
-        temperaturaC: 2.5,
-        pressaoPsi: 13.5,
-        posicao3D: [autos.length * 2 - 4, 0, autos.length * 2 - 3],
-        ultimoAbastecimento: 'Agora',
-        consumoPorHora: [
-          { hora: '20h', transacoes: 0, receita: 0 },
-          { hora: '21h', transacoes: 0, receita: 0 },
-          { hora: '22h', transacoes: 0, receita: 0 },
-        ],
-      };
-      setAutos([...autos, novoAuto]);
-    } else {
-      const novoInsta: InstagramavelItem = {
-        id: `inst-${Date.now()}`,
-        codigo: `INSTA-${instas.length + 1}`,
-        nome: formNome,
-        patrocinador: formInsumoOuPatrocinador || 'Marca Parceira',
-        categoriaCenario: 'Instalação Visual Iluminada',
-        setor: formSetor,
-        status: 'ativo',
-        capturasTotais: 0,
-        compartilhamentosSociaisEstimados: 0,
-        alcanceEstimadoRedes: 0,
-        tempoPermanenciaMedioSegundos: 75,
-        avaliacaoMedia: 5.0,
-        npsScore: 92,
-        pessoasNaFila: 0,
-        tempoEsperaMin: 0,
-        iluminacaoCenica: {
-          modo: 'Neon Pulsar',
-          corPrincipal: '#ec4899',
-          intensidadePct: 90,
-        },
-        posicao3D: [instas.length * 2 - 3, 0, -(instas.length * 2 - 2)],
-        hashtagsPrincipais: ['#Festival2026', `#${formNome.replace(/\s+/g, '')}`],
-        fotosRecentes: [],
-      };
-      setInstas([...instas, novoInsta]);
-    }
+    const novoInsta: InstagramavelItem = {
+      id: `inst-${Date.now()}`,
+      codigo: `INSTA-${instas.length + 1}`,
+      nome: formNome,
+      patrocinador: formPatrocinador || 'Marca Parceira',
+      categoriaCenario: 'Instalação Visual Iluminada',
+      setor: formSetor,
+      status: 'ativo',
+      capturasTotais: 0,
+      compartilhamentosSociaisEstimados: 0,
+      alcanceEstimadoRedes: 0,
+      tempoPermanenciaMedioSegundos: 75,
+      avaliacaoMedia: 5.0,
+      npsScore: 92,
+      pessoasNaFila: 0,
+      tempoEsperaMin: 0,
+      iluminacaoCenica: {
+        modo: 'Neon Pulsar',
+        corPrincipal: '#ec4899',
+        intensidadePct: 90,
+      },
+      posicao3D: [instas.length * 2 - 3, 0, -(instas.length * 2 - 2)],
+      hashtagsPrincipais: ['#Festival2026', `#${formNome.replace(/\s+/g, '')}`],
+      fotosRecentes: [],
+    };
+    setInstas([...instas, novoInsta]);
 
     setFormNome('');
-    setFormInsumoOuPatrocinador('');
+    setFormPatrocinador('');
     setShowAddModal(false);
   };
 
@@ -633,41 +601,13 @@ export default function App() {
 
             <form onSubmit={handleCriarAtracao} className="mt-4 space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Tipo de Atração
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNovoTipo('autosservico')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${novoTipo === 'autosservico'
-                        ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300'
-                        : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
-                      }`}
-                  >
-                    Totem Autosserviço
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNovoTipo('instagramavel')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${novoTipo === 'instagramavel'
-                        ? 'border-fuchsia-400 bg-fuchsia-950/60 text-fuchsia-300'
-                        : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
-                      }`}
-                  >
-                    Ponto Instagramável
-                  </button>
-                </div>
-              </div>
-
-              <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  Nome da Atração
+                  Nome da Atração Instagramável
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder={novoTipo === 'autosservico' ? 'Ex: Beer Wall 05 - Pilsen Express' : 'Ex: Espelho de Neon Red Bull'}
+                  placeholder="Ex: Espelho de Neon Red Bull"
                   value={formNome}
                   onChange={(e) => setFormNome(e.target.value)}
                   className="w-full text-xs px-3 py-2 border border-slate-800 bg-[#070d18] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500"
@@ -692,13 +632,13 @@ export default function App() {
 
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {novoTipo === 'autosservico' ? 'Tipo de Insumo / Produto' : 'Marca / Patrocinador Vinculado'}
+                  Marca / Patrocinador Vinculado
                 </label>
                 <input
                   type="text"
-                  placeholder={novoTipo === 'autosservico' ? 'Ex: Chopp IPA 500ml' : 'Ex: Spotify, Itaú, Heineken'}
-                  value={formInsumoOuPatrocinador}
-                  onChange={(e) => setFormInsumoOuPatrocinador(e.target.value)}
+                  placeholder="Ex: Spotify, Itaú, Heineken"
+                  value={formPatrocinador}
+                  onChange={(e) => setFormPatrocinador(e.target.value)}
                   className="w-full text-xs px-3 py-2 border border-slate-800 bg-[#070d18] text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500"
                 />
               </div>

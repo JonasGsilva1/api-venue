@@ -21,7 +21,8 @@ const TIMEOUT_MS = 60_000;
 function authHeaders(): Record<string, string> {
   const token =
     localStorage.getItem('@venue-intelligence:token') ||
-    (import.meta.env.VITE_API_TOKEN as string | undefined);
+    (import.meta.env.VITE_API_TOKEN as string | undefined) ||
+    'dev-raiz-token-2026';
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
