@@ -133,7 +133,7 @@ const CameraCard: React.FC<{
       <div className="pt-1 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-semibold text-cyan-300 group-hover:text-cyan-200">
         <span className="inline-flex items-center gap-1.5">
           <Video className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Enviar vídeo &amp; analisar (YOLO)</span>
+          <span>Analisar vídeo</span>
         </span>
         <span aria-hidden="true">→</span>
       </div>

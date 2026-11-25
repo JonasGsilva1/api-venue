@@ -43,33 +43,33 @@ _COORDS_Z1 = [
 
 EXEMPLOS_FRAME = {
     "tempo_real_201": {
-        "summary": "201 · TEMPO_REAL — Z1 com 6 pax captados por câmera",
+        "summary": "201 · Normal — Z1 com 6 pessoas detectadas",
         "value": {"pdv_id": 1, "sensor_status": "ONLINE", "coordenadas_simuladas": _COORDS_Z1,
                   "transacoes_pos_ultimos_3m": 4, "simular_falha_ia": "NENHUMA"},
     },
     "anomalia_nfc_201": {
-        "summary": "201 · Anomalia — Leitor NFC lento (45 s/pessoa)",
+        "summary": "201 · Catraca lenta (45 s por pessoa)",
         "value": {"pdv_id": 5, "sensor_status": "ONLINE", "coordenadas_simuladas": _COORDS_Z1,
                   "transacoes_pos_ultimos_3m": 0, "taxa_nfc_seg_por_pessoa": 45,
                   "simular_falha_ia": "NENHUMA"},
     },
     "sensor_offline_502": {
-        "summary": "502 · FALLBACK_502 — câmera/sensor OFFLINE",
+        "summary": "502 · Câmera desligada (usa média de 15 min)",
         "value": {"pdv_id": 5, "sensor_status": "OFFLINE", "coordenadas_simuladas": [],
                   "transacoes_pos_ultimos_3m": 12, "simular_falha_ia": "NENHUMA"},
     },
     "timeout_ia_504": {
-        "summary": "504 · MEDIA_MOVEL_504 — timeout do motor de IA (> 2.5 s)",
+        "summary": "504 · IA lenta (usa média dos últimos 3 min)",
         "value": {"pdv_id": 1, "sensor_status": "ONLINE", "coordenadas_simuladas": _COORDS_Z1,
                   "transacoes_pos_ultimos_3m": 4, "simular_falha_ia": "TIMEOUT_504"},
     },
     "ia_fora_do_ar_503": {
-        "summary": "503 · CONTINGENCIA_503 — motor de IA fora do ar",
+        "summary": "503 · IA fora do ar (estima pela catraca)",
         "value": {"pdv_id": 1, "sensor_status": "ONLINE", "coordenadas_simuladas": _COORDS_Z1,
                   "transacoes_pos_ultimos_3m": 6, "simular_falha_ia": "DOWN_503"},
     },
     "contrato_invalido_400": {
-        "summary": "400 · CONTRATO_VIOLADO — campo extra + coordenada fora de 0..1000",
+        "summary": "400 · Dados inválidos (campo extra e ponto fora do limite)",
         "value": {"pdv_id": 1, "sensor_status": "ONLINE", "coordenadas_simuladas": [{"x": 1500, "y": 10}],
                   "transacoes_pos_ultimos_3m": 4, "rosto_id": "abc-123"},
     },
@@ -85,9 +85,9 @@ _STATUS_POR_MODO = {"TEMPO_REAL": 201, "FALLBACK_502": 502, "MEDIA_MOVEL_504": 5
 _resposta_resiliencia = {"model": TelemetryAnalysisResponseContract}
 RESPOSTAS_FRAME = {
     **RESPOSTA_404,
-    502: {**_resposta_resiliencia, "description": "Bad Gateway — câmera OFFLINE; estimativa FALLBACK_502 (média 15 min)."},
-    503: {**_resposta_resiliencia, "description": "Service Unavailable — motor de IA fora do ar; CONTINGENCIA_503 (catraca/NFC)."},
-    504: {**_resposta_resiliencia, "description": "Gateway Timeout — IA > 2.5 s; MEDIA_MOVEL_504 (média 3 min)."},
+    502: {**_resposta_resiliencia, "description": "Câmera desligada — estimativa feita pela média dos últimos 15 minutos."},
+    503: {**_resposta_resiliencia, "description": "IA fora do ar — estimativa feita pelas passagens na catraca."},
+    504: {**_resposta_resiliencia, "description": "IA lenta (> 2,5 s) — estimativa feita pela média dos últimos 3 minutos."},
 }
 
 
@@ -95,14 +95,17 @@ RESPOSTAS_FRAME = {
     "/telemetry/frame-analysis",
     response_model=TelemetryAnalysisResponseContract,
     status_code=status.HTTP_201_CREATED,
-    tags=["Módulo A · Telemetria & Resiliência"],
-    summary="Ingestão de frame de câmera com Matriz de Resiliência (400/502/503/504)",
+    tags=["Mapa & Arena · Telemetria das Câmeras"],
+    summary="Analisar vídeo — enviar pessoas detectadas",
     description=(
-        "Recebe o pacote anônimo captado pelas câmeras, aciona o motor interno de IA e grava a leitura em memória, "
-        "transmitindo-a via WebSocket/SSE.\n\n"
-        "**Use o seletor de exemplos** para reproduzir cada código: `201` tempo real · `400` contrato inválido · "
-        "`502` câmera OFFLINE · `504` timeout da IA · `503` IA fora do ar.\n\n"
-        "Requer papel `operador` ou `admin`."
+        "Recebe os pontos anônimos `(x, y)` das pessoas detectadas no vídeo e calcula lotação, densidade, tempo de espera e cor do semáforo.\n\n"
+        "O que pode responder:\n"
+        "- `201`: leitura normal em tempo real.\n"
+        "- `400`: dados enviados com erro (campo a mais ou ponto fora de 0..1000).\n"
+        "- `502`: câmera desligada → usa a média dos últimos 15 minutos.\n"
+        "- `504`: IA lenta → usa a média dos últimos 3 minutos.\n"
+        "- `503`: IA fora do ar → estima a fila pelas passagens na catraca.\n\n"
+        "**Onde aparece no site:** aba Mapa & Arena → clicar numa câmera → botão \"Analisar vídeo\" (envia a cada ~1 s enquanto o vídeo toca)."
     ),
     responses=RESPOSTAS_FRAME,
     dependencies=[Depends(sem_query_params)],
@@ -184,14 +187,11 @@ async def analisar_frame(
     "/inferencia",
     response_model=InferenceResponseContract,
     status_code=status.HTTP_200_OK,
-    tags=["Módulo A · Telemetria & Resiliência"],
-    summary="Motor de IA isolado: contagem de público, espera, densidade e semáforo",
+    tags=["Predições de Gargalos (IA)"],
+    summary="Calcular fila (teste, sem salvar)",
     description=(
-        "Executa o motor interno de IA **sem persistir** a leitura. Útil para validar a calibração de gargalos:\n"
-        "- `status_cor`: VERDE < 300 s · AMARELO 300..720 s · VERMELHO > 720 s\n"
-        "- `taxa_nfc_seg_por_pessoa` ≥ 45 → anomalia `NFC_LENTO`\n"
-        "- `densidade_m2` ≥ 1.5 → anomalia `SATURACAO`\n\n"
-        "Zona inexistente usa a calibração de referência do estande (6 pax → 2m 40s). Requer `operador`/`admin`."
+        "Faz a conta de pessoas, tempo de espera, densidade e cor do semáforo (VERDE abaixo de 5 min, AMARELO de 5 a 12 min, VERMELHO acima de 12 min) sem gravar no histórico.\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (a tela calcula a previsão no navegador); serve para testes aqui no Swagger."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -219,16 +219,11 @@ async def processar_inferencia(
     "/telemetry/yolo-scan",
     response_model=YoloScanResponseContract,
     status_code=status.HTTP_201_CREATED,
-    tags=["Módulo A · Telemetria & Resiliência"],
-    summary="Motor YOLOv8 Unificado na API: detecção óptica por polígonos de fila/estande (compatível com Render)",
+    tags=["Mapa & Arena · Telemetria das Câmeras"],
+    summary="Analisar vídeo no servidor (teste)",
     description=(
-        "Executa o mecanismo de visão computacional YOLOv8 (`app/services/yolo_vision.py`) diretamente na API unificada:\n"
-        "- Se o ambiente possuir `ultralytics`, `opencv` e o arquivo de vídeo (`video_teste_04.mp4`), roda a inferência real "
-        "`YOLOv8n_REAL` em `640x360`, classifica cada pessoa nos polígonos `ZONA_FILA` e `ZONA_BALCAO` via `pointPolygonTest` e "
-        "normaliza os pontos dos pés `(x, y)` para `0..1000`.\n"
-        "- Em nuvem/Render (onde PyTorch/OpenCV não são carregados na imagem para preservar o limite de 512 MB de RAM), "
-        "opera automaticamente em `SIMULACAO_OPTICA_BORDA` sem quebrar o deploy.\n"
-        "- Persiste as leituras em `memory_db`, sincroniza as câmeras `CAM-FLUXO-01..03`, atualiza o Heatmap e transmite via WebSocket/SSE."
+        "Roda a detecção de pessoas em um frame no servidor (ou simulação quando rodando na nuvem), separa quem está na fila e no estande e atualiza as leituras.\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (hoje o site roda a detecção direto no navegador); serve para testes aqui no Swagger."
     ),
     responses=RESPOSTA_404,
     dependencies=[Depends(sem_query_params)],

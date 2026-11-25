@@ -14,7 +14,7 @@ from app.repositories.memory_db import memory_db
 from app.services.event_bus import criar_evento, event_bus
 
 router = APIRouter(
-    prefix="/api/v1/predicoes", tags=["Módulo B · Predição de Gargalos & Despacho"], responses=RESPOSTAS_PADRAO
+    prefix="/api/v1/predicoes", tags=["Predições de Gargalos (IA)"], responses=RESPOSTAS_PADRAO
 )
 
 
@@ -22,8 +22,11 @@ router = APIRouter(
     "/gargalos",
     response_model=PredicaoGargaloResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Predição de gargalo operacional por câmeras e ação recomendada",
-    description="Predição ativa do motor de IA (alerta `PRED-9921`, Portão Principal / Entrada Norte). Qualquer papel autenticado.",
+    summary="Predições de Gargalos (IA) — ver previsão",
+    description=(
+        "Mostra onde uma fila crítica está se formando, o motivo e a ação recomendada para evitar gargalo.\n\n"
+        "**Onde aparece no site:** aba Predições de Gargalos (IA) (hoje a tela calcula a previsão no navegador; este endpoint é o equivalente no servidor)."
+    ),
     dependencies=[Depends(sem_query_params)],
 )
 async def consultar_gargalos(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> PredicaoGargaloResponseContract:
@@ -41,10 +44,10 @@ async def consultar_gargalos(usuario: UsuarioAutenticado = Depends(exigir_leitur
     "/acionar-fluxo",
     response_model=AcionarFluxoResponseContract,
     status_code=status.HTTP_201_CREATED,
-    summary="Executa a recomendação preditiva (ESTAVEL → ACAO_EM_ANDAMENTO)",
+    summary="Predições de Gargalos (IA) — executar ação recomendada",
     description=(
-        "Registra a ação executada pelo operador e muda o status operacional global de `ESTAVEL` para "
-        "`ACAO_EM_ANDAMENTO`, refletido em `/health`, no heatmap e nos canais WS/SSE. Requer `operador`/`admin`."
+        "Registra que o operador executou a ação sugerida pela previsão (como abrir mais filas) e muda o status do evento para ação em andamento.\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa dados de exemplo); serve para testes aqui no Swagger."
     ),
     dependencies=[Depends(sem_query_params)],
 )

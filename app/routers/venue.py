@@ -30,7 +30,7 @@ from app.services.mappers import (
     zona_para_contrato,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["Módulo C · Câmeras, Heatmap & Analytics"], responses=RESPOSTAS_PADRAO)
+router = APIRouter(prefix="/api/v1", responses=RESPOSTAS_PADRAO)
 
 # Limiar da RAIZ: deslocamento + fila >= 25 min numa janela de 30 min → Drop-off > 80%.
 RAZAO_CRITICA_DROPOFF = 25 / 30
@@ -40,10 +40,12 @@ RAZAO_CRITICA_DROPOFF = 25 / 30
     "/pdv/status",
     response_model=PdvStatusResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Status em tempo real de todas as zonas monitoradas por câmeras",
+    tags=["Mapa & Arena · Telemetria das Câmeras"],
+    summary="Status das zonas",
     description=(
-        "Zonas Z1, Z2, Z3, Z5 e Corredor de Acesso Norte com indicadores do seed, última leitura e "
-        "`habilitar_redirecionamento_push` (**true somente quando `tempo_espera_seg > 180`** — Paradoxo do Roteamento)."
+        "Lista todas as zonas monitoradas (Z1, Z2, Z3, Z5 e Corredor de Acesso Norte) com a última leitura de fila e espera. "
+        "Marca para redirecionar o público quando a espera passa de 3 minutos.\n\n"
+        "**Onde aparece no site:** botão \"Despacho Ops\" no topo do site usa esta lista para achar a zona mais cheia."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -61,11 +63,11 @@ async def status_pdvs(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> 
     "/venue/readiness-heatmap",
     response_model=ReadinessHeatmapResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Readiness de câmeras/sensores e mapa de calor global",
+    tags=["Síntese Acumulada"],
+    summary="Prontidão das câmeras e mapa de calor",
     description=(
-        "`readiness`: sensores ativos, fontes online, 7 câmeras neurais ativas, LiDAR 60 FPS, "
-        "rota livre (PCD) e estado do motor de IA (Circuit Breaker).\n\n"
-        "`heatmap_global`: indicadores globais de ocupação e densidade; `estado_operacional` acompanha o status global do evento."
+        "Mostra quantas câmeras estão ligadas (7/7), se as rotas acessíveis estão livres e os números gerais do mapa de calor (pessoas presentes, ocupação e densidade máxima).\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa dados de exemplo); serve para testes aqui no Swagger."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -85,12 +87,12 @@ async def readiness_heatmap(usuario: UsuarioAutenticado = Depends(exigir_leitura
     "/analytics/dropoff-summary",
     response_model=AnalyticsDropoffResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Análise de abandono de fila (Window/Queue Time, Density Point, Drop-off, CES) e síntese D1-D3",
+    tags=["Síntese Acumulada"],
+    summary="Taxa de abandono de fila",
     description=(
-        "- `queue_time_medio_min`: média das últimas leituras das zonas de acesso e circulação.\n"
-        "- `dropoff_rate_estimado_pct`: razão (deslocamento + fila) / window time; acima de 25/30 supera 80%.\n"
-        "- `ces_score`: 1 + 4 × razão (1 = esforço baixo, 5 = alto).\n"
-        "- `acumulado_evento`: síntese D1-D3 do público (960 pessoas)."
+        "Estima quantas pessoas desistem da fila considerando uma janela útil de 30 minutos e 8 minutos de caminhada até o local: "
+        "se caminhada + fila passar de 25 minutos, mais de 80% tendem a desistir. Também devolve a nota de esforço de 1 a 5 e o público acumulado dos 3 dias.\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa dados de exemplo); serve para testes aqui no Swagger."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -139,7 +141,12 @@ async def dropoff_summary(usuario: UsuarioAutenticado = Depends(exigir_leitura))
     "/venue/instagramavel",
     response_model=List[InstagramavelItemContract],
     status_code=status.HTTP_200_OK,
-    summary="Lista pontos instagramáveis e ativações de marca",
+    tags=["Instagramáveis"],
+    summary="Instagramáveis — listar atrações",
+    description=(
+        "Lista todas as ativações instagramáveis com contagem de fotos, alcance estimado, fila e iluminação.\n\n"
+        "**Onde aparece no site:** aba Instagramáveis (hoje a tela usa dados de exemplo; este endpoint é o equivalente no servidor)."
+    ),
 )
 async def listar_instagramavel(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> List[InstagramavelItemContract]:
     return [instagramavel_para_contrato(i) for i in memory_db.listar_instagramavel()]
@@ -149,7 +156,12 @@ async def listar_instagramavel(usuario: UsuarioAutenticado = Depends(exigir_leit
     "/venue/instagramavel/{id}/captura",
     response_model=InstagramavelItemContract,
     status_code=status.HTTP_200_OK,
-    summary="Registra foto / captura social em ponto instagramável",
+    tags=["Instagramáveis"],
+    summary="Registrar Foto",
+    description=(
+        "Soma mais uma foto registrada na atração escolhida e atualiza o alcance estimado nas redes.\n\n"
+        "**Onde aparece no site:** aba Instagramáveis → card da atração → botão \"Registrar Foto\" (hoje a tela atualiza localmente)."
+    ),
 )
 async def captura_instagramavel(
     id: str,
@@ -165,7 +177,12 @@ async def captura_instagramavel(
     "/venue/instagramavel/{id}/modo-luz",
     response_model=InstagramavelItemContract,
     status_code=status.HTTP_200_OK,
-    summary="Altera modo de iluminação cenográfica",
+    tags=["Instagramáveis"],
+    summary="Iluminação — mudar modo de luz",
+    description=(
+        "Altera o modo de iluminação da atração (`Neon Pulsar`, `Cyber Glow`, `Golden Hour` ou `Studio Spotlight`).\n\n"
+        "**Onde aparece no site:** aba Instagramáveis → card da atração → botões de \"Iluminação\" (hoje a tela atualiza localmente)."
+    ),
 )
 async def modo_luz_instagramavel(
     id: str,
@@ -182,7 +199,12 @@ async def modo_luz_instagramavel(
     "/venue/instagramavel/{id}/toggle-status",
     response_model=InstagramavelItemContract,
     status_code=status.HTTP_200_OK,
-    summary="Alterna status ativo / pausado de ativação instagramável",
+    tags=["Instagramáveis"],
+    summary="Pausa Técnica / Reativar",
+    description=(
+        "Alterna a atração entre ativa e pausada para manutenção rápida.\n\n"
+        "**Onde aparece no site:** aba Instagramáveis → card da atração → botão \"Pausa Técnica\" / \"Reativar\" (hoje a tela atualiza localmente)."
+    ),
 )
 async def toggle_status_instagramavel(
     id: str,
@@ -198,7 +220,12 @@ async def toggle_status_instagramavel(
     "/venue/atracao",
     response_model=InstagramavelItemContract,
     status_code=status.HTTP_201_CREATED,
-    summary="Cadastra nova ativação instagramável no venue",
+    tags=["Instagramáveis"],
+    summary="+ Atração — cadastrar atração instagramável",
+    description=(
+        "Cria uma nova atração instagramável informando nome, setor e marca patrocinadora.\n\n"
+        "**Onde aparece no site:** botão \"+ Atração\" no topo do site (hoje a tela adiciona localmente)."
+    ),
 )
 async def criar_atracao(
     payload: CriarAtracaoRequestContract,
@@ -216,7 +243,12 @@ async def criar_atracao(
     "/venue/sintese",
     response_model=SinteseAcumuladaContract,
     status_code=status.HTTP_200_OK,
-    summary="Calcula métricas agregadas de fluxo de câmeras e ativações da síntese acumulada",
+    tags=["Síntese Acumulada"],
+    summary="Síntese Acumulada — ver resumo do evento",
+    description=(
+        "Junta os números gerais do evento: público estimado, atendimentos, fotos, fluxo por setor, curva por hora e principais alertas.\n\n"
+        "**Onde aparece no site:** aba Síntese Acumulada (hoje a tela calcula com dados de exemplo; este endpoint é o equivalente no servidor)."
+    ),
 )
 async def obter_sintese(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> SinteseAcumuladaContract:
     return SinteseAcumuladaContract(**memory_db.calcular_sintese())
@@ -225,7 +257,12 @@ async def obter_sintese(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -
 @router.post(
     "/venue/simular-pico",
     status_code=status.HTTP_200_OK,
-    summary="Simula pico de fluxo de público na arena",
+    tags=["Síntese Acumulada"],
+    summary="Simular Pico",
+    description=(
+        "Aumenta de uma vez a quantidade de pessoas e fotos nas atrações para testar alertas de lotação alta.\n\n"
+        "**Onde aparece no site:** aba Síntese Acumulada → botão \"Simular Pico (+100 atendimentos)\" (hoje a tela simula localmente)."
+    ),
 )
 async def simular_pico(usuario: UsuarioAutenticado = Depends(exigir_operacao)):
     memory_db.simular_pico_fluxo()
@@ -236,11 +273,11 @@ async def simular_pico(usuario: UsuarioAutenticado = Depends(exigir_operacao)):
     "/venue/cameras",
     response_model=CamerasResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Telemetria em tempo real das 7 câmeras de monitoramento de gargalos (4 Entradas + 3 Fluxo)",
+    tags=["Mapa & Arena · Telemetria das Câmeras"],
+    summary="Telemetria das Câmeras — listar as 7 câmeras",
     description=(
-        "Retorna todas as 7 câmeras de hardware (`CAM-ENT-01`..`04` de acesso/perímetro e `CAM-FLUXO-01`..`03` de fluxo interno), "
-        "incluindo coordenadas 3D (`posicao`, `alvo`), taxa de quadros (`fps`), métricas operacionais e a respectiva "
-        "`zona` com `ultima_leitura` completa (contagem de pessoas, tempo de espera, densidade/m² e confiança da IA)."
+        "Devolve as 7 câmeras (4 de entrada e 3 de fluxo interno) com posição, situação atual e a última leitura de pessoas, espera e densidade.\n\n"
+        "**Onde aparece no site:** aba Mapa & Arena → painel \"Telemetria das Câmeras\" (atualiza a cada 10 s)."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -261,8 +298,12 @@ async def listar_cameras(usuario: UsuarioAutenticado = Depends(exigir_leitura)) 
     "/venue/cameras/{camera_id}",
     response_model=CameraTelemetryItemContract,
     status_code=status.HTTP_200_OK,
-    summary="Telemetria detalhada de uma câmera de hardware específica",
-    description="Consulta uma câmera individual pelo seu ID (`cam-ent-01`..`04` ou `cam-fluxo-01`..`03`).",
+    tags=["Mapa & Arena · Telemetria das Câmeras"],
+    summary="Telemetria das Câmeras — ver uma câmera",
+    description=(
+        "Mostra os detalhes e a última leitura de uma única câmera pelo código dela (`cam-ent-01`..`04` ou `cam-fluxo-01`..`03`).\n\n"
+        "**Onde aparece no site:** ainda não é usado diretamente pelo site (a tela busca as 7 câmeras juntas); serve para testes aqui no Swagger."
+    ),
     dependencies=[Depends(sem_query_params)],
 )
 async def obter_camera(

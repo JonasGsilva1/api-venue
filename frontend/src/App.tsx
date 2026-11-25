@@ -353,7 +353,7 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5 flex-wrap">
-                <span>Gateway: api-evento-ia.onrender.com</span>
+                <span>Conexão com a API</span>
                 <span className="text-slate-600">·</span>
                 <span className="text-emerald-400 font-bold">{pingLatency}ms</span>
                 <span className="text-slate-600">·</span>

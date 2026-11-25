@@ -22,7 +22,7 @@ from app.repositories.memory_db import memory_db
 from app.services.event_bus import criar_evento, event_bus
 from app.services.mappers import readiness_contrato
 
-router = APIRouter(tags=["Módulo D · Tempo Real (WebSocket & SSE)"])
+router = APIRouter(tags=["Tempo Real"])
 
 INTERVALO_HEARTBEAT_SEG = 15.0
 
@@ -86,14 +86,14 @@ async def live_stream(websocket: WebSocket, token: Optional[str] = Query(None)) 
     "/api/v1/telemetry/stream",
     response_model=EventoTempoRealContract,
     status_code=status.HTTP_200_OK,
-    summary="Canal Server-Sent Events (SSE) de telemetria de câmeras e alertas",
+    summary="Tempo Real — receber atualizações ao vivo",
     description=(
-        "Stream `text/event-stream`: cada mensagem é um `EventoTempoRealContract` (`event: <tipo>`, `data: <json>`).\n\n"
-        "No Swagger, informe `limite_eventos=1` para receber apenas o `snapshot` e encerrar. "
-        "Sem limite, a conexão permanece aberta com heartbeat a cada 15 s.\n\n"
-        "O canal WebSocket equivalente é `ws://localhost:8000/api/v1/live/stream?token=<token>`."
+        "Mantém uma conexão aberta para enviar na hora novas leituras das câmeras, mudanças de cor e despachos. "
+        "Para testar rápido aqui no Swagger, preencha `limite_eventos=1` (recebe o resumo inicial e fecha).\n\n"
+        "Também há o endereço WebSocket `ws://localhost:8000/api/v1/live/stream?token=dev-raiz-token-2026`.\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (a tela atualiza a cada 10 s); serve para testes aqui no Swagger."
     ),
-    responses={**RESPOSTAS_PADRAO, 200: {"content": {"text/event-stream": {}}, "description": "Fluxo SSE de eventos."}},
+    responses={**RESPOSTAS_PADRAO, 200: {"content": {"text/event-stream": {}}, "description": "Fluxo ao vivo de atualizações."}},
     dependencies=[Depends(apenas_query_params("limite_eventos"))],
 )
 async def telemetry_stream(

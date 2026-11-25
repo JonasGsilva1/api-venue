@@ -110,8 +110,8 @@ sem_query_params = apenas_query_params()
 
 # Respostas de erro documentadas em todos os routers protegidos.
 RESPOSTAS_PADRAO = {
-    400: {"model": ErrorResponseContract, "description": "Contrato violado (campos extras, tipos ou limites inválidos)."},
-    401: {"model": ErrorResponseContract, "description": "Token ausente, inválido ou expirado."},
-    403: {"model": ErrorResponseContract, "description": "Papel RBAC sem permissão."},
+    400: {"model": ErrorResponseContract, "description": "Dados enviados com erro (campo a mais, tipo errado ou valor fora do limite)."},
+    401: {"model": ErrorResponseContract, "description": "Falta o token ou ele é inválido."},
+    403: {"model": ErrorResponseContract, "description": "Seu usuário não tem permissão para isso."},
 }
-RESPOSTA_404 = {404: {"model": ErrorResponseContract, "description": "Recurso não encontrado."}}
+RESPOSTA_404 = {404: {"model": ErrorResponseContract, "description": "Não encontrado."}}

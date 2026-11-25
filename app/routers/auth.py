@@ -15,22 +15,21 @@ from app.contracts import (
 )
 from app.errors import sem_query_params
 
-router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação (JWT / RBAC)"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Login"])
 
 
 @router.post(
     "/token",
     response_model=TokenResponseContract,
     status_code=status.HTTP_201_CREATED,
-    summary="Emite um JWT HS256 por papel (ambiente de desenvolvimento)",
+    summary="Login — gerar token de teste",
     description=(
-        "Gera um Bearer JWT para `visualizador`, `operador` ou `admin`. Copie `access_token` e cole no botão "
-        f"**Authorize**. Atalho: o token fixo `{settings.dev_token}` já funciona como `admin`.\n\n"
-        "Desativado quando `AUTH_DEV_ISSUER=false` (retorna 404)."
+        f"Gera um token de acesso para `visualizador`, `operador` ou `admin`. Copie o `access_token` e cole em **Authorize** (atalho: `{settings.dev_token}` já entra como admin).\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa o token configurado); serve para testes aqui no Swagger."
     ),
     responses={
-        400: {"model": ErrorResponseContract, "description": "Contrato violado."},
-        404: {"model": ErrorResponseContract, "description": "Emissor de desenvolvimento desativado."},
+        400: {"model": ErrorResponseContract, "description": "Dados enviados com erro."},
+        404: {"model": ErrorResponseContract, "description": "Gerador de token de teste desativado."},
     },
     dependencies=[Depends(sem_query_params)],
 )
@@ -45,10 +44,13 @@ async def gerar_token(pedido: TokenRequestContract) -> TokenResponseContract:
     "/login",
     response_model=LoginResponseContract,
     status_code=status.HTTP_200_OK,
-    summary="Login de autenticação para o Front-End",
-    description="Autentica operador/admin e devolve o Bearer Token e dados de sessão para o front-end.",
+    summary="Login — entrar no sistema",
+    description=(
+        "Recebe e-mail e senha, valida o acesso e devolve o token e os dados básicos do usuário.\n\n"
+        "**Onde aparece no site:** tela de login (quando a autenticação estiver ativa no site)."
+    ),
     responses={
-        400: {"model": ErrorResponseContract, "description": "Contrato violado."},
+        400: {"model": ErrorResponseContract, "description": "Dados enviados com erro."},
     },
     dependencies=[Depends(sem_query_params)],
 )

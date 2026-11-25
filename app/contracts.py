@@ -59,9 +59,9 @@ MAX_COORDENADAS_POR_FRAME = 5000
 # Erros padronizados
 # ════════════════════════════════════════════════════════════════════════════
 class ErroCampoContract(ContratoEstrito):
-    campo: str = Field(..., description="Caminho do campo inválido.", examples=["body.coordenadas_simuladas.0.x"])
-    mensagem: str = Field(..., description="Motivo da rejeição.", examples=["Input should be less than or equal to 1000"])
-    tipo: str = Field(..., description="Código técnico do erro de validação.", examples=["less_than_equal"])
+    campo: str = Field(..., description="Qual campo veio errado.", examples=["body.coordenadas_simuladas.0.x"])
+    mensagem: str = Field(..., description="O que está errado no campo.", examples=["Input should be less than or equal to 1000"])
+    tipo: str = Field(..., description="Código do erro de validação.", examples=["less_than_equal"])
 
 
 class ErrorResponseContract(ContratoEstrito):
@@ -81,10 +81,10 @@ class TokenRequestContract(ContratoEstrito):
         min_length=3,
         max_length=60,
         pattern=r"^[a-z0-9._-]+$",
-        description="Identificador técnico do operador (sem dados pessoais).",
+        description="Nome técnico do usuário (sem dados pessoais).",
         examples=["central.controle"],
     )
-    papel: Papel = Field(..., description="Papel RBAC solicitado.", examples=["operador"])
+    papel: Papel = Field(..., description="Nível de acesso: visualizador, operador ou admin.", examples=["operador"])
 
 
 class TokenResponseContract(ContratoEstrito):
@@ -121,15 +121,15 @@ class HealthResponseContract(ContratoEstrito):
     timestamp: datetime = Field(..., examples=["2026-10-14T20:30:00Z"])
     status_operacional_evento: StatusOperacional = Field(..., examples=["ESTAVEL"])
     motor_ia_online: bool = Field(..., examples=[True])
-    conexoes_tempo_real: int = Field(..., ge=0, description="Clientes WS + SSE conectados.", examples=[2])
+    conexoes_tempo_real: int = Field(..., ge=0, description="Quantas telas estão conectadas ao vivo.", examples=[2])
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # Módulo A — Telemetria de Câmeras, Motor de IA e Resiliência
 # ════════════════════════════════════════════════════════════════════════════
 class CoordinateContract(ContratoEstrito):
-    x: float = Field(..., ge=0.0, le=1000.0, description="Coordenada X anônima na planta (0..1000).", examples=[120.5])
-    y: float = Field(..., ge=0.0, le=1000.0, description="Coordenada Y anônima na planta (0..1000).", examples=[180.2])
+    x: float = Field(..., ge=0.0, le=1000.0, description="Posição horizontal da pessoa na cena (de 0 a 1000).", examples=[120.5])
+    y: float = Field(..., ge=0.0, le=1000.0, description="Posição vertical da pessoa na cena (de 0 a 1000).", examples=[180.2])
 
 
 _EXEMPLO_COORDENADAS = [
@@ -159,22 +159,22 @@ class TelemetryAnalysisRequestContract(ContratoEstrito):
         },
     )
 
-    pdv_id: int = Field(..., gt=0, description="ID da zona monitorada por câmera (ver GET /api/v1/pdv/status).", examples=[1])
-    sensor_status: SensorStatus = Field("ONLINE", description="OFFLINE aciona o FALLBACK_502.", examples=["ONLINE"])
+    pdv_id: int = Field(..., gt=0, description="Número da zona monitorada pela câmera (ex.: 1 para Z1, 5 para Corredor Norte).", examples=[1])
+    sensor_status: SensorStatus = Field("ONLINE", description="Se a câmera está ligada (ONLINE) ou desligada (OFFLINE).", examples=["ONLINE"])
     coordenadas_simuladas: List[CoordinateContract] = Field(
         ...,
         max_length=MAX_COORDENADAS_POR_FRAME,
-        description="Posições anônimas e agregadas captadas pelas câmeras/LiDAR. Cada ponto = 1 pax.",
+        description="Posição de cada pessoa detectada no vídeo (um ponto por pessoa, de 0 a 1000). Nenhum rosto ou dado pessoal.",
         examples=[_EXEMPLO_COORDENADAS],
     )
     transacoes_pos_ultimos_3m: int = Field(
-        ..., ge=0, description="Validações de acesso/passagens no leitor NFC/catraca nos últimos 3 min.", examples=[4]
+        ..., ge=0, description="Quantas pessoas passaram pela catraca nos últimos 3 minutos.", examples=[4]
     )
     taxa_nfc_seg_por_pessoa: Optional[int] = Field(
-        None, ge=1, le=600, description="Ritmo medido no leitor NFC/catraca (anomalia a partir de 45 s/pessoa).", examples=[45]
+        None, ge=1, le=600, description="Segundos que cada pessoa leva na catraca (acima de 45 s indica catraca lenta).", examples=[45]
     )
     simular_falha_ia: SimularFalhaIA = Field(
-        "NENHUMA", description="Injeção de falha no motor de IA: TIMEOUT_504 ou DOWN_503.", examples=["NENHUMA"]
+        "NENHUMA", description="Só para teste: simula a IA lenta (TIMEOUT_504) ou fora do ar (DOWN_503).", examples=["NENHUMA"]
     )
 
 
@@ -182,9 +182,9 @@ class TelemetryReadingContract(ContratoEstrito):
     id: int = Field(..., gt=0, examples=[91])
     pdv_id: int = Field(..., gt=0, examples=[1])
     timestamp: datetime = Field(..., examples=["2026-10-14T20:30:00Z"])
-    pax_count: int = Field(..., ge=0, description="Contagem anônima agregada de pessoas.", examples=[6])
+    pax_count: int = Field(..., ge=0, description="Quantidade de pessoas contadas na zona.", examples=[6])
     tempo_espera_seg: int = Field(..., ge=0, examples=[228])
-    tempo_espera_fmt: str = Field(..., description="Tempo de espera legível.", examples=["3m 48s"])
+    tempo_espera_fmt: str = Field(..., description="Tempo estimado de espera em minutos e segundos.", examples=["3m 48s"])
     densidade_m2: float = Field(..., ge=0.0, examples=[0.26])
     status_cor: StatusCor = Field(..., examples=["VERDE"])
     confianca_ia: float = Field(..., ge=0.0, le=1.0, examples=[0.94])
@@ -194,17 +194,17 @@ class TelemetryReadingContract(ContratoEstrito):
     transacoes_pos_ultimos_3m: int = Field(..., ge=0, examples=[4])
     alerta_ruptura_estoque: bool = Field(
         False,
-        description="Mantido como False fixo para compatibilidade com o contrato LeituraV2 do frontend (sem gestão de insumos).",
+        description="Campo fixo em falso apenas para manter compatibilidade com o painel.",
         examples=[False],
     )
-    contagem_pessoas: Optional[int] = Field(None, ge=0, description="Alias para pax_count compatível com frontend.", examples=[6])
+    contagem_pessoas: Optional[int] = Field(None, ge=0, description="Mesmo valor de pax_count usado pelo painel.", examples=[6])
 
 
 class TelemetryAnalysisResponseContract(ContratoEstrito):
-    sucesso: bool = Field(..., description="true em TEMPO_REAL; false quando um plano de contingência foi aplicado.", examples=[True])
-    http_status: Literal[201, 502, 503, 504] = Field(..., description="Código HTTP devolvido.", examples=[201])
+    sucesso: bool = Field(..., description="Verdadeiro quando a leitura foi feita na hora; falso quando usou estimativa de reserva.", examples=[True])
+    http_status: Literal[201, 502, 503, 504] = Field(..., description="Código da resposta.", examples=[201])
     modo_leitura: ModoLeitura = Field(..., examples=["TEMPO_REAL"])
-    aviso_contingencia: Optional[str] = Field(None, description="Explicação da contingência (null em TEMPO_REAL).", examples=[None])
+    aviso_contingencia: Optional[str] = Field(None, description="Aviso explicando quando foi usada uma estimativa de reserva (fica vazio em tempo real).", examples=[None])
     leitura: TelemetryReadingContract
 
 
@@ -223,7 +223,7 @@ class InferenceRequestContract(ContratoEstrito):
         },
     )
 
-    pdv_id: int = Field(..., gt=0, description="Zona usada para calibrar área e ritmo de atendimento.", examples=[1])
+    pdv_id: int = Field(..., gt=0, description="Número da zona usada como base de tamanho e tempo de atendimento.", examples=[1])
     coordenadas_simuladas: List[CoordinateContract] = Field(..., max_length=MAX_COORDENADAS_POR_FRAME, examples=[_EXEMPLO_COORDENADAS])
     transacoes_pos_ultimos_3m: int = Field(..., ge=0, examples=[0])
     taxa_nfc_seg_por_pessoa: Optional[int] = Field(None, ge=1, le=600, examples=[45])
@@ -235,7 +235,7 @@ class InferenceResponseContract(ContratoEstrito):
     tempo_espera_seg: int = Field(..., ge=0, examples=[228])
     tempo_espera_fmt: str = Field(..., examples=["3m 48s"])
     densidade_m2: float = Field(..., ge=0.0, examples=[0.26])
-    status_cor: StatusCor = Field(..., description="VERDE < 300s · AMARELO 300..720s · VERMELHO > 720s.", examples=["VERDE"])
+    status_cor: StatusCor = Field(..., description="VERDE abaixo de 5 min · AMARELO de 5 a 12 min · VERMELHO acima de 12 min.", examples=["VERDE"])
     confianca_ia: float = Field(..., ge=0.0, le=1.0, examples=[0.94])
     anomalias: List[TipoAnomalia] = Field(default_factory=list, examples=[["NFC_LENTO", "SATURACAO"]])
 
@@ -261,40 +261,40 @@ class YoloScanRequestContract(ContratoEstrito):
         "video_teste_04.mp4",
         min_length=1,
         max_length=120,
-        description="Arquivo de vídeo ou fonte óptica analisada pelo motor YOLOv8n.",
+        description="Nome do vídeo analisado.",
         examples=["video_teste_04.mp4"],
     )
     frame_indice: int = Field(
         3,
         ge=1,
         le=100000,
-        description="Índice do frame analisado (processamento padrão a cada 3 frames).",
+        description="Qual quadro do vídeo analisar.",
         examples=[3],
     )
     pdv_fila_id: int = Field(
         1,
         gt=0,
-        description="ID da zona monitorada para o polígono de fila (padrão: 1 = Z1 | Acesso Estande Principal).",
+        description="Número da zona da fila (padrão: 1 = Z1 | Acesso Estande Principal).",
         examples=[1],
     )
     pdv_estande_id: int = Field(
         3,
         gt=0,
-        description="ID da zona monitorada para o polígono do estande/lounge (padrão: 3 = Z3 | Lounge).",
+        description="Número da zona do estande (padrão: 3 = Z3 | Lounge).",
         examples=[3],
     )
     pessoas_fila_simuladas: Optional[int] = Field(
         None,
         ge=0,
         le=500,
-        description="Opcional: força contagem na fila para calibração em nuvem (Render) quando o arquivo .mp4 não está no container.",
+        description="Opcional: quantidade de pessoas na fila para testar sem arquivo de vídeo.",
         examples=[6],
     )
     pessoas_estande_simuladas: Optional[int] = Field(
         None,
         ge=0,
         le=500,
-        description="Opcional: força contagem no estande para calibração em nuvem (Render) quando o arquivo .mp4 não está no container.",
+        description="Opcional: quantidade de pessoas no estande para testar sem arquivo de vídeo.",
         examples=[8],
     )
 
@@ -302,7 +302,7 @@ class YoloScanRequestContract(ContratoEstrito):
 class YoloScanResponseContract(ContratoEstrito):
     motor_visao: Literal["YOLOv8n_REAL", "SIMULACAO_OPTICA_BORDA"] = Field(
         ...,
-        description="Indica se a extração usou o peso local YOLOv8n + OpenCV ou a simulação óptica calibrada para nuvem (Render).",
+        description="Mostra se usou detecção real em vídeo local ou simulação na nuvem.",
         examples=["SIMULACAO_OPTICA_BORDA"],
     )
     resolucao_frame: str = Field(..., examples=["640x360"])
@@ -312,7 +312,7 @@ class YoloScanResponseContract(ContratoEstrito):
     pessoas_zona_estande: int = Field(..., ge=0, examples=[8])
     alerta_assistido_ativo: bool = Field(
         ...,
-        description="True quando fila >= 6 pax ou tempo de espera >= 3.5 min (210s), conforme regra do VenueEngine.",
+        description="Verdadeiro quando a fila tem 6 ou mais pessoas ou espera a partir de 3m 30s.",
         examples=[True],
     )
     coordenadas_fila: List[CoordinateContract]
@@ -415,8 +415,8 @@ class ZonaStatusContract(ContratoEstrito):
     capacidade: int = Field(..., gt=0, examples=[40])
     indicadores: IndicadoresZonaContract
     ultima_leitura: Optional[TelemetryReadingContract] = None
-    habilitar_redirecionamento_push: bool = Field(..., description="true SOMENTE quando tempo_espera_seg > 180.", examples=[True])
-    localizacao_geo: Optional[str] = Field(None, description="Coordenadas para planta isométrica do frontend.", examples=["RAIZ | Frente | planta(x:570,y:440)"])
+    habilitar_redirecionamento_push: bool = Field(..., description="Verdadeiro quando o tempo de espera passa de 3 minutos (180 s).", examples=[True])
+    localizacao_geo: Optional[str] = Field(None, description="Posição da zona no mapa da arena.", examples=["RAIZ | Frente | planta(x:570,y:440)"])
 
 
 class PdvStatusResponseContract(ContratoEstrito):
@@ -443,7 +443,7 @@ class HeatmapGlobalContract(ContratoEstrito):
     velocidade_media_ms: float = Field(..., ge=0, examples=[0.68])
     zonas_atracao: int = Field(..., ge=0, examples=[3])
     hotspots_criticos: int = Field(..., ge=0, examples=[0])
-    pontos_criticos: Optional[int] = Field(None, ge=0, description="Alias para hotspots_criticos compatível com frontend.", examples=[0])
+    pontos_criticos: Optional[int] = Field(None, ge=0, description="Mesmo valor de hotspots_criticos usado pelo painel.", examples=[0])
     estado_operacional: StatusOperacional = Field(..., examples=["ESTAVEL"])
 
 
@@ -469,17 +469,17 @@ class AcumuladoEventoContract(ContratoEstrito):
 
 
 class AnalyticsDropoffResponseContract(ContratoEstrito):
-    window_time_min: int = Field(..., gt=0, description="Janela de tempo útil do visitante.", examples=[30])
-    queue_time_medio_min: float = Field(..., ge=0, description="Média das filas das zonas de acesso/circulação.", examples=[7.08])
-    density_point_atingido: bool = Field(..., description="Alguma zona em VERMELHO.", examples=[True])
+    window_time_min: int = Field(..., gt=0, description="Tempo útil que o visitante tem no evento (padrão: 30 min).", examples=[30])
+    queue_time_medio_min: float = Field(..., ge=0, description="Tempo médio atual das filas em minutos.", examples=[7.08])
+    density_point_atingido: bool = Field(..., description="Verdadeiro se alguma zona já está no nível VERMELHO.", examples=[True])
     dropoff_rate_estimado_pct: float = Field(..., ge=0, le=100, examples=[28.9])
-    ces_score: float = Field(..., ge=1, le=5, description="Customer Effort Score (1 = baixo esforço, 5 = alto).", examples=[3.0])
+    ces_score: float = Field(..., ge=1, le=5, description="Nota de esforço do visitante (1 = fácil, 5 = muito difícil).", examples=[3.0])
     acumulado_evento: AcumuladoEventoContract
-    janela_tempo_min: Optional[int] = Field(None, description="Alias em português.", examples=[30])
-    tempo_medio_fila_min: Optional[float] = Field(None, description="Alias em português.", examples=[7.08])
-    ponto_densidade_atingido: Optional[bool] = Field(None, description="Alias em português.", examples=[True])
-    taxa_abandono_estimada_pct: Optional[float] = Field(None, description="Alias em português.", examples=[28.9])
-    pontuacao_esforco_ces: Optional[float] = Field(None, description="Alias em português.", examples=[3.0])
+    janela_tempo_min: Optional[int] = Field(None, description="Mesmo valor de window_time_min em português.", examples=[30])
+    tempo_medio_fila_min: Optional[float] = Field(None, description="Mesmo valor de queue_time_medio_min em português.", examples=[7.08])
+    ponto_densidade_atingido: Optional[bool] = Field(None, description="Mesmo valor de density_point_atingido em português.", examples=[True])
+    taxa_abandono_estimada_pct: Optional[float] = Field(None, description="Mesmo valor de dropoff_rate_estimado_pct em português.", examples=[28.9])
+    pontuacao_esforco_ces: Optional[float] = Field(None, description="Mesmo valor de ces_score em português.", examples=[3.0])
 
 
 # ════════════════════════════════════════════════════════════════════════════

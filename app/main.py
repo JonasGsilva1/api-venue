@@ -35,39 +35,43 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 VERSAO = "2.0.0"
 
 DESCRICAO = f"""
-Suíte operacional **Venue Intelligence / RaizEvento** — 100% Python (FastAPI + Pydantic v2), porta `8000`.
-Monitoramento exclusivo por **visão computacional e câmeras de hardware** para detecção e predição de gargalos de público.
+API do painel **Venue Intelligence / RaizEvento** para acompanhar filas, lotação por câmeras e atrações do evento em tempo real.
 
-### 🔐 Como autenticar (cadeado)
-1. Clique em **Authorize** (canto superior direito).
-2. Cole `{settings.dev_token}` (papel **admin**) — sem o prefixo `Bearer`.
-3. Para testar RBAC, gere um JWT por papel em `POST /api/v1/auth/token`.
+### Como testar aqui no Swagger
+1. Clique em **Authorize** (botão verde com cadeado no canto direito).
+2. Cole o token `{settings.dev_token}` (sem escrever `Bearer` na frente) e confirme.
 
-### 🛡️ Contratos estritos
-Todos os modelos usam `ConfigDict(extra="forbid")`. Campos extras, tipos ou limites inválidos → **400 CONTRATO_VIOLADO**
-(também para query params não mapeados). Não existe nenhum campo de identificação individual: leituras 100% anônimas e agregadas.
+### Onde cada grupo aparece no site
+| Grupo no Swagger | Onde aparece no site |
+|---|---|
+| **Login** | Tela de login e token de acesso |
+| **Mapa & Arena · Telemetria das Câmeras** | Aba **Mapa & Arena** → painel **Telemetria das Câmeras** e janela **Analisar vídeo** |
+| **Despacho Ops** | Botão **Despacho Ops** no topo e **Acionar Despacho Ops** na janela de vídeo |
+| **Predições de Gargalos (IA)** | Aba **Predições de Gargalos (IA)** |
+| **Instagramáveis** | Aba **Instagramáveis** e botão **+ Atração** no topo |
+| **Síntese Acumulada** | Aba **Síntese Acumulada** e botão **Simular Pico** |
+| **Tempo Real** | Canal de atualizações ao vivo (para uso futuro no site) |
+| **Sistema** | Indicador **Conexão com a API** no topo do site e checagem do servidor |
 
-### ⚡ Matriz de resiliência (`POST /api/v1/telemetry/frame-analysis`)
-| Código | Gatilho | Modo |
-|---|---|---|
-| 201 | inferência normal | `TEMPO_REAL` |
-| 400 | contrato inválido | pacote descartado |
-| 502 | `sensor_status = OFFLINE` | `FALLBACK_502` (média 15 min) |
-| 504 | `simular_falha_ia = TIMEOUT_504` / IA > {settings.ai_timeout_seg}s | `MEDIA_MOVEL_504` (média 3 min) |
-| 503 | `simular_falha_ia = DOWN_503` | `CONTINGENCIA_503` (catraca/NFC) |
-
-### 📡 Tempo real
-- WebSocket: `ws://localhost:8000/api/v1/live/stream?token={settings.dev_token}`
-- SSE: `GET /api/v1/telemetry/stream`
+### Códigos de resposta da análise de vídeo (`Analisar vídeo`)
+| Código | O que significa |
+|---|---|
+| `201` | Leitura feita na hora com os dados atuais da câmera |
+| `400` | Dados enviados com erro (campo a mais, tipo errado ou valor fora do limite) |
+| `502` | Câmera desligada — usa a média dos últimos 15 minutos |
+| `504` | IA demorou mais de {settings.ai_timeout_seg}s — usa a média dos últimos 3 minutos |
+| `503` | IA fora do ar — estima a fila pelas passagens na catraca |
 """
 
 TAGS = [
-    {"name": "Autenticação (JWT / RBAC)", "description": "Emissão de tokens de desenvolvimento por papel."},
-    {"name": "Módulo A · Telemetria & Resiliência", "description": "Ingestão de frames das câmeras, motor de IA e códigos 400/502/503/504."},
-    {"name": "Módulo B · Predição de Gargalos & Despacho", "description": "Acionamento preditivo de gargalos e despacho tático de equipe."},
-    {"name": "Módulo C · Câmeras, Heatmap & Analytics", "description": "Telemetria das 7 câmeras, mapa de calor global, ativações e analytics."},
-    {"name": "Módulo D · Tempo Real (WebSocket & SSE)", "description": "Push de eventos com latência de 10 ms a 400 ms."},
-    {"name": "Infraestrutura", "description": "Liveness e status operacional."},
+    {"name": "Login", "description": "Entrar no sistema e gerar token de acesso para testes."},
+    {"name": "Mapa & Arena · Telemetria das Câmeras", "description": "Aba Mapa & Arena: lista das 7 câmeras, status das zonas e envio de pessoas detectadas no vídeo."},
+    {"name": "Despacho Ops", "description": "Botões Despacho Ops e Acionar Despacho Ops: envia equipe para aliviar filas críticas."},
+    {"name": "Predições de Gargalos (IA)", "description": "Aba Predições de Gargalos (IA): previsão de filas e teste de cálculo de espera."},
+    {"name": "Instagramáveis", "description": "Aba Instagramáveis e botão + Atração: fotos, luzes, pausa e cadastro de atrações."},
+    {"name": "Síntese Acumulada", "description": "Aba Síntese Acumulada: resumo do evento, simular pico, mapa de calor e taxa de abandono."},
+    {"name": "Tempo Real", "description": "Canais ao vivo para receber leituras e alertas sem precisar recarregar a página."},
+    {"name": "Sistema", "description": "Conexão com a API no cabeçalho do site e checagem se o servidor está no ar."},
 ]
 
 app = FastAPI(
@@ -117,9 +121,12 @@ async def raiz() -> Response:
     "/status-pdvs",
     response_model=list[ Any ],
     status_code=status.HTTP_200_OK,
-    tags=["Módulo C · Câmeras, Heatmap & Analytics"],
-    summary="Compatibilidade com o polling do cabeçalho do frontend (/status-pdvs)",
-    description="Retorna lista vazia `[]` para alimentar o polling de latência e timestamp do cabeçalho do frontend sem gestão de insumos.",
+    tags=["Sistema"],
+    summary="Conexão com a API",
+    description=(
+        "Resposta rápida usada apenas para medir se o servidor está respondendo e calcular o tempo de resposta em milissegundos.\n\n"
+        "**Onde aparece no site:** cabeçalho do site (tempo de resposta em ms e \"Atualizado às\")."
+    ),
     dependencies=[Depends(sem_query_params)],
 )
 async def status_pdvs_compat() -> list[Any]:
@@ -130,9 +137,12 @@ async def status_pdvs_compat() -> list[Any]:
     "/health",
     response_model=HealthResponseContract,
     status_code=status.HTTP_200_OK,
-    tags=["Infraestrutura"],
-    summary="Liveness e status operacional do evento",
-    description="Público (sem token) para healthchecks de plataforma. Reflete `ESTAVEL` / `ACAO_EM_ANDAMENTO`.",
+    tags=["Sistema"],
+    summary="Saúde da API",
+    description=(
+        "Mostra se a API está funcionando, o estado geral do evento e quantos clientes estão conectados ao vivo. Não precisa de token.\n\n"
+        "**Onde aparece no site:** ainda não é usado pelo site (usado pelo Render para checar se o servidor está no ar); serve para testes aqui no Swagger."
+    ),
     dependencies=[Depends(sem_query_params)],
 )
 async def health() -> HealthResponseContract:

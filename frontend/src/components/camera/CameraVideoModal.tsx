@@ -520,7 +520,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
-      aria-label={`Análise de vídeo ${item.camera.codigo}`}
+      aria-label={`Analisar vídeo ${item.camera.codigo}`}
     >
       <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cyan-500/40 bg-[#0b1220] shadow-2xl">
         {/* Header */}
@@ -531,7 +531,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-sm font-black text-white">{item.camera.codigo}</span>
+                <span className="font-mono text-sm font-black text-white">Analisar vídeo · {item.camera.codigo}</span>
                 <span className="truncate text-xs text-slate-300">{item.camera.nome}</span>
                 <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-950/60 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-300">
                   <Cpu className="h-3 w-3" />
@@ -740,7 +740,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-cyan-300">
                   <Activity className="h-4 w-4" />
-                  <span>Telemetria ao Vivo (API)</span>
+                  <span>Resultado da análise</span>
                 </h3>
                 {leitura && (
                   <span
