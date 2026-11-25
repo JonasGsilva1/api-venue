@@ -1,4 +1,5 @@
-import { Bot, Clock } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Bot, Calculator, Clock, Zap } from 'lucide-react';
 import {
   CONFIANCA_MINIMA,
   LIMITE_ESPERA_MIN,
@@ -6,12 +7,24 @@ import {
   type HistoricoTelemetria,
   type Previsao,
 } from '../../utils/predicao';
-import type { AutosservicoItem, InstagramavelItem } from '../../types/venue';
+import type { InstagramavelItem } from '../../types/venue';
+import type { PdvStatusItem } from '../../types/publico';
+import type {
+  InferenceResponse,
+  PredicaoGargaloApiResponse,
+} from '../../types/ops';
+import {
+  getPredicaoGargalos,
+  mensagemDeErro,
+  postAcionarFluxo,
+  postInferencia,
+} from '../../services/venueApi';
 
 interface PredicaoGargalosViewProps {
-  autos: AutosservicoItem[];
+  zonas: PdvStatusItem[];
   instas: InstagramavelItem[];
   historico: HistoricoTelemetria;
+  onAcaoExecutada?: () => void;
 }
 
 interface Linha {
@@ -19,7 +32,7 @@ interface Linha {
   codigo: string;
   nome: string;
   setor: string;
-  tipo: 'Totem' | 'Instagramável';
+  tipo: 'Zona Câmera' | 'Instagramável';
   atual: number;
   amostras: number;
   previsao: Previsao | null;
@@ -27,7 +40,6 @@ interface Linha {
 
 const MIN_AMOSTRAS = 5;
 
-/** Ordem de exibição: já estourou > vai estourar > estável > coletando dados. */
 function prioridade(l: Linha): number {
   if (!l.previsao) return 3;
   const min = l.previsao.minutosAteLimite;
@@ -69,15 +81,91 @@ function BarraConfianca({ valor }: { valor: number }) {
   );
 }
 
-export function PredicaoGargalosView({ autos, instas, historico }: PredicaoGargalosViewProps) {
+export function PredicaoGargalosView({
+  zonas,
+  instas,
+  historico,
+  onAcaoExecutada,
+}: PredicaoGargalosViewProps) {
+  const [predicaoApi, setPredicaoApi] = useState<PredicaoGargaloApiResponse | null>(null);
+  const [acionando, setAcionando] = useState(false);
+  const [acaoFeedback, setAcaoFeedback] = useState<string | null>(null);
+
+  const [simPdvId, setSimPdvId] = useState<number>(1);
+  const [simPessoas, setSimPessoas] = useState<number>(8);
+  const [simTaxaNfc, setSimTaxaNfc] = useState<string>('');
+  const [simResultado, setSimResultado] = useState<InferenceResponse | null>(null);
+  const [simBusy, setSimBusy] = useState(false);
+  const [erroApi, setErroApi] = useState<string | null>(null);
+
+  const carregarPredicao = useCallback(async () => {
+    try {
+      const p = await getPredicaoGargalos();
+      setPredicaoApi(p);
+    } catch {
+      // Mantém estado atual em erro transitório
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregarPredicao();
+  }, [carregarPredicao]);
+
+  const handleExecutarAcao = async () => {
+    if (!predicaoApi) return;
+    setAcionando(true);
+    setErroApi(null);
+    setAcaoFeedback(null);
+    try {
+      const resp = await postAcionarFluxo({
+        alerta_id: 'PRED-9921',
+        acao_executada: 'ACIONAR_DUAS_FILAS_ADICIONAIS',
+        setor: predicaoApi.setor,
+      });
+      setAcaoFeedback(
+        `Ação ${resp.acao_executada} registrada (${resp.status_operacional_anterior} → ${resp.status_operacional_evento}).`,
+      );
+      onAcaoExecutada?.();
+    } catch (err) {
+      setErroApi(mensagemDeErro(err));
+    } finally {
+      setAcionando(false);
+    }
+  };
+
+  const handleCalcularFila = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSimBusy(true);
+    setErroApi(null);
+    try {
+      const coords = Array.from({ length: Math.max(0, Math.min(500, simPessoas)) }, (_, i) => ({
+        x: Number((120 + (i % 15) * 20).toFixed(1)),
+        y: Number((180 + Math.floor(i / 15) * 25).toFixed(1)),
+      }));
+      const nfcNum = simTaxaNfc.trim() ? Number(simTaxaNfc) : null;
+      const taxaValida = nfcNum !== null && nfcNum >= 1 && nfcNum <= 600 ? Math.round(nfcNum) : null;
+      const res = await postInferencia({
+        pdv_id: simPdvId,
+        coordenadas_simuladas: coords,
+        transacoes_pos_ultimos_3m: 4,
+        taxa_nfc_seg_por_pessoa: taxaValida,
+      });
+      setSimResultado(res);
+    } catch (err) {
+      setErroApi(mensagemDeErro(err));
+    } finally {
+      setSimBusy(false);
+    }
+  };
+
   const alvos = [
-    ...autos.map((a) => ({
-      id: a.id,
-      codigo: a.codigo,
-      nome: a.nome,
-      setor: a.setor,
-      tipo: 'Totem' as const,
-      atual: a.tempoEstimadoEsperaMin,
+    ...zonas.map((z) => ({
+      id: `zona-${z.id}`,
+      codigo: z.nome.split('|')[0]?.trim() || `Z${z.id}`,
+      nome: z.nome,
+      setor: z.tipo,
+      tipo: 'Zona Câmera' as const,
+      atual: Number(((z.ultima_leitura?.tempo_espera_seg ?? 0) / 60).toFixed(1)),
     })),
     ...instas.map((i) => ({
       id: i.id,
@@ -116,9 +204,8 @@ export function PredicaoGargalosView({ autos, instas, historico }: PredicaoGarga
             <span>Predição de Gargalos (IA)</span>
           </h2>
           <p className="text-xs text-slate-400">
-            Tendência do tempo de espera por atração (regressão linear sobre as últimas amostras).
-            Limite de gargalo: {LIMITE_ESPERA_MIN} min. Previsões com confiança abaixo de{' '}
-            {Math.round(CONFIANCA_MINIMA * 100)}% não geram alerta.
+            Tendência do tempo de espera nas zonas monitoradas e atrações. Limite de gargalo:{' '}
+            {LIMITE_ESPERA_MIN} min.
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono font-bold">
@@ -131,11 +218,48 @@ export function PredicaoGargalosView({ autos, instas, historico }: PredicaoGarga
         </div>
       </div>
 
+      {erroApi && (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-xs text-rose-300">
+          {erroApi}
+        </div>
+      )}
+
+      {/* Previsão Ativa do Servidor (GET /api/v1/predicoes/gargalos + POST /api/v1/predicoes/acionar-fluxo) */}
+      {predicaoApi && (
+        <div className="rounded-xl border border-fuchsia-500/40 bg-[#140b24] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded bg-rose-600 px-2 py-0.5 font-mono text-[10px] font-bold text-white">
+                {predicaoApi.nivel_predito}
+              </span>
+              <span className="font-bold text-white">{predicaoApi.setor}</span>
+              <span className="font-mono text-amber-300">
+                Formação em {predicaoApi.tempo_estimado_formacao_fila}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300">{predicaoApi.motivo}</p>
+            <p className="text-xs font-semibold text-amber-300">
+              Ação recomendada: {predicaoApi.acao_recomendada}
+            </p>
+            {acaoFeedback && <p className="text-xs text-emerald-300 font-mono">{acaoFeedback}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleExecutarAcao()}
+            disabled={acionando}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-fuchsia-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-fuchsia-400 disabled:opacity-50"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            <span>{acionando ? 'Executando...' : 'Executar ação recomendada'}</span>
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1220]">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-slate-400 border-b border-slate-800">
-              <th className="px-3 py-2.5 font-semibold">Atração</th>
+              <th className="px-3 py-2.5 font-semibold">Zona / Atração</th>
               <th className="px-3 py-2.5 font-semibold">Atual</th>
               <th className="px-3 py-2.5 font-semibold">+5 min</th>
               <th className="px-3 py-2.5 font-semibold">+10 min</th>
@@ -184,6 +308,92 @@ export function PredicaoGargalosView({ autos, instas, historico }: PredicaoGarga
           </tbody>
         </table>
       </div>
+
+      {/* Teste rápido de cálculo de fila (POST /api/v1/inferencia) */}
+      <form
+        onSubmit={(e) => void handleCalcularFila(e)}
+        className="rounded-xl border border-slate-800 bg-[#0b1220] p-4 space-y-3"
+      >
+        <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
+          <Calculator className="h-4 w-4" />
+          <span>Calcular fila (teste, sem salvar)</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">Zona</label>
+            <select
+              value={simPdvId}
+              onChange={(e) => setSimPdvId(Number(e.target.value))}
+              className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white"
+            >
+              {(zonas.length > 0
+                ? zonas
+                : [
+                    { id: 1, nome: 'Z1 | Acesso Estande Principal' },
+                    { id: 2, nome: 'Z2 | Passarela Lateral Leste' },
+                    { id: 5, nome: 'Corredor de Acesso Norte' },
+                  ]
+              ).map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">Pessoas na zona</label>
+            <input
+              type="number"
+              min={0}
+              max={500}
+              value={simPessoas}
+              onChange={(e) => setSimPessoas(Number(e.target.value))}
+              className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">Segundos na catraca (opcional)</label>
+            <input
+              type="number"
+              min={1}
+              max={600}
+              placeholder="Automático"
+              value={simTaxaNfc}
+              onChange={(e) => setSimTaxaNfc(e.target.value)}
+              className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={simBusy}
+            className="rounded-lg bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
+          >
+            {simBusy ? 'Calculando...' : 'Calcular fila'}
+          </button>
+        </div>
+
+        {simResultado && (
+          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-cyan-900/50 bg-[#070d18] px-3 py-2 text-xs font-mono">
+            <span className="text-white">
+              Pessoas: <strong>{simResultado.pax_count}</strong>
+            </span>
+            <span className="text-cyan-300">
+              Espera: <strong>{simResultado.tempo_espera_fmt}</strong>
+            </span>
+            <span className="text-slate-300">
+              Densidade: <strong>{simResultado.densidade_m2.toFixed(2)} p/m²</strong>
+            </span>
+            <span className="text-amber-300">
+              Semáforo: <strong>{simResultado.status_cor}</strong>
+            </span>
+            {simResultado.anomalias.length > 0 && (
+              <span className="text-rose-400">
+                Anomalias: <strong>{simResultado.anomalias.join(', ')}</strong>
+              </span>
+            )}
+          </div>
+        )}
+      </form>
     </section>
   );
 }

@@ -191,7 +191,7 @@ async def analisar_frame(
     summary="Calcular fila (teste, sem salvar)",
     description=(
         "Faz a conta de pessoas, tempo de espera, densidade e cor do semáforo (VERDE abaixo de 5 min, AMARELO de 5 a 12 min, VERMELHO acima de 12 min) sem gravar no histórico.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (a tela calcula a previsão no navegador); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** aba Predições de Gargalos (IA) → bloco \"Calcular fila (teste, sem salvar)\"."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -223,7 +223,7 @@ async def processar_inferencia(
     summary="Analisar vídeo no servidor (teste)",
     description=(
         "Roda a detecção de pessoas em um frame no servidor (ou simulação quando rodando na nuvem), separa quem está na fila e no estande e atualiza as leituras.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (hoje o site roda a detecção direto no navegador); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** aba Mapa & Arena → clicar numa câmera → janela Analisar vídeo → botão \"Testar no servidor\" (e comando `yolo-scan` no Terminal CLI)."
     ),
     responses=RESPOSTA_404,
     dependencies=[Depends(sem_query_params)],

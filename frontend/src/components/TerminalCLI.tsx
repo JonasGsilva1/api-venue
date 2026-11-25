@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
 import { Terminal as TerminalIcon, X } from 'lucide-react';
+import {
+  getDispatches,
+  getHealth,
+  getSintese,
+  mensagemDeErro,
+  postSimularPico,
+  postYoloScan,
+} from '../services/venueApi';
 
 interface TerminalCLIProps {
   isOpen: boolean;
@@ -9,53 +17,79 @@ interface TerminalCLIProps {
 
 export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRunAction }) => {
   const [logs, setLogs] = useState<string[]>([
-    '[INIT] Venue Intelligence Core v2.4.0 [GATEWAY: https://api-evento-ia.onrender.com]',
-    '[OK] Telemetria de sensores de fluxo e pressão conectada (WebSocket ping: 431ms)',
-    '[INFO] Motor Preditivo de Gargalos IA: monitorando 8 setores ativos da arena',
-    '[READY] Digite "help" para ver os comandos operacionais ou execute uma ação preditiva.',
+    '[INIT] Venue Intelligence Core conectado à API FastAPI',
+    '[READY] Digite "help" para ver os comandos conectados à API em tempo real.',
   ]);
   const [inputVal, setInputVal] = useState('');
+  const [executando, setExecutando] = useState(false);
 
-  const executeCommand = (cmd: string) => {
+  const appendLog = (...linhas: string[]) => {
+    setLogs((prev) => [...prev, ...linhas]);
+  };
+
+  const executeCommand = async (cmd: string) => {
     const trimmed = cmd.trim();
-    if (!trimmed) return;
+    if (!trimmed || executando) return;
+    const lower = trimmed.toLowerCase();
 
-    const newLogs = [...logs, `> ${trimmed}`];
+    appendLog(`> ${trimmed}`);
+    setInputVal('');
 
-    if (trimmed.toLowerCase() === 'help') {
-      newLogs.push(
+    if (lower === 'help') {
+      appendLog(
         'Comandos disponíveis:',
-        '  status        - Exibe o estado operacional de todos os totens e ativações',
-        '  repor-tudo    - Reabastece insumos de chopp e copos nos totens em déficit',
-        '  aliviar-filas - Ativa modo ágil nos pontos instagramáveis e rebalanceia público',
-        '  pico-sim      - Simula pico de 100 pessoas na Arena Principal',
-        '  clear         - Limpa o console de telemetria'
+        '  status        - Consulta Saúde da API (/health) e Síntese Acumulada',
+        '  despachos     - Lista as ordens em Despacho Ops (/api/v1/ops/dispatch)',
+        '  yolo-scan     - Roda detecção de teste no servidor (/api/v1/telemetry/yolo-scan)',
+        '  pico-sim      - Dispara Simular Pico na API (/api/v1/venue/simular-pico)',
+        '  aliviar-filas - Executa ação preditiva na API',
+        '  clear         - Limpa o console',
       );
-    } else if (trimmed.toLowerCase() === 'clear') {
-      setLogs(['[CLEARED] Console reiniciado.']);
-      setInputVal('');
       return;
-    } else if (trimmed.toLowerCase() === 'status') {
-      newLogs.push(
-        '[TELEMETRIA] 4 Totens de Autosserviço: 3 Operacionais, 1 Atenção (AUT-DRINK-02)',
-        '[TELEMETRIA] 4 Pontos Instagramáveis: 3 Ativos, 1 Alta Procura (Túnel Neon)',
-        '[VENUES] Taxa de Throughput: 17.2 atendimentos/min · Espera global: 3.8 min'
-      );
-    } else if (trimmed.toLowerCase().includes('repor')) {
-      newLogs.push('[SUCESSO] Ordem de despacho emitida para equipe móvel: todos os tanques em 100%.');
-      if (onRunAction) onRunAction('repor-tudo');
-    } else if (trimmed.toLowerCase().includes('fila') || trimmed.toLowerCase().includes('aliviar')) {
-      newLogs.push('[SUCESSO] Modo fotográfico ágil ativado no Túnel Neon e Balanço Flutuante.');
-      if (onRunAction) onRunAction('aliviar-filas');
-    } else if (trimmed.toLowerCase().includes('pico')) {
-      newLogs.push('[SIMULAÇÃO] Injeção de pico de tráfego de 100 participantes na arena.');
-      if (onRunAction) onRunAction('pico');
-    } else {
-      newLogs.push(`[EXEC] Comando "${trimmed}" enviado para api-evento-ia.onrender.com`);
     }
 
-    setLogs(newLogs);
-    setInputVal('');
+    if (lower === 'clear') {
+      setLogs(['[CLEARED] Console reiniciado.']);
+      return;
+    }
+
+    setExecutando(true);
+    try {
+      if (lower === 'status') {
+        const [health, sintese] = await Promise.all([getHealth(), getSintese()]);
+        appendLog(
+          `[OK] API v${health.versao} · Estado: ${health.status_operacional_evento} · IA online: ${health.motor_ia_online ? 'SIM' : 'NÃO'} · Conexões ao vivo: ${health.conexoes_tempo_real}`,
+          `[INFO] Câmeras ativas: ${sintese.camerasMonitoradasAtivas} · Atendimentos: ${sintese.totalAtendimentosGerais} · Espera média: ${sintese.tempoMedioEsperaGlobalMin} min`,
+        );
+      } else if (lower.includes('despacho')) {
+        const resp = await getDispatches();
+        appendLog(
+          `[INFO] Despacho Ops: ${resp.total_ordens} ordem(ns) · Estado: ${resp.status_operacional_evento}`,
+          ...resp.ordens.slice(-5).map(
+            (o) => `  #${o.id} [${o.nivel_critico}] ${o.nome_zona ?? `Zona ${o.pdv_id}`}: ${o.sugestao_acao} (${o.status})`,
+          ),
+        );
+      } else if (lower.includes('yolo')) {
+        const resp = await postYoloScan({ frame_indice: 3, pdv_fila_id: 1, pdv_estande_id: 3 });
+        appendLog(
+          `[SUCESSO] Motor ${resp.motor_visao} (${resp.resolucao_frame}) → Fila: ${resp.pessoas_zona_fila} pax (${resp.leitura_fila.tempo_espera_fmt}, ${resp.leitura_fila.status_cor}) · Estande: ${resp.pessoas_zona_estande} pax`,
+        );
+        onRunAction?.('yolo-scan');
+      } else if (lower.includes('pico')) {
+        const resp = await postSimularPico();
+        appendLog(`[SUCESSO] ${resp.mensagem}`);
+        onRunAction?.('pico');
+      } else if (lower.includes('fila') || lower.includes('aliviar')) {
+        onRunAction?.('aliviar-filas');
+        appendLog('[SUCESSO] Medida de alívio de fila acionada na API.');
+      } else {
+        appendLog(`[INFO] Comando "${trimmed}" não reconhecido. Digite "help".`);
+      }
+    } catch (err) {
+      appendLog(`[ERRO] ${mensagemDeErro(err)}`);
+    } finally {
+      setExecutando(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -66,10 +100,11 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
         <div className="flex items-center justify-between px-4 py-3 bg-[#0d1527] border-b border-cyan-900/50">
           <div className="flex items-center gap-2 text-cyan-400">
             <TerminalIcon className="w-4 h-4 text-emerald-400" />
-            <span className="font-bold tracking-tight text-white">Terminal Operacional & Execução de Diagnóstico CLI</span>
+            <span className="font-bold tracking-tight text-white">Terminal Operacional &amp; Execução de Diagnóstico CLI</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-300">ONLINE</span>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
           >
@@ -85,12 +120,14 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
                 log.startsWith('>')
                   ? 'text-emerald-400 font-bold'
                   : log.startsWith('[SUCESSO]')
-                  ? 'text-cyan-300'
-                  : log.startsWith('[OK]')
-                  ? 'text-emerald-300'
-                  : log.startsWith('[INFO]')
-                  ? 'text-amber-300'
-                  : 'text-slate-300'
+                    ? 'text-cyan-300'
+                    : log.startsWith('[OK]')
+                      ? 'text-emerald-300'
+                      : log.startsWith('[ERRO]')
+                        ? 'text-rose-400'
+                        : log.startsWith('[INFO]')
+                          ? 'text-amber-300'
+                          : 'text-slate-300'
               }
             >
               {log}
@@ -101,7 +138,7 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            executeCommand(inputVal);
+            void executeCommand(inputVal);
           }}
           className="flex items-center gap-2 p-3 bg-[#0d1527] border-t border-cyan-900/50"
         >
@@ -110,15 +147,16 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
             type="text"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
-            placeholder="Digite um comando (ex: status, repor-tudo, aliviar-filas, pico-sim, help)..."
+            placeholder="Digite um comando (ex: status, despachos, yolo-scan, pico-sim, help)..."
             className="flex-1 bg-transparent text-white focus:outline-none placeholder-slate-500 text-xs"
             autoFocus
           />
           <button
             type="submit"
-            className="px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold rounded-lg transition-colors text-xs"
+            disabled={executando}
+            className="px-3 py-1 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-slate-950 font-bold rounded-lg transition-colors text-xs"
           >
-            Enviar
+            {executando ? '...' : 'Enviar'}
           </button>
         </form>
       </div>

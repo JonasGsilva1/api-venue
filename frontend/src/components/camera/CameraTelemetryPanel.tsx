@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Camera, RefreshCw, TriangleAlert, Video } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Camera, Radio, RefreshCw, TriangleAlert, Video } from 'lucide-react';
 import { useCameraTelemetry } from '../../hooks/useCameraTelemetry';
 import type { CameraTelemetria } from '../../hooks/useCameraTelemetry';
+import { getDispatches } from '../../services/venueApi';
+import type { OperationalDispatchResponse } from '../../types/ops';
 import { STATUS_FLUXO } from '../Venue3DScene';
 import type { StatusFluxo } from '../Venue3DScene';
 import { formatarDuracao, separarNome } from '../../utils/publico';
@@ -141,11 +143,45 @@ const CameraCard: React.FC<{
   );
 };
 
+export interface CameraTelemetryPanelProps {
+  refreshSignal?: number;
+  onDataChanged?: () => void;
+}
+
 // Painel com a telemetria das 7 câmeras (4 de entrada e 3 de fluxo), lida da API.
-export const CameraTelemetryPanel: React.FC = () => {
+export const CameraTelemetryPanel: React.FC<CameraTelemetryPanelProps> = ({
+  refreshSignal = 0,
+  onDataChanged,
+}) => {
   const { cameras, loading, error, atualizadoEm, refetch } = useCameraTelemetry();
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [dispatches, setDispatches] = useState<OperationalDispatchResponse[]>([]);
   const selectedItem = cameras.find((c) => c.camera.id === selectedCameraId) ?? null;
+
+  const carregarDispatches = useCallback(async () => {
+    try {
+      const resp = await getDispatches();
+      setDispatches(resp.ordens);
+    } catch {
+      // Mantém lista atual caso falhe temporariamente
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregarDispatches();
+  }, [carregarDispatches, refreshSignal]);
+
+  useEffect(() => {
+    if (refreshSignal > 0) {
+      refetch();
+    }
+  }, [refreshSignal, refetch]);
+
+  const handleSincronizado = () => {
+    refetch();
+    void carregarDispatches();
+    onDataChanged?.();
+  };
 
   return (
     <section className="space-y-3" aria-labelledby="cameras-titulo">
@@ -167,7 +203,7 @@ export const CameraTelemetryPanel: React.FC = () => {
           )}
           <button
             type="button"
-            onClick={refetch}
+            onClick={handleSincronizado}
             aria-label="Atualizar telemetria"
             title="Atualizar agora"
             className="rounded-lg border border-cyan-900/60 bg-[#0d1527] p-1.5 text-slate-300 transition-colors hover:text-white"
@@ -201,8 +237,43 @@ export const CameraTelemetryPanel: React.FC = () => {
       <CameraVideoModal
         item={selectedItem}
         onClose={() => setSelectedCameraId(null)}
-        onTelemetrySynced={refetch}
+        onTelemetrySynced={handleSincronizado}
       />
+
+      {dispatches.length > 0 && (
+        <div className="rounded-xl border border-rose-900/50 bg-[#0d1527] p-3.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-300">
+              <Radio className="h-3.5 w-3.5" />
+              <span>Ordens de Despacho Ops ({dispatches.length})</span>
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {dispatches.slice(-4).reverse().map((d) => (
+              <div
+                key={d.id}
+                className="rounded-lg border border-slate-800 bg-[#080d1a] px-3 py-2 text-xs flex items-start justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-mono text-[11px]">
+                    <span className="font-bold text-rose-300">#{d.id}</span>
+                    <span className="text-cyan-300">{d.nome_zona ?? `Zona ${d.pdv_id}`}</span>
+                    <span className="rounded bg-rose-950/80 px-1.5 py-0.5 text-[10px] text-rose-300">
+                      {d.nivel_critico}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-slate-300 truncate" title={d.sugestao_acao}>
+                    {d.sugestao_acao}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded border border-amber-500/30 bg-amber-950/50 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">
+                  {d.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

@@ -6,7 +6,12 @@ export type ModoLeitura =
   | 'FALLBACK_502'
   | 'MEDIA_MOVEL_504'
   | 'CONTINGENCIA_503';
-export type EstadoOperacional = 'NORMAL' | 'PRESSAO_MODERADA' | 'CRITICO';
+export type EstadoOperacional =
+  | 'NORMAL'
+  | 'PRESSAO_MODERADA'
+  | 'CRITICO'
+  | 'ESTAVEL'
+  | 'ACAO_EM_ANDAMENTO';
 
 export interface TelemetryReading {
   id: number;
@@ -48,31 +53,39 @@ export interface MapaCalorGlobal {
 export interface Prontidao {
   sensores_ativos: number;
   fontes_online_str: string;
-  estoque_inicial_ok: boolean;
+  cameras_neurais_ativas: number;
+  lidar_fps: number;
   rota_livre_ok: boolean;
   motor_ia_online: boolean;
 }
 
 export interface ReadinessHeatmapResponse {
-  prontidao: Prontidao;
-  mapa_calor_global: MapaCalorGlobal;
+  readiness: Prontidao;
+  heatmap_global: MapaCalorGlobal;
+  gerado_em: string;
+  prontidao?: Prontidao | null;
+  mapa_calor_global?: MapaCalorGlobal | null;
 }
 
 export interface AcumuladoEvento {
   publico_acumulado: number;
+  publico_por_dia: { D1: number; D2: number; D3: number };
   atendimentos_cortesia: number;
-  bebidas_unidades: number;
-  autosservico_retiradas: number;
   engajamento_interacoes: number;
 }
 
 export interface AnalyticsSummaryResponse {
-  janela_tempo_min: number;
-  tempo_medio_fila_min: number;
-  ponto_densidade_atingido: boolean;
-  taxa_abandono_estimada_pct: number;
-  pontuacao_esforco_ces: number;
+  window_time_min: number;
+  queue_time_medio_min: number;
+  density_point_atingido: boolean;
+  dropoff_rate_estimado_pct: number;
+  ces_score: number;
   acumulado_evento: AcumuladoEvento;
+  janela_tempo_min?: number | null;
+  tempo_medio_fila_min?: number | null;
+  ponto_densidade_atingido?: boolean | null;
+  taxa_abandono_estimada_pct?: number | null;
+  pontuacao_esforco_ces?: number | null;
 }
 
 

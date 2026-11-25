@@ -1,10 +1,11 @@
 /**
  * Tipos e interfaces de dados para Venue Intelligence
- * Gestão de Eventos, Atrações (Autosserviço e Instagramável) e Síntese Acumulada
+ * Alinhados 100% aos contratos Pydantic da API FastAPI.
  */
-export const VENUE_VERSION = '1.0.0';
+export const VENUE_VERSION = '2.0.0';
 export type StatusAutosservico = 'operacional' | 'atencao' | 'critico' | 'manutencao';
 export type StatusInstagramavel = 'ativo' | 'alta_procura' | 'limpeza' | 'pausado';
+export type ModoIluminacao = 'Neon Pulsar' | 'Cyber Glow' | 'Golden Hour' | 'Studio Spotlight';
 
 export interface AutosservicoItem {
   id: string;
@@ -13,8 +14,8 @@ export interface AutosservicoItem {
   tipoInsumo: string;
   setor: string;
   status: StatusAutosservico;
-  capacidadeTotalInsumo: number; // em litros ou un
-  nivelAtualInsumo: number; // em litros ou un
+  capacidadeTotalInsumo: number;
+  nivelAtualInsumo: number;
   unidadeMedida: 'L' | 'un';
   capacidadeCopos: number;
   nivelCopos: number;
@@ -43,12 +44,12 @@ export interface InstagramavelItem {
   compartilhamentosSociaisEstimados: number;
   alcanceEstimadoRedes: number;
   tempoPermanenciaMedioSegundos: number;
-  avaliacaoMedia: number; // 0 a 5
+  avaliacaoMedia: number;
   npsScore: number;
   pessoasNaFila: number;
   tempoEsperaMin: number;
   iluminacaoCenica: {
-    modo: 'Neon Pulsar' | 'Cyber Glow' | 'Golden Hour' | 'Studio Spotlight';
+    modo: ModoIluminacao;
     corPrincipal: string;
     intensidadePct: number;
   };
@@ -57,32 +58,38 @@ export interface InstagramavelItem {
   fotosRecentes: { id: string; timestamp: string; autor: string; likes: number }[];
 }
 
+export interface CriarAtracaoRequest {
+  tipo: 'instagramavel';
+  nome: string;
+  setor: string;
+  patrocinador?: string | null;
+}
+
 export interface SinteseAcumuladaData {
   eventoNome: string;
   dataEvento: string;
   tempoDecorridoHoras: number;
   publicoTotalEstimadoVenue: number;
   totalAtendimentosGerais: number;
-  receitaTotalAutosservico: number;
+  camerasMonitoradasAtivas: number;
   totalCapturasInstagramavel: number;
   alcanceTotalRedes: number;
-  ticketMedioGeral: number;
   vazaoMediaAtendimentosPorMin: number;
   tempoMedioEsperaGlobalMin: number;
   satisfacaoGeralScore: number;
-  autosservicoPorStatus: Record<StatusAutosservico, number>;
+  camerasPorStatus: Record<string, number>;
   instagramavelPorStatus: Record<StatusInstagramavel, number>;
-  faturamentoPorSetor: { setor: string; receita: number; volume: number; pct: number }[];
-  fluxoHorario: { hora: string; autosservico: number; instagramavel: number; receita: number }[];
+  fluxoPorSetor: { setor: string; volume: number; pct: number }[];
+  fluxoHorario: { hora: string; acessosCameras: number; instagramavel: number }[];
   principaisAlertas: {
     id: string;
     tipo: 'aviso' | 'urgente' | 'info';
     mensagem: string;
     hora: string;
     atracao: string;
-    atracaoId?: string;
+    atracaoId?: string | null;
     direcionamento: string;
-    impactoEstimado?: string;
-    acaoRapidaLabel?: string;
+    impactoEstimado?: string | null;
+    acaoRapidaLabel?: string | null;
   }[];
 }

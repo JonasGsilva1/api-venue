@@ -91,7 +91,7 @@ async def live_stream(websocket: WebSocket, token: Optional[str] = Query(None)) 
         "Mantém uma conexão aberta para enviar na hora novas leituras das câmeras, mudanças de cor e despachos. "
         "Para testar rápido aqui no Swagger, preencha `limite_eventos=1` (recebe o resumo inicial e fecha).\n\n"
         "Também há o endereço WebSocket `ws://localhost:8000/api/v1/live/stream?token=dev-raiz-token-2026`.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (a tela atualiza a cada 10 s); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** cabeçalho do site (indicador \"Tempo Real ativo\" que lê o snapshot inicial e mantém o WebSocket conectado para atualizar as telas ao vivo)."
     ),
     responses={**RESPOSTAS_PADRAO, 200: {"content": {"text/event-stream": {}}, "description": "Fluxo ao vivo de atualizações."}},
     dependencies=[Depends(apenas_query_params("limite_eventos"))],

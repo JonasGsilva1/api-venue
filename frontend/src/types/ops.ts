@@ -30,6 +30,7 @@ export interface LeituraV2 {
   pax_count: number;
   contagem_pessoas?: number | null;
   tempo_espera_seg: number;
+  tempo_espera_fmt?: string;
   densidade_m2: number;
   status_cor: 'VERDE' | 'AMARELO' | 'VERMELHO';
   confianca_ia: number;
@@ -54,10 +55,17 @@ export interface CameraApiItem {
   id: string;
   codigo: string;
   nome: string;
-  tipo: 'entrada_perimetro' | 'fb_liquid';
+  tipo: 'entrada_perimetro' | 'fluxo_interno' | 'fb_liquid';
   setor: string;
+  posicao?: number[];
+  alvo?: number[];
   status: 'operacional' | 'atencao' | 'critico';
   fps: number;
+  metricas?: {
+    rotulo: string;
+    valor: string;
+    detalhe?: string | null;
+  };
   zona: ZonaStatusV2;
 }
 
@@ -95,4 +103,94 @@ export interface FrameAnalysisResponse {
   modo_leitura: 'TEMPO_REAL' | 'FALLBACK_502' | 'MEDIA_MOVEL_504' | 'CONTINGENCIA_503';
   aviso_contingencia?: string | null;
   leitura: LeituraV2;
+}
+
+export interface DispatchListResponse {
+  total_ordens: number;
+  status_operacional_evento: 'ESTAVEL' | 'ACAO_EM_ANDAMENTO';
+  ordens: OperationalDispatchResponse[];
+}
+
+export interface PredicaoGargaloApiResponse {
+  setor: string;
+  nivel_predito: 'BAIXO' | 'MEDIO' | 'ALTO' | 'CRITICO';
+  motivo: string;
+  acao_recomendada: string;
+  tempo_estimado_formacao_fila: string;
+}
+
+export interface AcionarFluxoRequest {
+  alerta_id: string;
+  acao_executada: string;
+  setor: string;
+}
+
+export interface AcionarFluxoResponse {
+  alerta_id: string;
+  acao_executada: string;
+  setor: string;
+  status_operacional_anterior: 'ESTAVEL' | 'ACAO_EM_ANDAMENTO';
+  status_operacional_evento: 'ACAO_EM_ANDAMENTO';
+  registrado_em: string;
+}
+
+export interface InferenceRequest {
+  pdv_id: number;
+  coordenadas_simuladas: CoordinatePoint[];
+  transacoes_pos_ultimos_3m: number;
+  taxa_nfc_seg_por_pessoa?: number | null;
+}
+
+export interface InferenceResponse {
+  pdv_id: number;
+  pax_count: number;
+  tempo_espera_seg: number;
+  tempo_espera_fmt: string;
+  densidade_m2: number;
+  status_cor: 'VERDE' | 'AMARELO' | 'VERMELHO';
+  confianca_ia: number;
+  anomalias: ('NFC_LENTO' | 'SATURACAO')[];
+}
+
+export interface YoloScanRequest {
+  video_origem?: string;
+  frame_indice?: number;
+  pdv_fila_id?: number;
+  pdv_estande_id?: number;
+  pessoas_fila_simuladas?: number | null;
+  pessoas_estande_simuladas?: number | null;
+}
+
+export interface YoloScanResponse {
+  motor_visao: 'YOLOv8n_REAL' | 'SIMULACAO_OPTICA_BORDA';
+  resolucao_frame: string;
+  frame_processado: number;
+  pessoas_detectadas_total: number;
+  pessoas_zona_fila: number;
+  pessoas_zona_estande: number;
+  alerta_assistido_ativo: boolean;
+  coordenadas_fila: CoordinatePoint[];
+  coordenadas_estande: CoordinatePoint[];
+  leitura_fila: LeituraV2;
+  leitura_estande: LeituraV2;
+}
+
+export interface HealthResponse {
+  status: 'ok';
+  servico: string;
+  versao: string;
+  timestamp: string;
+  status_operacional_evento: 'ESTAVEL' | 'ACAO_EM_ANDAMENTO';
+  motor_ia_online: boolean;
+  conexoes_tempo_real: number;
+}
+
+export interface EventoTempoReal {
+  tipo: 'snapshot' | 'leitura' | 'mudanca_cor' | 'dispatch' | 'acionamento_preditivo' | 'heartbeat';
+  emitido_em: string;
+  status_operacional_evento: 'ESTAVEL' | 'ACAO_EM_ANDAMENTO';
+  mensagem?: string | null;
+  leitura?: LeituraV2 | null;
+  dispatch?: OperationalDispatchResponse | null;
+  acionamento?: AcionarFluxoResponse | null;
 }

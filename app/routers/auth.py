@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Login"])
     summary="Login — gerar token de teste",
     description=(
         f"Gera um token de acesso para `visualizador`, `operador` ou `admin`. Copie o `access_token` e cole em **Authorize** (atalho: `{settings.dev_token}` já entra como admin).\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa o token configurado); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** botão \"Login\" no topo do site → aba \"Token de teste\"."
     ),
     responses={
         400: {"model": ErrorResponseContract, "description": "Dados enviados com erro."},
@@ -47,7 +47,7 @@ async def gerar_token(pedido: TokenRequestContract) -> TokenResponseContract:
     summary="Login — entrar no sistema",
     description=(
         "Recebe e-mail e senha, valida o acesso e devolve o token e os dados básicos do usuário.\n\n"
-        "**Onde aparece no site:** tela de login (quando a autenticação estiver ativa no site)."
+        "**Onde aparece no site:** botão \"Login\" no topo do site → aba \"Entrar no sistema\"."
     ),
     responses={
         400: {"model": ErrorResponseContract, "description": "Dados enviados com erro."},

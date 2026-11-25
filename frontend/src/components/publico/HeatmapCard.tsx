@@ -33,6 +33,14 @@ const ESTADO_OPERACIONAL: Record<EstadoOperacional, { rotulo: string; classes: s
     rotulo: 'Crítico',
     classes: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
   },
+  ESTAVEL: {
+    rotulo: 'Estável',
+    classes: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  },
+  ACAO_EM_ANDAMENTO: {
+    rotulo: 'Ação em andamento',
+    classes: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  },
 };
 
 const STATUS_COR: Record<StatusCor, { ponto: string; rotulo: string }> = {

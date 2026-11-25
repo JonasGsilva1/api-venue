@@ -25,7 +25,7 @@ router = APIRouter(
     summary="Predições de Gargalos (IA) — ver previsão",
     description=(
         "Mostra onde uma fila crítica está se formando, o motivo e a ação recomendada para evitar gargalo.\n\n"
-        "**Onde aparece no site:** aba Predições de Gargalos (IA) (hoje a tela calcula a previsão no navegador; este endpoint é o equivalente no servidor)."
+        "**Onde aparece no site:** aba Predições de Gargalos (IA) → card de previsão ativa no topo da aba."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -47,7 +47,7 @@ async def consultar_gargalos(usuario: UsuarioAutenticado = Depends(exigir_leitur
     summary="Predições de Gargalos (IA) — executar ação recomendada",
     description=(
         "Registra que o operador executou a ação sugerida pela previsão (como abrir mais filas) e muda o status do evento para ação em andamento.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa dados de exemplo); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** aba Predições de Gargalos (IA) → botão \"Executar ação recomendada\" e aba Síntese Acumulada → botão \"Executar Medida Preditiva\"."
     ),
     dependencies=[Depends(sem_query_params)],
 )

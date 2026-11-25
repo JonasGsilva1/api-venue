@@ -22,7 +22,7 @@ router = APIRouter(
     summary="Despacho Ops — listar despachos",
     description=(
         "Mostra todas as ordens de envio de equipe já criadas e se o evento está estável ou com ação em andamento.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site; serve para consultar aqui no Swagger os despachos criados."
+        "**Onde aparece no site:** aba Mapa & Arena → bloco \"Ordens de Despacho Ops\" (abaixo dos 7 cards de câmera) e comando `despachos` no Terminal CLI."
     ),
     dependencies=[Depends(sem_query_params)],
 )

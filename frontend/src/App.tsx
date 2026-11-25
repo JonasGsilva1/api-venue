@@ -1,13 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
-  RefreshCw,
-  Radio,
-  Plus,
   Bot,
-  Compass,
   Camera,
-  X
+  Compass,
+  LogIn,
+  Plus,
+  Radio,
+  RefreshCw,
+  Wifi,
+  X,
 } from 'lucide-react';
 import { InstagramavelCard } from './components/InstagramavelCard';
 import { Venue3DScene } from './components/Venue3DScene';
@@ -15,21 +17,44 @@ import { SinteseAcumulada } from './components/SinteseAcumulada';
 import { TerminalCLI } from './components/TerminalCLI';
 import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
 import { ApiToast } from './components/ui/ApiToast';
+import { LoginModal } from './components/auth/LoginModal';
+import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
+import { useAuth } from './context/AuthContext';
 import { useOpsActions } from './hooks/useOpsActions';
 import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
+import { useRealtimeStream } from './hooks/useRealtimeStream';
+import {
+  getDropoffSummary,
+  getHealth,
+  getInstagramaveis,
+  getPdvStatus,
+  getReadinessHeatmap,
+  getSintese,
+  mensagemDeErro,
+  pingStatusPdvs,
+  postAcionarFluxo,
+  postCapturaInstagramavel,
+  postCriarAtracao,
+  postDespacho,
+  postModoLuzInstagramavel,
+  postSimularPico,
+  postToggleStatusInstagramavel,
+} from './services/venueApi';
 import { toZonaPublico } from './utils/publico';
-import { gerarAlertasPreditivos } from './utils/predicao';
-import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
-
-import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
-import type { AutosservicoItem, InstagramavelItem } from './types/venue';
+import type { InstagramavelItem, ModoIluminacao, SinteseAcumuladaData } from './types/venue';
+import type {
+  AnalyticsSummaryResponse,
+  PdvStatusItem,
+  ReadinessHeatmapResponse,
+} from './types/publico';
+import type { HealthResponse } from './types/ops';
 
 export interface ZoneData {
   id: string;
   name: string;
   x: number;
   z: number;
-  occupancy: number; 
+  occupancy: number;
   pessoas: number;
 }
 
@@ -43,290 +68,218 @@ export const ZONES_DATA: ZoneData[] = [
 ];
 
 export function getHeatmapColor(occupancy: number): string {
-  if (occupancy >= 85) return '#ef4444'; 
-  if (occupancy >= 50) return '#f59e0b'; 
-  return '#10b981';                     
+  if (occupancy >= 85) return '#ef4444';
+  if (occupancy >= 50) return '#f59e0b';
+  return '#10b981';
 }
 
+const SINTESE_VAZIA: SinteseAcumuladaData = {
+  eventoNome: 'Venue Intelligence / RaizEvento',
+  dataEvento: 'Carregando...',
+  tempoDecorridoHoras: 0,
+  publicoTotalEstimadoVenue: 1,
+  totalAtendimentosGerais: 0,
+  camerasMonitoradasAtivas: 0,
+  totalCapturasInstagramavel: 0,
+  alcanceTotalRedes: 0,
+  vazaoMediaAtendimentosPorMin: 0,
+  tempoMedioEsperaGlobalMin: 0,
+  satisfacaoGeralScore: 0,
+  camerasPorStatus: { operacional: 0, atencao: 0, critico: 0 },
+  instagramavelPorStatus: { ativo: 0, alta_procura: 0, limpeza: 0, pausado: 0 },
+  fluxoPorSetor: [],
+  fluxoHorario: [],
+  principaisAlertas: [],
+};
+
 export default function App() {
-  const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
-  const [instas, setInstas] = useState<InstagramavelItem[]>(INITIAL_INSTAGRAMAVEL);
-  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'instagramavel' | 'predicao' | 'mapa'>('tudo');
+  const { user, token } = useAuth();
+  const [zonas, setZonas] = useState<PdvStatusItem[]>([]);
+  const [instas, setInstas] = useState<InstagramavelItem[]>([]);
+  const [sintese, setSintese] = useState<SinteseAcumuladaData>(SINTESE_VAZIA);
+  const [readinessHeatmap, setReadinessHeatmap] = useState<ReadinessHeatmapResponse | null>(null);
+  const [dropoff, setDropoff] = useState<AnalyticsSummaryResponse | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'instagramavel' | 'predicao'>('tudo');
   const [show3DMap, setShow3DMap] = useState(true);
   const [selectedAtracaoId, setSelectedAtracaoId] = useState<string | null>(null);
   const [filtroSetor, setFiltroSetor] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('10s');
-  const [lastUpdate, setLastUpdate] = useState('04:15:40');
-  const [pingLatency, setPingLatency] = useState(431);
+  const [lastUpdate, setLastUpdate] = useState('--:--:--');
+  const [pingLatency, setPingLatency] = useState<number>(0);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const [acaoFeedback, setAcaoFeedback] = useState<{ tipo: 'ok' | 'erro' | 'info'; texto: string } | null>(null);
+
   const { ocupado, feedback, despachoOps, limparFeedback } = useOpsActions();
 
   const [formNome, setFormNome] = useState('');
   const [formSetor, setFormSetor] = useState('Arena Principal');
   const [formPatrocinador, setFormPatrocinador] = useState('');
 
-  // '5s' | '10s' | '30s' -> milissegundos (o select "Auto" agora controla o intervalo)
   const intervaloMs = (parseInt(autoRefreshInterval, 10) || 10) * 1000;
 
-  // Passo 6: Sincronização e Busca de Dados Reais do Backend
+  const carregarTudo = useCallback(async (signal?: AbortSignal) => {
+    const [
+      pingRes,
+      healthRes,
+      zonasRes,
+      instasRes,
+      sinteseRes,
+      readinessRes,
+      dropoffRes,
+    ] = await Promise.allSettled([
+      pingStatusPdvs(signal),
+      getHealth(signal),
+      getPdvStatus(signal),
+      getInstagramaveis(signal),
+      getSintese(signal),
+      getReadinessHeatmap(signal),
+      getDropoffSummary(signal),
+    ]);
+
+    if (signal?.aborted) return;
+
+    if (pingRes.status === 'fulfilled') setPingLatency(pingRes.value);
+    if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
+    if (zonasRes.status === 'fulfilled') setZonas(zonasRes.value);
+    if (instasRes.status === 'fulfilled') setInstas(instasRes.value);
+    if (sinteseRes.status === 'fulfilled') setSintese(sinteseRes.value);
+    if (readinessRes.status === 'fulfilled') setReadinessHeatmap(readinessRes.value);
+    if (dropoffRes.status === 'fulfilled') setDropoff(dropoffRes.value);
+
+    setLastUpdate(new Date().toTimeString().split(' ')[0]);
+  }, []);
+
   useEffect(() => {
-    const fetchDadosBackend = async () => {
-      const startTime = performance.now();
-      try {
-        const base = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000');
-        const response = await fetch(`${base}/status-pdvs`);
-        if (!response.ok) {
-          throw new Error(`Erro HTTP: ${response.status}`);
-        }
-        const data = await response.json();
-        
-        // Processa os dados recebidos utilizando a função toZonaPublico
-        if (Array.isArray(data) && data.length > 0) {
-          const dadosProcessados: AutosservicoItem[] = data.map((item, index) => {
-            const zonaPub = toZonaPublico(item);
-            const baseMock = INITIAL_AUTOSSERVICO[index] || INITIAL_AUTOSSERVICO[0];
-
-            return {
-              ...baseMock,
-              id: item.id || baseMock.id,
-              nome: item.nome || (zonaPub as any).nome || baseMock.nome,
-              pessoasNaFila: zonaPub.pessoas || baseMock.pessoasNaFila,
-              tempoEstimadoEsperaMin: (zonaPub as any).tempoEstimadoEsperaMin ?? baseMock.tempoEstimadoEsperaMin,
-              nivelAtualInsumo: zonaPub.ocupacaoPct !== undefined ? Math.max(0, baseMock.capacidadeTotalInsumo * (1 - zonaPub.ocupacaoPct / 100)) : baseMock.nivelAtualInsumo,
-            };
-          });
-
-          setAutos(dadosProcessados);
-        }
-
-        const endTime = performance.now();
-        setPingLatency(Math.round(endTime - startTime + 400));
-        setLastUpdate(new Date().toTimeString().split(' ')[0]);
-      } catch (error) {
-        console.error('Falha ao sincronizar com backend da IA, mantendo estado atual:', error);
-        setPingLatency(Math.floor(450 + Math.random() * 50));
-      }
+    const controller = new AbortController();
+    void carregarTudo(controller.signal);
+    const timer = setInterval(() => {
+      if (!document.hidden) void carregarTudo(controller.signal);
+    }, intervaloMs);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
     };
+  }, [carregarTudo, intervaloMs, token]);
 
-    fetchDadosBackend();
-    const timerInterval = setInterval(fetchDadosBackend, intervaloMs);
+  const handleEventoTempoReal = useCallback(() => {
+    setRefreshSignal((n) => n + 1);
+    void carregarTudo();
+  }, [carregarTudo]);
 
-    return () => clearInterval(timerInterval);
-  }, [intervaloMs]);
+  const { conectadoWs } = useRealtimeStream(token, handleEventoTempoReal);
 
-  // Histórico do tempo de espera por atração, usado pela IA preditiva
+  // Histórico do tempo de espera por zona real e atração instagramável, usado pela regressão linear
   const metricasEspera = useMemo(() => {
     const m: Record<string, number> = {};
-    autos.forEach((a) => { m[a.id] = a.tempoEstimadoEsperaMin; });
-    instas.forEach((i) => { m[i.id] = i.tempoEsperaMin; });
+    zonas.forEach((z) => {
+      m[`zona-${z.id}`] = Number(((z.ultima_leitura?.tempo_espera_seg ?? 0) / 60).toFixed(2));
+    });
+    instas.forEach((i) => {
+      m[i.id] = i.tempoEsperaMin;
+    });
     return m;
-  }, [autos, instas]);
+  }, [zonas, instas]);
 
-  const { historico, versao } = useHistoricoTelemetria(metricasEspera, intervaloMs);
+  const { historico } = useHistoricoTelemetria(metricasEspera, intervaloMs);
+  const zonasPublico = useMemo(() => zonas.map(toZonaPublico), [zonas]);
 
-  // `versao` muda a cada nova amostra; é ela que faz a previsão ser recalculada,
-  // porque `historico` é um Map mutável (mesma referência entre renders).
-  const alertasPreditivos = useMemo(
-    () => gerarAlertasPreditivos(autos, instas, historico),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [autos, instas, historico, versao],
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setLastUpdate(now.toTimeString().split(' ')[0]);
-      setPingLatency(Math.floor(410 + Math.random() * 40));
-    }, intervaloMs);
-    return () => clearInterval(timer);
-  }, [intervaloMs]);
-
-  const sinteseBase = computeSinteseAcumulada(autos, instas);
-  const idsAutosservico = new Set(autos.map((auto) => auto.id));
-  const alertasFocadosEmFluxo = [...alertasPreditivos, ...sinteseBase.principaisAlertas].filter((alerta) => {
-    const atracaoId = alerta.atracaoId ?? '';
-    const ligadoAUmTotem = idsAutosservico.has(atracaoId) || atracaoId.startsWith('aut-');
-    const previsaoDeTotem = alerta.id.startsWith('pred-aut-');
-    return !ligadoAUmTotem && !previsaoDeTotem;
-  });
-  const sinteseData = {
-    ...sinteseBase,
-    principaisAlertas: alertasFocadosEmFluxo,
-  };
-  const handleReabastecer = (id: string) => {
-    setAutos((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        return {
-          ...item,
-          nivelAtualInsumo: item.capacidadeTotalInsumo,
-          nivelCopos: item.capacidadeCopos,
-          status: 'operacional',
-          pessoasNaFila: Math.max(1, Math.floor(item.pessoasNaFila / 2)),
-          tempoEstimadoEsperaMin: Number(
-            ((Math.max(1, Math.floor(item.pessoasNaFila / 2)) * item.tempoMedioAtendimentoSegundos) / 60).toFixed(1),
-          ),
-          ultimoAbastecimento: 'Agora mesmo',
-        };
-      })
-    );
+  const handleRegistrarCaptura = async (id: string) => {
+    try {
+      const atualizado = await postCapturaInstagramavel(id);
+      setInstas((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
+      void carregarTudo();
+    } catch (err) {
+      setAcaoFeedback({ tipo: 'erro', texto: mensagemDeErro(err) });
+    }
   };
 
-  const handleRegistrarCaptura = (id: string) => {
-    setInstas((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const novasCapturas = item.capturasTotais + 1;
-        const novosShares = item.compartilhamentosSociaisEstimados + 1;
-        const novoAlcance = item.alcanceEstimadoRedes + 120;
-        return {
-          ...item,
-          capturasTotais: novasCapturas,
-          compartilhamentosSociaisEstimados: novosShares,
-          alcanceEstimadoRedes: novoAlcance,
-          status: item.pessoasNaFila > 12 ? 'alta_procura' : item.status,
-        };
-      })
-    );
+  const handleMudarModoLuz = async (id: string, modo: ModoIluminacao) => {
+    try {
+      const atualizado = await postModoLuzInstagramavel(id, modo);
+      setInstas((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
+    } catch (err) {
+      setAcaoFeedback({ tipo: 'erro', texto: mensagemDeErro(err) });
+    }
   };
 
-  const handleMudarModoLuz = (id: string, modo: InstagramavelItem['iluminacaoCenica']['modo']) => {
-    setInstas((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const cores: Record<string, string> = {
-          'Neon Pulsar': '#10b981',
-          'Cyber Glow': '#ef4444',
-          'Golden Hour': '#f59e0b',
-          'Studio Spotlight': '#a855f7',
-        };
-        return {
-          ...item,
-          iluminacaoCenica: {
-            ...item.iluminacaoCenica,
-            modo,
-            corPrincipal: cores[modo] || item.iluminacaoCenica.corPrincipal,
-          },
-        };
-      })
-    );
+  const handleAlternarStatusInsta = async (id: string) => {
+    try {
+      const atualizado = await postToggleStatusInstagramavel(id);
+      setInstas((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
+    } catch (err) {
+      setAcaoFeedback({ tipo: 'erro', texto: mensagemDeErro(err) });
+    }
   };
 
-  const handleAlternarStatusInsta = (id: string) => {
-    setInstas((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        return {
-          ...item,
-          status: item.status === 'pausado' ? 'ativo' : 'pausado',
-        };
-      })
-    );
+  const handleSimularPicoDeFluxo = async () => {
+    try {
+      const resp = await postSimularPico();
+      setAcaoFeedback({ tipo: 'ok', texto: resp.mensagem });
+      setRefreshSignal((n) => n + 1);
+      await carregarTudo();
+    } catch (err) {
+      setAcaoFeedback({ tipo: 'erro', texto: mensagemDeErro(err) });
+    }
   };
 
-  const handleSimularPicoDeFluxo = () => {
-    setAutos((prev) =>
-      prev.map((a) => {
-        const novaFila = a.pessoasNaFila + 4;
-        return {
-          ...a,
-          transacoesAcumuladas: a.transacoesAcumuladas + 25,
-          receitaTotal: a.receitaTotal + 25 * a.ticketMedio,
-          nivelAtualInsumo: Math.max(10, a.nivelAtualInsumo - 12),
-          pessoasNaFila: novaFila,
-          tempoEstimadoEsperaMin: Number(((novaFila * a.tempoMedioAtendimentoSegundos) / 60).toFixed(1)),
-        };
-      })
-    );
-    setInstas((prev) =>
-      prev.map((i) => {
-        const novaFila = i.pessoasNaFila + 5;
-        const minPorPessoa = i.pessoasNaFila > 0 ? i.tempoEsperaMin / i.pessoasNaFila : 0.6;
-        return {
-          ...i,
-          capturasTotais: i.capturasTotais + 40,
-          compartilhamentosSociaisEstimados: i.compartilhamentosSociaisEstimados + 32,
-          alcanceEstimadoRedes: i.alcanceEstimadoRedes + 5400,
-          pessoasNaFila: novaFila,
-          tempoEsperaMin: Number((novaFila * minPorPessoa).toFixed(1)),
-          status: 'alta_procura',
-        };
-      })
-    );
-  };
-
-  const handleExecutarAcaoSugerida = (alertaId: string, atracaoId?: string) => {
-    if (alertaId.startsWith('pred-')) {
-      if (atracaoId?.startsWith('aut-')) {
-        handleReabastecer(atracaoId);
-      } else if (atracaoId) {
-        setInstas((prev) =>
-          prev.map((i) =>
-            i.id === atracaoId
-              ? {
-                  ...i,
-                  pessoasNaFila: Math.max(1, Math.floor(i.pessoasNaFila / 2)),
-                  tempoEsperaMin: Number(Math.max(1, i.tempoEsperaMin / 2).toFixed(1)),
-                  status: 'ativo',
-                }
-              : i
-          )
-        );
+  const handleExecutarAcaoSugerida = async (alertaId: string, atracaoId?: string | null) => {
+    try {
+      if (atracaoId === 'cam-fluxo-01' || alertaId === 'al-1') {
+        await postDespacho({
+          pdv_id: 5,
+          nivel_critico: 'CRITICO',
+          sugestao_acao: 'Abrir 2 faixas extras e redirecionar fluxo pelo Perímetro Leste',
+        });
       }
+      const resp = await postAcionarFluxo({
+        alerta_id: 'PRED-9921',
+        acao_executada: 'ACIONAR_DUAS_FILAS_ADICIONAIS',
+        setor: atracaoId || 'Arena Principal',
+      });
+      setAcaoFeedback({
+        tipo: 'ok',
+        texto: `Ação ${resp.acao_executada} registrada (${resp.status_operacional_evento}).`,
+      });
+      setRefreshSignal((n) => n + 1);
+      await carregarTudo();
+    } catch (err) {
+      setAcaoFeedback({ tipo: 'erro', texto: mensagemDeErro(err) });
+    }
+  };
+
+  const handleCriarAtracao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formNome.trim().length < 2) {
+      setAcaoFeedback({ tipo: 'erro', texto: 'Informe pelo menos 2 caracteres para o nome da atração.' });
       return;
     }
 
-    if (alertaId === 'al-1' || atracaoId === 'aut-02') {
-      handleReabastecer('aut-02');
-    } else if (alertaId === 'al-2' || atracaoId === 'inst-01') {
-      setInstas((prev) =>
-        prev.map((i) =>
-          i.id === 'inst-01'
-            ? { ...i, pessoasNaFila: 6, tempoEsperaMin: 3.2, status: 'ativo' }
-            : i
-        )
-      );
+    try {
+      const novo = await postCriarAtracao({
+        tipo: 'instagramavel',
+        nome: formNome.trim(),
+        setor: formSetor,
+        patrocinador: formPatrocinador.trim() || null,
+      });
+      setInstas((prev) => [...prev, novo]);
+      setFormNome('');
+      setFormPatrocinador('');
+      setShowAddModal(false);
+      setAcaoFeedback({ tipo: 'ok', texto: `Atração "${novo.nome}" cadastrada na API.` });
+      void carregarTudo();
+    } catch (err) {
+      setAcaoFeedback({ tipo: 'erro', texto: mensagemDeErro(err) });
     }
   };
 
-  const handleCriarAtracao = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formNome.trim()) return;
-
-    const novoInsta: InstagramavelItem = {
-      id: `inst-${Date.now()}`,
-      codigo: `INSTA-${instas.length + 1}`,
-      nome: formNome,
-      patrocinador: formPatrocinador || 'Marca Parceira',
-      categoriaCenario: 'Instalação Visual Iluminada',
-      setor: formSetor,
-      status: 'ativo',
-      capturasTotais: 0,
-      compartilhamentosSociaisEstimados: 0,
-      alcanceEstimadoRedes: 0,
-      tempoPermanenciaMedioSegundos: 75,
-      avaliacaoMedia: 5.0,
-      npsScore: 92,
-      pessoasNaFila: 0,
-      tempoEsperaMin: 0,
-      iluminacaoCenica: {
-        modo: 'Neon Pulsar',
-        corPrincipal: '#ec4899',
-        intensidadePct: 90,
-      },
-      posicao3D: [instas.length * 2 - 3, 0, -(instas.length * 2 - 2)],
-      hashtagsPrincipais: ['#Festival2026', `#${formNome.replace(/\s+/g, '')}`],
-      fotosRecentes: [],
-    };
-    setInstas([...instas, novoInsta]);
-
-    setFormNome('');
-    setFormPatrocinador('');
-    setShowAddModal(false);
-  };
-
   const filteredInstas = filtroSetor ? instas.filter((i) => i.setor === filtroSetor) : instas;
+  const statusEvento = health?.status_operacional_evento ?? 'ESTAVEL';
+  const toastAtivo = feedback ?? acaoFeedback;
 
   return (
     <div className="min-h-screen bg-[#070c18] text-slate-100 font-sans antialiased pb-16 selection:bg-cyan-500 selection:text-black">
@@ -346,9 +299,19 @@ export default function App() {
                 <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400">
                   RAÍZ
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                  <span>NORMAL</span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    statusEvento === 'ACAO_EM_ANDAMENTO'
+                      ? 'bg-amber-950/80 border-amber-500/40 text-amber-300'
+                      : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full inline-block animate-pulse ${
+                      statusEvento === 'ACAO_EM_ANDAMENTO' ? 'bg-amber-400' : 'bg-emerald-400'
+                    }`}
+                  />
+                  <span>{statusEvento}</span>
                 </span>
               </div>
 
@@ -356,6 +319,11 @@ export default function App() {
                 <span>Conexão com a API</span>
                 <span className="text-slate-600">·</span>
                 <span className="text-emerald-400 font-bold">{pingLatency}ms</span>
+                <span className="text-slate-600">·</span>
+                <span className="inline-flex items-center gap-1">
+                  <Wifi className={`h-3 w-3 ${conectadoWs ? 'text-cyan-400' : 'text-slate-500'}`} />
+                  <span>{conectadoWs ? 'Tempo Real ativo' : 'Atualização periódica'}</span>
+                </span>
                 <span className="text-slate-600">·</span>
                 <span>Atualizado às {lastUpdate}</span>
               </div>
@@ -377,9 +345,10 @@ export default function App() {
             </div>
 
             <button
+              type="button"
               onClick={() => {
-                setLastUpdate(new Date().toTimeString().split(' ')[0]);
-                setPingLatency(Math.floor(410 + Math.random() * 30));
+                setRefreshSignal((n) => n + 1);
+                void carregarTudo();
               }}
               className="p-2 rounded-lg bg-[#0d1527] border border-cyan-900/60 text-slate-300 hover:text-white transition-colors"
               title="Sincronizar telemetria"
@@ -388,7 +357,12 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => void despachoOps()}
+              type="button"
+              onClick={async () => {
+                await despachoOps();
+                setRefreshSignal((n) => n + 1);
+                void carregarTudo();
+              }}
               disabled={ocupado === 'despacho'}
               title="Registra uma intervenção na API para a zona mais crítica"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-wait"
@@ -398,6 +372,7 @@ export default function App() {
             </button>
 
             <button
+              type="button"
               onClick={() => setShowTerminal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95"
             >
@@ -406,11 +381,22 @@ export default function App() {
             </button>
 
             <button
+              type="button"
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#111c33] border border-cyan-500/40 text-cyan-300 text-xs font-bold hover:bg-[#162544] transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Atração</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowLoginModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0d1527] border border-slate-700 text-slate-200 text-xs font-semibold hover:border-cyan-400 hover:text-cyan-300 transition-colors"
+              title="Entrar ou trocar perfil de acesso"
+            >
+              <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Login ({user?.role ?? 'admin'})</span>
             </button>
           </div>
         </div>
@@ -420,26 +406,37 @@ export default function App() {
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-x-auto py-2">
             <div className="flex items-center gap-2 sm:gap-4 shrink-0 text-xs">
               <button
+                type="button"
                 onClick={() => setActiveTab('tudo')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'tudo' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
+                  activeTab === 'tudo'
+                    ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                <span>Mapa & Arena</span>
+                <span>Mapa &amp; Arena</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('predicao')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'predicao' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
+                  activeTab === 'predicao'
+                    ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
                 <Bot className="w-3.5 h-3.5 text-fuchsia-400" />
                 <span>Predições de Gargalos (IA)</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('instagramavel')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
+                  activeTab === 'instagramavel'
+                    ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Camera className="w-3.5 h-3.5 text-fuchsia-400" />
@@ -447,15 +444,20 @@ export default function App() {
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('sintese')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
+                  activeTab === 'sintese'
+                    ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
                 <span>Síntese Acumulada</span>
               </button>
             </div>
 
             <button
+              type="button"
               onClick={() => setShowTerminal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0d1a2d] border border-cyan-600/40 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-900/30 transition-colors shrink-0"
             >
@@ -468,20 +470,27 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        <ApiToast feedback={feedback} onClose={limparFeedback} />
+        <ApiToast
+          feedback={toastAtivo}
+          onClose={() => {
+            limparFeedback();
+            setAcaoFeedback(null);
+          }}
+        />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
           <div>
             <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
               <span>{'>_'}</span>
-              <span>Terminal Operacional & Execução de Diagnóstico</span>
+              <span>Terminal Operacional &amp; Execução de Diagnóstico</span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Execução direta do script CLI com exibição detalhada de telemetria, integridade e logs em tempo real.
+              Painel conectado em tempo real à API FastAPI para leitura espacial, câmeras e ações táticas.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setShow3DMap(!show3DMap)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
             >
@@ -495,7 +504,7 @@ export default function App() {
         {show3DMap && activeTab === 'tudo' && (
           <div className="animate-in fade-in duration-300">
             <Venue3DScene
-              autos={autos}
+              autos={[]}
               instas={instas}
               selectedId={selectedAtracaoId}
               onSelectAtracao={(id) => setSelectedAtracaoId(id)}
@@ -506,7 +515,12 @@ export default function App() {
         {/* Telemetria das 7 câmeras (dados da API) */}
         {activeTab === 'tudo' && (
           <div className="animate-in fade-in duration-200">
-            <CameraTelemetryPanel />
+            <CameraTelemetryPanel
+              refreshSignal={refreshSignal}
+              onDataChanged={() => {
+                void carregarTudo();
+              }}
+            />
           </div>
         )}
 
@@ -514,11 +528,16 @@ export default function App() {
         {(activeTab === 'tudo' || activeTab === 'sintese') && (
           <div className="animate-in fade-in duration-200">
             <SinteseAcumulada
-              data={sinteseData}
+              data={sintese}
+              dropoff={dropoff}
+              readinessHeatmap={readinessHeatmap}
+              zonasPublico={zonasPublico}
               setorAtivo={filtroSetor}
               onFiltrarSetor={(s) => setFiltroSetor(s)}
-              onSimularPicoDeFluxo={handleSimularPicoDeFluxo}
-              onExecutarAcaoSugerida={handleExecutarAcaoSugerida}
+              onSimularPicoDeFluxo={() => void handleSimularPicoDeFluxo()}
+              onExecutarAcaoSugerida={(alertaId, atracaoId) =>
+                void handleExecutarAcaoSugerida(alertaId, atracaoId)
+              }
             />
           </div>
         )}
@@ -526,7 +545,15 @@ export default function App() {
         {/* Seção: Predição de Gargalos (IA) */}
         {activeTab === 'predicao' && (
           <div className="animate-in fade-in duration-200">
-            <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
+            <PredicaoGargalosView
+              zonas={zonas}
+              instas={instas}
+              historico={historico}
+              onAcaoExecutada={() => {
+                setRefreshSignal((n) => n + 1);
+                void carregarTudo();
+              }}
+            />
           </div>
         )}
 
@@ -537,7 +564,7 @@ export default function App() {
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                   <Camera className="w-5 h-5 text-fuchsia-400" />
-                  <span>Pontos Instagramáveis & Ativações de Marca</span>
+                  <span>Pontos Instagramáveis &amp; Ativações de Marca</span>
                 </h2>
                 <p className="text-xs text-slate-400">
                   Engajamento social, contagem de fotos, controle de iluminação cenográfica e satisfação.
@@ -554,9 +581,9 @@ export default function App() {
                   key={item.id}
                   item={item}
                   isSelected={selectedAtracaoId === item.id}
-                  onRegistrarCaptura={handleRegistrarCaptura}
-                  onMudarModoLuz={handleMudarModoLuz}
-                  onAlternarStatus={handleAlternarStatusInsta}
+                  onRegistrarCaptura={(id) => void handleRegistrarCaptura(id)}
+                  onMudarModoLuz={(id, modo) => void handleMudarModoLuz(id, modo)}
+                  onAlternarStatus={(id) => void handleAlternarStatusInsta(id)}
                   onSelectIn3D={(id) => {
                     setSelectedAtracaoId(id);
                     setActiveTab('tudo');
@@ -574,15 +601,17 @@ export default function App() {
         isOpen={showTerminal}
         onClose={() => setShowTerminal(false)}
         onRunAction={(action) => {
-          if (action === 'repor-tudo') {
-            autos.forEach((a) => handleReabastecer(a.id));
-          } else if (action === 'aliviar-filas') {
-            handleExecutarAcaoSugerida('al-2');
-          } else if (action === 'pico') {
-            handleSimularPicoDeFluxo();
+          if (action === 'aliviar-filas') {
+            void handleExecutarAcaoSugerida('al-2', 'inst-01');
+          } else {
+            setRefreshSignal((n) => n + 1);
+            void carregarTudo();
           }
         }}
       />
+
+      {/* Modal de Login */}
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* Modal para Cadastro de Nova Atração */}
       {showAddModal && (
@@ -593,6 +622,7 @@ export default function App() {
                 Cadastrar Nova Atração no Venue
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
                 className="p-1 text-slate-400 hover:text-white rounded-lg"
               >
@@ -600,7 +630,7 @@ export default function App() {
               </button>
             </div>
 
-            <form onSubmit={handleCriarAtracao} className="mt-4 space-y-4">
+            <form onSubmit={(e) => void handleCriarAtracao(e)} className="mt-4 space-y-4">
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">
                   Nome da Atração Instagramável
@@ -608,6 +638,7 @@ export default function App() {
                 <input
                   type="text"
                   required
+                  minLength={2}
                   placeholder="Ex: Espelho de Neon Red Bull"
                   value={formNome}
                   onChange={(e) => setFormNome(e.target.value)}

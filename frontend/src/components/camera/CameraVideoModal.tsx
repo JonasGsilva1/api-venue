@@ -13,8 +13,14 @@ import {
   X,
 } from 'lucide-react';
 import type { CameraTelemetria } from '../../hooks/useCameraTelemetry';
-import { mensagemDeErro, postDespacho, postFrameAnalysis } from '../../services/venueApi';
-import type { FrameAnalysisResponse, LeituraV2 } from '../../types/ops';
+import {
+  getCameraById,
+  mensagemDeErro,
+  postDespacho,
+  postFrameAnalysis,
+  postYoloScan,
+} from '../../services/venueApi';
+import type { CameraApiItem, FrameAnalysisResponse, LeituraV2 } from '../../types/ops';
 import {
   DEFAULT_ZONA_ESTANDE,
   DEFAULT_ZONA_FILA,
@@ -117,19 +123,32 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
   const [timeline, setTimeline] = useState<TimelineSample[]>([]);
   const [dispatchBusy, setDispatchBusy] = useState(false);
   const [dispatchFeedback, setDispatchFeedback] = useState<string | null>(null);
+  const [serverCamera, setServerCamera] = useState<CameraApiItem | null>(null);
+  const [serverScanBusy, setServerScanBusy] = useState(false);
 
   const fallbackConfig = item ? CAMERA_DEFAULT_PDV_ID[item.camera.id] : undefined;
-  const pdvId = item?.zona?.id ?? fallbackConfig?.pdvId ?? 1;
-  const zonaAreaM2 = item?.zona?.area_m2 ?? fallbackConfig?.areaM2 ?? 35;
-  const zonaCapacidade = item?.zona?.capacidade ?? fallbackConfig?.capacidade ?? 40;
+  const pdvId = serverCamera?.zona.id ?? item?.zona?.id ?? fallbackConfig?.pdvId ?? 1;
+  const zonaAreaM2 = serverCamera?.zona.area_m2 ?? item?.zona?.area_m2 ?? fallbackConfig?.areaM2 ?? 35;
+  const zonaCapacidade = serverCamera?.zona.capacidade ?? item?.zona?.capacidade ?? fallbackConfig?.capacidade ?? 40;
   const zonaTempoServico = fallbackConfig?.tempoServicoSeg ?? 25;
 
-  // Pré-carrega o modelo YOLOv8n ONNX ao abrir o modal
+  // Carrega detalhes individuais da câmera (GET /api/v1/venue/cameras/{id}) e pré-carrega YOLOv8n ONNX
   useEffect(() => {
-    if (!item) return;
+    if (!item) {
+      setServerCamera(null);
+      return;
+    }
     let cancelled = false;
     setModelState('loading');
     setModelError(null);
+
+    void getCameraById(item.camera.id)
+      .then((cam) => {
+        if (!cancelled) setServerCamera(cam);
+      })
+      .catch(() => {
+        // Mantém fallback local se o detalhe falhar
+      });
 
     loadYoloModel()
       .then(() => {
@@ -493,6 +512,66 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
     }
   };
 
+  const handleServerScan = async () => {
+    setServerScanBusy(true);
+    setApiError(null);
+    try {
+      const filaId = pdvId >= 1 && pdvId <= 5 && pdvId !== 3 ? pdvId : 1;
+      const resp = await postYoloScan({
+        video_origem: videoName ?? 'video_teste_04.mp4',
+        frame_indice: Math.max(3, (frameCounterRef.current + 1) * 3),
+        pdv_fila_id: filaId,
+        pdv_estande_id: 3,
+      });
+      const dets: PersonDetection[] = [
+        ...resp.coordenadas_fila.map((c, idx) => {
+          const x = c.x / 1000;
+          const y = c.y / 1000;
+          return {
+            trackId: idx + 1,
+            x1: Math.max(0, x - 0.02),
+            y1: Math.max(0, y - 0.14),
+            x2: Math.min(1, x + 0.02),
+            y2: y,
+            footX: x,
+            footY: y,
+            confidence: resp.leitura_fila.confianca_ia,
+            zona: 'fila' as const,
+          };
+        }),
+        ...resp.coordenadas_estande.map((c, idx) => {
+          const x = c.x / 1000;
+          const y = c.y / 1000;
+          return {
+            trackId: resp.coordenadas_fila.length + idx + 1,
+            x1: Math.max(0, x - 0.02),
+            y1: Math.max(0, y - 0.14),
+            x2: Math.min(1, x + 0.02),
+            y2: y,
+            footX: x,
+            footY: y,
+            confidence: resp.leitura_estande.confianca_ia,
+            zona: 'estande' as const,
+          };
+        }),
+      ];
+      setDetections(dets);
+      drawOverlay(dets);
+      setApiResult({
+        sucesso: true,
+        http_status: 201,
+        modo_leitura: resp.leitura_fila.modo_leitura,
+        aviso_contingencia: null,
+        leitura: resp.leitura_fila,
+      });
+      onTelemetrySynced();
+    } catch (err) {
+      setApiError(mensagemDeErro(err));
+    } finally {
+      setServerScanBusy(false);
+    }
+  };
+
   if (!item) return null;
 
   const filaCount = detections.filter((d) => d.zona === 'fila').length;
@@ -665,6 +744,16 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 >
                   <Upload className="h-3 w-3" />
                   <span>{videoName ? 'Trocar vídeo' : 'Escolher vídeo'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleServerScan()}
+                  disabled={serverScanBusy}
+                  className="inline-flex items-center gap-1 rounded-lg border border-fuchsia-700/60 bg-fuchsia-950/40 px-2.5 py-1.5 text-[11px] font-semibold text-fuchsia-200 hover:bg-fuchsia-900/50 disabled:opacity-50"
+                >
+                  <Cpu className="h-3 w-3" />
+                  <span>{serverScanBusy ? 'Testando...' : 'Testar no servidor'}</span>
                 </button>
               </div>
 

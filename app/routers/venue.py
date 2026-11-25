@@ -67,7 +67,7 @@ async def status_pdvs(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> 
     summary="Prontidão das câmeras e mapa de calor",
     description=(
         "Mostra quantas câmeras estão ligadas (7/7), se as rotas acessíveis estão livres e os números gerais do mapa de calor (pessoas presentes, ocupação e densidade máxima).\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa dados de exemplo); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** aba Síntese Acumulada → bloco \"Prontidão das câmeras e mapa de calor\"."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -92,7 +92,7 @@ async def readiness_heatmap(usuario: UsuarioAutenticado = Depends(exigir_leitura
     description=(
         "Estima quantas pessoas desistem da fila considerando uma janela útil de 30 minutos e 8 minutos de caminhada até o local: "
         "se caminhada + fila passar de 25 minutos, mais de 80% tendem a desistir. Também devolve a nota de esforço de 1 a 5 e o público acumulado dos 3 dias.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (a tela usa dados de exemplo); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** aba Síntese Acumulada → bloco \"Taxa de abandono de fila & Acumulado D1–D3\"."
     ),
     dependencies=[Depends(sem_query_params)],
 )
@@ -145,7 +145,7 @@ async def dropoff_summary(usuario: UsuarioAutenticado = Depends(exigir_leitura))
     summary="Instagramáveis — listar atrações",
     description=(
         "Lista todas as ativações instagramáveis com contagem de fotos, alcance estimado, fila e iluminação.\n\n"
-        "**Onde aparece no site:** aba Instagramáveis (hoje a tela usa dados de exemplo; este endpoint é o equivalente no servidor)."
+        "**Onde aparece no site:** aba Instagramáveis e maquete 3D da Arena."
     ),
 )
 async def listar_instagramavel(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> List[InstagramavelItemContract]:
@@ -160,7 +160,7 @@ async def listar_instagramavel(usuario: UsuarioAutenticado = Depends(exigir_leit
     summary="Registrar Foto",
     description=(
         "Soma mais uma foto registrada na atração escolhida e atualiza o alcance estimado nas redes.\n\n"
-        "**Onde aparece no site:** aba Instagramáveis → card da atração → botão \"Registrar Foto\" (hoje a tela atualiza localmente)."
+        "**Onde aparece no site:** aba Instagramáveis → card da atração → botão \"Registrar Foto\"."
     ),
 )
 async def captura_instagramavel(
@@ -181,7 +181,7 @@ async def captura_instagramavel(
     summary="Iluminação — mudar modo de luz",
     description=(
         "Altera o modo de iluminação da atração (`Neon Pulsar`, `Cyber Glow`, `Golden Hour` ou `Studio Spotlight`).\n\n"
-        "**Onde aparece no site:** aba Instagramáveis → card da atração → botões de \"Iluminação\" (hoje a tela atualiza localmente)."
+        "**Onde aparece no site:** aba Instagramáveis → card da atração → botões de \"Iluminação\"."
     ),
 )
 async def modo_luz_instagramavel(
@@ -203,7 +203,7 @@ async def modo_luz_instagramavel(
     summary="Pausa Técnica / Reativar",
     description=(
         "Alterna a atração entre ativa e pausada para manutenção rápida.\n\n"
-        "**Onde aparece no site:** aba Instagramáveis → card da atração → botão \"Pausa Técnica\" / \"Reativar\" (hoje a tela atualiza localmente)."
+        "**Onde aparece no site:** aba Instagramáveis → card da atração → botão \"Pausa Técnica\" / \"Reativar\"."
     ),
 )
 async def toggle_status_instagramavel(
@@ -224,7 +224,7 @@ async def toggle_status_instagramavel(
     summary="+ Atração — cadastrar atração instagramável",
     description=(
         "Cria uma nova atração instagramável informando nome, setor e marca patrocinadora.\n\n"
-        "**Onde aparece no site:** botão \"+ Atração\" no topo do site (hoje a tela adiciona localmente)."
+        "**Onde aparece no site:** botão \"+ Atração\" no topo do site."
     ),
 )
 async def criar_atracao(
@@ -247,7 +247,7 @@ async def criar_atracao(
     summary="Síntese Acumulada — ver resumo do evento",
     description=(
         "Junta os números gerais do evento: público estimado, atendimentos, fotos, fluxo por setor, curva por hora e principais alertas.\n\n"
-        "**Onde aparece no site:** aba Síntese Acumulada (hoje a tela calcula com dados de exemplo; este endpoint é o equivalente no servidor)."
+        "**Onde aparece no site:** aba Síntese Acumulada e comando `status` do Terminal CLI."
     ),
 )
 async def obter_sintese(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -> SinteseAcumuladaContract:
@@ -261,7 +261,7 @@ async def obter_sintese(usuario: UsuarioAutenticado = Depends(exigir_leitura)) -
     summary="Simular Pico",
     description=(
         "Aumenta de uma vez a quantidade de pessoas e fotos nas atrações para testar alertas de lotação alta.\n\n"
-        "**Onde aparece no site:** aba Síntese Acumulada → botão \"Simular Pico (+100 atendimentos)\" (hoje a tela simula localmente)."
+        "**Onde aparece no site:** aba Síntese Acumulada → botão \"Simular Pico (+100 atendimentos)\" e comando `pico-sim` no Terminal CLI."
     ),
 )
 async def simular_pico(usuario: UsuarioAutenticado = Depends(exigir_operacao)):
@@ -302,7 +302,7 @@ async def listar_cameras(usuario: UsuarioAutenticado = Depends(exigir_leitura)) 
     summary="Telemetria das Câmeras — ver uma câmera",
     description=(
         "Mostra os detalhes e a última leitura de uma única câmera pelo código dela (`cam-ent-01`..`04` ou `cam-fluxo-01`..`03`).\n\n"
-        "**Onde aparece no site:** ainda não é usado diretamente pelo site (a tela busca as 7 câmeras juntas); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** aba Mapa & Arena → clicar em qualquer câmera (atualiza os dados individuais da câmera ao abrir a janela Analisar vídeo)."
     ),
     dependencies=[Depends(sem_query_params)],
 )

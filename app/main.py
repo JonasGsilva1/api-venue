@@ -70,7 +70,7 @@ TAGS = [
     {"name": "Predições de Gargalos (IA)", "description": "Aba Predições de Gargalos (IA): previsão de filas e teste de cálculo de espera."},
     {"name": "Instagramáveis", "description": "Aba Instagramáveis e botão + Atração: fotos, luzes, pausa e cadastro de atrações."},
     {"name": "Síntese Acumulada", "description": "Aba Síntese Acumulada: resumo do evento, simular pico, mapa de calor e taxa de abandono."},
-    {"name": "Tempo Real", "description": "Canais ao vivo para receber leituras e alertas sem precisar recarregar a página."},
+    {"name": "Tempo Real", "description": "Canal ao vivo conectado ao cabeçalho do site para atualizar leituras e alertas automaticamente."},
     {"name": "Sistema", "description": "Conexão com a API no cabeçalho do site e checagem se o servidor está no ar."},
 ]
 
@@ -141,7 +141,7 @@ async def status_pdvs_compat() -> list[Any]:
     summary="Saúde da API",
     description=(
         "Mostra se a API está funcionando, o estado geral do evento e quantos clientes estão conectados ao vivo. Não precisa de token.\n\n"
-        "**Onde aparece no site:** ainda não é usado pelo site (usado pelo Render para checar se o servidor está no ar); serve para testes aqui no Swagger."
+        "**Onde aparece no site:** cabeçalho do site (selo `ESTAVEL` / `ACAO_EM_ANDAMENTO`), comando `status` do Terminal CLI e checagem do servidor no Render."
     ),
     dependencies=[Depends(sem_query_params)],
 )
