@@ -22,7 +22,7 @@ from app.config import settings
 from app.contracts import HealthResponseContract
 from app.errors import registrar_handlers, sem_query_params
 from app.repositories.memory_db import agora_utc, memory_db
-from app.routers import auth, ops, predicoes, stream, telemetry, venue
+from app.routers import auth, ops, predicoes, stream, telemetry, venue, videos
 from app.services.event_bus import event_bus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -87,7 +87,7 @@ app.add_middleware(
 
 registrar_handlers(app)
 
-for modulo in (auth, telemetry, predicoes, ops, venue, stream):
+for modulo in (auth, telemetry, predicoes, ops, venue, stream, videos):
     app.include_router(modulo.router)
 
 

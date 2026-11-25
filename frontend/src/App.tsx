@@ -9,7 +9,8 @@ import {
   Compass,
   Beer,
   Camera,
-  X
+  X,
+  Film,
 } from 'lucide-react';
 import { AutosservicoCard } from './components/AutosservicoCard';
 import { InstagramavelCard } from './components/InstagramavelCard';
@@ -23,6 +24,8 @@ import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
 import { toZonaPublico } from './utils/publico';
 import { gerarAlertasPreditivos } from './utils/predicao';
 import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
+import { DriveVideosView } from './components/DriveVideosView';
+import { api } from './services/api';
 
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
 import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
@@ -54,7 +57,7 @@ export function getHeatmapColor(occupancy: number): string {
 export default function App() {
   const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
   const [instas, setInstas] = useState<InstagramavelItem[]>(INITIAL_INSTAGRAMAVEL);
-  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'predicao' | 'mapa'>('tudo');
+  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'predicao' | 'mapa' | 'videos'>('tudo');
   const [show3DMap, setShow3DMap] = useState(true);
   const [selectedAtracaoId, setSelectedAtracaoId] = useState<string | null>(null);
   const [filtroSetor, setFiltroSetor] = useState<string | null>(null);
@@ -78,11 +81,7 @@ export default function App() {
     const fetchDadosBackend = async () => {
       const startTime = performance.now();
       try {
-        const response = await fetch('https://api-evento-ia.onrender.com/status-pdvs');
-        if (!response.ok) {
-          throw new Error(`Erro HTTP: ${response.status}`);
-        }
-        const data = await response.json();
+        const { data } = await api.get('/status-pdvs');
         
         // Processa os dados recebidos utilizando a função toZonaPublico
         if (Array.isArray(data) && data.length > 0) {
@@ -539,6 +538,18 @@ export default function App() {
               >
                 <span>Síntese Acumulada</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('videos')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
+                  activeTab === 'videos'
+                    ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Film className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Vídeos do Drive</span>
+              </button>
             </div>
 
             <button
@@ -555,145 +566,150 @@ export default function App() {
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         <ApiToast feedback={feedback} onClose={limparFeedback} />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
-          <div>
-            <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
-              <span>{'>_'}</span>
-              <span>Terminal Operacional & Execução de Diagnóstico</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Execução direta do script CLI com exibição detalhada de telemetria, integridade e logs em tempo real.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShow3DMap(!show3DMap)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
-            >
-              <Compass className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{show3DMap ? 'Ocultar Arena 3D' : 'Exibir Arena 3D'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 3D Scene Viewport */}
-        {show3DMap && (
-          <div className="animate-in fade-in duration-300">
-            <Venue3DScene
-              autos={autos}
-              instas={instas}
-              selectedId={selectedAtracaoId}
-              onSelectAtracao={(id) => setSelectedAtracaoId(id)}
-            />
-          </div>
-        )}
-
-        {/* Telemetria das 7 câmeras (dados da API) */}
-        {activeTab === 'tudo' && (
-          <div className="animate-in fade-in duration-200">
-            <CameraTelemetryPanel />
-          </div>
-        )}
-
-        {/* Seção 1: Síntese Acumulada */}
-        {(activeTab === 'tudo' || activeTab === 'sintese') && (
-          <div className="animate-in fade-in duration-200">
-            <SinteseAcumulada
-              data={sinteseData}
-              setorAtivo={filtroSetor}
-              onFiltrarSetor={(s) => setFiltroSetor(s)}
-              onSimularPicoDeFluxo={handleSimularPicoDeFluxo}
-              onExecutarAcaoSugerida={handleExecutarAcaoSugerida}
-            />
-          </div>
-        )}
-
-        {/* Seção: Predição de Gargalos (IA) */}
-        {activeTab === 'predicao' && (
-          <div className="animate-in fade-in duration-200">
-            <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
-          </div>
-        )}
-
-        {/* Seção 2: Totens de Autosserviço */}
-        {(activeTab === 'tudo' || activeTab === 'autosservico') && (
-          <section className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {activeTab === 'videos' ? (
+          <DriveVideosView />
+        ) : (
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  <Beer className="w-5 h-5 text-cyan-400" />
-                  <span>Totens de Autosserviço (F&B / Chopp / Kiosks)</span>
+                <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
+                  <span>{'>_'}</span>
+                  <span>Terminal Operacional & Execução de Diagnóstico</span>
                 </h2>
-                <p className="text-xs text-slate-400">
-                  Monitoramento de telemetria, pressão CO2, volume restante e transações registradas.
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Execução direta do script CLI com exibição detalhada de telemetria, integridade e logs em tempo real.
                 </p>
               </div>
-              <span className="text-xs text-cyan-400 font-mono font-bold">
-                {filteredAutos.length} de {autos.length} totens ativos
-              </span>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredAutos.map((item) => (
-                <AutosservicoCard
-                  key={item.id}
-                  item={item}
-                  isSelected={selectedAtracaoId === item.id}
-                  onSimularTransacao={(id, valor) => {
-                    handleSimularTransacao(id, valor);
-                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
-                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
-                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
-                    });
-                  }}
-                  onReabastecer={handleReabastecer}
-                  onToggleManutencao={handleToggleManutencao}
-                  onSelectIn3D={(id) => {
-                    setSelectedAtracaoId(id);
-                    setShow3DMap(true);
-                  }}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Seção 3: Pontos Instagramáveis */}
-        {(activeTab === 'tudo' || activeTab === 'instagramavel') && (
-          <section className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-fuchsia-400" />
-                  <span>Pontos Instagramáveis & Ativações de Marca</span>
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Engajamento social, contagem de fotos, controle de iluminação cenográfica e satisfação.
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShow3DMap(!show3DMap)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-[#0d1527] border border-cyan-900/60 hover:bg-[#131d33] rounded-lg transition-colors whitespace-nowrap"
+                >
+                  <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{show3DMap ? 'Ocultar Arena 3D' : 'Exibir Arena 3D'}</span>
+                </button>
               </div>
-              <span className="text-xs text-fuchsia-400 font-mono font-bold">
-                {filteredInstas.length} de {instas.length} ativações ativas
-              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredInstas.map((item) => (
-                <InstagramavelCard
-                  key={item.id}
-                  item={item}
-                  isSelected={selectedAtracaoId === item.id}
-                  onRegistrarCaptura={handleRegistrarCaptura}
-                  onMudarModoLuz={handleMudarModoLuz}
-                  onAlternarStatus={handleAlternarStatusInsta}
-                  onSelectIn3D={(id) => {
-                    setSelectedAtracaoId(id);
-                    setShow3DMap(true);
-                  }}
+            {/* 3D Scene Viewport */}
+            {show3DMap && (
+              <div className="animate-in fade-in duration-300">
+                <Venue3DScene
+                  autos={autos}
+                  instas={instas}
+                  selectedId={selectedAtracaoId}
+                  onSelectAtracao={(id) => setSelectedAtracaoId(id)}
                 />
-              ))}
-            </div>
-          </section>
+              </div>
+            )}
+
+            {/* Telemetria das 7 câmeras (dados da API) */}
+            {activeTab === 'tudo' && (
+              <div className="animate-in fade-in duration-200">
+                <CameraTelemetryPanel />
+              </div>
+            )}
+
+            {/* Seção 1: Síntese Acumulada */}
+            {(activeTab === 'tudo' || activeTab === 'sintese') && (
+              <div className="animate-in fade-in duration-200">
+                <SinteseAcumulada
+                  data={sinteseData}
+                  setorAtivo={filtroSetor}
+                  onFiltrarSetor={(s) => setFiltroSetor(s)}
+                  onSimularPicoDeFluxo={handleSimularPicoDeFluxo}
+                  onExecutarAcaoSugerida={handleExecutarAcaoSugerida}
+                />
+              </div>
+            )}
+
+            {/* Seção: Predição de Gargalos (IA) */}
+            {activeTab === 'predicao' && (
+              <div className="animate-in fade-in duration-200">
+                <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
+              </div>
+            )}
+
+            {/* Seção 2: Totens de Autosserviço */}
+            {(activeTab === 'tudo' || activeTab === 'autosservico') && (
+              <section className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      <Beer className="w-5 h-5 text-cyan-400" />
+                      <span>Totens de Autosserviço (F&B / Chopp / Kiosks)</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Monitoramento de telemetria, pressão CO2, volume restante e transações registradas.
+                    </p>
+                  </div>
+                  <span className="text-xs text-cyan-400 font-mono font-bold">
+                    {filteredAutos.length} de {autos.length} totens ativos
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredAutos.map((item) => (
+                    <AutosservicoCard
+                      key={item.id}
+                      item={item}
+                      isSelected={selectedAtracaoId === item.id}
+                      onSimularTransacao={(id, valor) => {
+                        handleSimularTransacao(id, valor);
+                        void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
+                          if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+                        });
+                      }}
+                      onReabastecer={handleReabastecer}
+                      onToggleManutencao={handleToggleManutencao}
+                      onSelectIn3D={(id) => {
+                        setSelectedAtracaoId(id);
+                        setShow3DMap(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Seção 3: Pontos Instagramáveis */}
+            {(activeTab === 'tudo' || activeTab === 'instagramavel') && (
+              <section className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-fuchsia-400" />
+                      <span>Pontos Instagramáveis & Ativações de Marca</span>
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Engajamento social, contagem de fotos, controle de iluminação cenográfica e satisfação.
+                    </p>
+                  </div>
+                  <span className="text-xs text-fuchsia-400 font-mono font-bold">
+                    {filteredInstas.length} de {instas.length} ativações ativas
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredInstas.map((item) => (
+                    <InstagramavelCard
+                      key={item.id}
+                      item={item}
+                      isSelected={selectedAtracaoId === item.id}
+                      onRegistrarCaptura={handleRegistrarCaptura}
+                      onMudarModoLuz={handleMudarModoLuz}
+                      onAlternarStatus={handleAlternarStatusInsta}
+                      onSelectIn3D={(id) => {
+                        setSelectedAtracaoId(id);
+                        setShow3DMap(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 

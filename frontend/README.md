@@ -1,5 +1,16 @@
 # React + TypeScript + Vite
 
+## Vídeos do Google Drive
+
+Para desenvolvimento local, crie `frontend/.env.local` com:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_API_TOKEN=dev-raiz-token-2026
+```
+
+Inicie o backend na raiz do projeto com `uvicorn --env-file .env app.main:app --reload --port 8000` e o frontend com `npm run dev` dentro de `frontend`. A pasta do Drive precisa permitir leitura para qualquer pessoa com o link. Depois, abra a aba **Vídeos do Drive** no painel.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

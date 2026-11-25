@@ -496,3 +496,149 @@ def test_compatibilidade_frontend_campos_adaptados():
     dados_drop = r_drop.json()
     assert dados_drop["janela_tempo_min"] == dados_drop["window_time_min"]
     assert dados_drop["taxa_abandono_estimada_pct"] == dados_drop["dropoff_rate_estimado_pct"]
+
+
+def test_videos_drive_lista_protegida(monkeypatch):
+    from app.routers import videos
+
+    async def listar_mock():
+        return [
+            {
+                "id": "drive-video-1",
+                "name": "show.mp4",
+                "mimeType": "video/mp4",
+                "size": "1234",
+                "thumbnailLink": "https://example.test/thumb.jpg",
+            }
+        ]
+
+    monkeypatch.setattr(videos, "listar_videos_drive", listar_mock)
+
+    sem_auth = client.get("/api/v1/videos")
+    assert sem_auth.status_code == 401
+
+    resposta = client.get("/api/v1/videos", headers=AUTH_HEADER)
+    assert resposta.status_code == 200
+    resultado = resposta.json()
+    assert resultado["total"] == 1
+    assert resultado["videos"][0] | {"content_url": None} == {
+        "id": "drive-video-1",
+        "name": "show.mp4",
+        "mime_type": "video/mp4",
+        "size": 1234,
+        "thumbnail_url": "https://example.test/thumb.jpg",
+        "content_url": None,
+    }
+    assert resultado["videos"][0]["content_url"].startswith(
+        "/api/v1/videos/drive-video-1/content/"
+    )
+
+
+def test_videos_drive_configuracao_ausente_retorna_503(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.services import google_drive
+
+    monkeypatch.setattr(
+        google_drive,
+        "settings",
+        SimpleNamespace(google_drive_api_key="", google_drive_folder_id=""),
+    )
+    resposta = client.get("/api/v1/videos", headers=AUTH_HEADER)
+    assert resposta.status_code == 503
+    assert "GOOGLE_DRIVE_API_KEY" in resposta.json()["mensagem"]
+
+
+def test_video_drive_encaminha_range_e_stream(monkeypatch):
+    import time
+
+    import httpx
+
+    from app.routers import videos
+
+    expiracao = int(time.time()) + 60
+    assinatura = videos._assinatura_video("drive-video-1", expiracao)
+    response_drive = httpx.Response(
+        206,
+        headers={
+            "content-type": "video/mp4",
+            "content-length": "10",
+            "content-range": "bytes 0-9/20",
+            "accept-ranges": "bytes",
+        },
+        content=b"video-data",
+    )
+    request_headers = {}
+
+    class ClientFalso:
+        async def aclose(self):
+            return None
+
+    async def abrir_mock(file_id, range_header):
+        request_headers["file_id"] = file_id
+        request_headers["range"] = range_header
+        return ClientFalso(), response_drive
+
+    monkeypatch.setattr(videos, "abrir_video_drive", abrir_mock)
+    resposta = client.get(
+        f"/api/v1/videos/drive-video-1/content/{expiracao}/{assinatura}",
+        headers={"Range": "bytes=0-9"},
+    )
+    assert resposta.status_code == 206
+    assert resposta.content == b"video-data"
+    assert resposta.headers["content-range"] == "bytes 0-9/20"
+    assert request_headers == {"file_id": "drive-video-1", "range": "bytes=0-9"}
+
+    invalido = client.get(f"/api/v1/videos/drive-video-1/content/{expiracao}/invalid")
+    assert invalido.status_code == 403
+
+
+def test_google_drive_pagina_lista_e_rejeita_arquivo_que_nao_e_video(monkeypatch):
+    import asyncio
+    import httpx
+    from types import SimpleNamespace
+
+    from app.services import google_drive
+
+    monkeypatch.setattr(
+        google_drive,
+        "settings",
+        SimpleNamespace(google_drive_api_key="test-key", google_drive_folder_id="folder-1"),
+    )
+    respostas = [
+        {
+            "files": [{"id": "video-1", "name": "a.mp4", "mimeType": "video/mp4"}],
+            "nextPageToken": "next-page",
+        },
+        {"files": [{"id": "video-2", "name": "b.mp4", "mimeType": "video/mp4"}]},
+    ]
+    chamadas = []
+
+    def handler(request):
+        chamadas.append(request)
+        if request.url.path.endswith("/files"):
+            return httpx.Response(200, json=respostas[len(chamadas) - 1])
+        return httpx.Response(
+            200,
+            json={"id": "video-1", "mimeType": "application/pdf", "parents": ["another-folder"]},
+        )
+
+    client_httpx_original = httpx.AsyncClient
+
+    def cliente_mock(*args, **kwargs):
+        return client_httpx_original(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(google_drive.httpx, "AsyncClient", cliente_mock)
+    videos_drive = asyncio.run(google_drive.listar_videos_drive())
+    assert [video["id"] for video in videos_drive] == ["video-1", "video-2"]
+    assert chamadas[1].url.params["pageToken"] == "next-page"
+    assert "folder-1" in chamadas[0].url.params["q"]
+    assert "mimeType contains 'video/'" in chamadas[0].url.params["q"]
+    assert chamadas[0].headers["x-goog-api-key"] == "test-key"
+    assert "key" not in chamadas[0].url.params
+
+    with pytest.raises(google_drive.GoogleDriveError) as erro:
+        asyncio.run(google_drive.abrir_video_drive("video-1", None))
+    assert erro.value.status_code == 404
+    assert len(chamadas) == 3
+    assert chamadas[2].url.params["supportsAllDrives"] == "true"
