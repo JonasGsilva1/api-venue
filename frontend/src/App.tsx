@@ -311,7 +311,7 @@ export default function App() {
                       statusEvento === 'ACAO_EM_ANDAMENTO' ? 'bg-amber-400' : 'bg-emerald-400'
                     }`}
                   />
-                  <span>{statusEvento}</span>
+                  <span>{statusEvento === 'ACAO_EM_ANDAMENTO' ? 'Ação em andamento' : 'Estável'}</span>
                 </span>
               </div>
 

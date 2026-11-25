@@ -47,7 +47,7 @@ async def consultar_gargalos(usuario: UsuarioAutenticado = Depends(exigir_leitur
     summary="Predições de Gargalos (IA) — executar ação recomendada",
     description=(
         "Registra que o operador executou a ação sugerida pela previsão (como abrir mais filas) e muda o status do evento para ação em andamento.\n\n"
-        "**Onde aparece no site:** aba Predições de Gargalos (IA) → botão \"Executar ação recomendada\" e aba Síntese Acumulada → botão \"Executar Medida Preditiva\"."
+        "**Onde aparece no site:** aba Predições de Gargalos (IA) → botão \"Executar ação recomendada\" e aba Síntese Acumulada → botão \"Executar ação recomendada\"."
     ),
     dependencies=[Depends(sem_query_params)],
 )

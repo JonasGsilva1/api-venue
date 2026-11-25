@@ -141,7 +141,7 @@ async def status_pdvs_compat() -> list[Any]:
     summary="Saúde da API",
     description=(
         "Mostra se a API está funcionando, o estado geral do evento e quantos clientes estão conectados ao vivo. Não precisa de token.\n\n"
-        "**Onde aparece no site:** cabeçalho do site (selo `ESTAVEL` / `ACAO_EM_ANDAMENTO`), comando `status` do Terminal CLI e checagem do servidor no Render."
+        "**Onde aparece no site:** cabeçalho do site (selo `Estável` / `Ação em andamento`), comando `status` do Terminal CLI e checagem do servidor no Render."
     ),
     dependencies=[Depends(sem_query_params)],
 )

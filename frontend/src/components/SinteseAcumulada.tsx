@@ -170,12 +170,12 @@ export const SinteseAcumulada: React.FC<SinteseAcumuladaProps> = ({
                     {isExecutado ? (
                       <>
                         <CheckCircle className="w-4 h-4" />
-                        <span>Medida Preditiva Executada com Sucesso</span>
+                        <span>Ação recomendada executada</span>
                       </>
                     ) : (
                       <>
                         <Zap className="w-4 h-4 fill-white" />
-                        <span>Executar Medida Preditiva ({alerta.acaoRapidaLabel || 'Acionar Filas'})</span>
+                        <span>Executar ação recomendada ({alerta.acaoRapidaLabel || 'Acionar Filas'})</span>
                       </>
                     )}
                   </button>
