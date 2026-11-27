@@ -725,3 +725,114 @@ def test_google_drive_pagina_lista_e_rejeita_arquivo_que_nao_e_video(monkeypatch
     assert erro.value.status_code == 404
     assert len(chamadas) == 3
     assert chamadas[2].url.params["supportsAllDrives"] == "true"
+
+
+def test_google_drive_apps_script_lista_e_stream_com_range(monkeypatch):
+    import httpx
+    from types import SimpleNamespace
+
+    from app.routers import videos as videos_router
+    from app.services import google_drive
+
+    script_url = "https://script.google.com/macros/s/test-script/exec"
+    monkeypatch.setattr(
+        google_drive,
+        "settings",
+        SimpleNamespace(
+            google_drive_apps_script_url=script_url,
+            google_drive_api_key="",
+            google_drive_folder_id="",
+        ),
+    )
+    monkeypatch.setattr(
+        videos_router,
+        "settings",
+        SimpleNamespace(
+            google_drive_apps_script_url=script_url,
+            google_drive_folder_id="",
+            jwt_secret="raizevento-dev-secret-troque-em-producao-2026",
+        ),
+    )
+    google_drive._cache_videos_apps_script.clear()
+
+    chamadas = []
+
+    def handler(request):
+        chamadas.append(request)
+        if str(request.url) == script_url:
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "count": 2,
+                    "videos": [
+                        {
+                            "id": "vid-app-1",
+                            "name": "camera.mp4",
+                            "mimeType": "video/mp4",
+                            "size": 3183661,
+                            "downloadUrl": "https://drive.google.com/uc?export=download&id=vid-app-1",
+                        },
+                        {
+                            "id": "doc-ignorado",
+                            "name": "manual.pdf",
+                            "mimeType": "application/pdf",
+                            "downloadUrl": "https://drive.google.com/uc?export=download&id=doc-ignorado",
+                        },
+                    ],
+                },
+            )
+        if "vid-app-1" in str(request.url):
+            assert request.headers.get("range") == "bytes=0-9"
+            return httpx.Response(
+                206,
+                headers={
+                    "content-type": "video/mp4",
+                    "content-length": "10",
+                    "content-range": "bytes 0-9/3183661",
+                    "accept-ranges": "bytes",
+                },
+                content=b"0123456789",
+            )
+        return httpx.Response(404)
+
+    client_httpx_original = httpx.AsyncClient
+
+    def cliente_mock(*args, **kwargs):
+        return client_httpx_original(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(google_drive.httpx, "AsyncClient", cliente_mock)
+
+    r_lista = client.get("/api/v1/videos", headers=AUTH_HEADER)
+    assert r_lista.status_code == 200
+    dados = r_lista.json()
+    assert dados["total"] == 1
+    assert dados["videos"][0]["id"] == "vid-app-1"
+    assert dados["videos"][0]["size"] == 3183661
+
+    r_stream = client.get(dados["videos"][0]["content_url"], headers={"Range": "bytes=0-9"})
+    assert r_stream.status_code == 206
+    assert r_stream.content == b"0123456789"
+    assert r_stream.headers["content-range"] == "bytes 0-9/3183661"
+
+    exp_invalido = dados["videos"][0]["content_url"].replace("vid-app-1", "nao-existe")
+    assert client.get(exp_invalido).status_code in (403, 404)
+
+
+def test_google_drive_apps_script_url_invalida_retorna_503(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.services import google_drive
+
+    monkeypatch.setattr(
+        google_drive,
+        "settings",
+        SimpleNamespace(
+            google_drive_apps_script_url="https://exemplo-invalido.com/exec",
+            google_drive_api_key="",
+            google_drive_folder_id="",
+        ),
+    )
+    resposta = client.get("/api/v1/videos", headers=AUTH_HEADER)
+    assert resposta.status_code == 503
+    assert "GOOGLE_DRIVE_APPS_SCRIPT_URL" in resposta.json()["mensagem"]

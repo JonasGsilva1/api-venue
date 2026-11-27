@@ -25,6 +25,10 @@ def _env_int(nome: str, padrao: int) -> int:
     return padrao if valor is None else int(valor)
 
 
+def _env_str(nome: str, padrao: str = "") -> str:
+    return os.getenv(nome, padrao).strip().strip('"').strip("'")
+
+
 @dataclass(frozen=True)
 class Settings:
     # ── Autenticação JWT (RBAC) ──────────────────────────────────────────────
@@ -46,6 +50,7 @@ class Settings:
     cors_origins: tuple[str, ...]
 
     # ── Google Drive ────────────────────────────────────────────────────────
+    google_drive_apps_script_url: str
     google_drive_api_key: str
     google_drive_folder_id: str
 
@@ -66,8 +71,9 @@ def carregar_settings() -> Settings:
         window_time_min=_env_int("WINDOW_TIME_MIN", 30),
         deslocamento_medio_min=_env_int("DESLOCAMENTO_MEDIO_MIN", 8),
         cors_origins=origins or ("*",),
-        google_drive_api_key=os.getenv("GOOGLE_DRIVE_API_KEY", ""),
-        google_drive_folder_id=os.getenv("GOOGLE_DRIVE_FOLDER_ID", ""),
+        google_drive_apps_script_url=_env_str("GOOGLE_DRIVE_APPS_SCRIPT_URL"),
+        google_drive_api_key=_env_str("GOOGLE_DRIVE_API_KEY"),
+        google_drive_folder_id=_env_str("GOOGLE_DRIVE_FOLDER_ID"),
     )
 
 

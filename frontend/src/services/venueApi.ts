@@ -339,11 +339,16 @@ export function mensagemDeErro(err: unknown): string {
       return 'O servidor demorou para responder. Ele pode estar iniciando; tente de novo em instantes.';
     }
     if (err.response) {
-      const { status } = err.response;
+      const { status, data } = err.response;
+      const detalhe =
+        data && typeof data === 'object' && 'mensagem' in data && typeof data.mensagem === 'string'
+          ? data.mensagem.trim()
+          : '';
       if (status === 401) return 'Sem autorização: faça login ou verifique o token de acesso.';
       if (status === 403) return 'Acesso negado para esta ação (permissão insuficiente).';
-      if (status === 404) return 'Recurso não encontrado nesta API.';
-      if (status === 400) return 'A API recusou os dados enviados (verifique os campos).';
+      if (status === 404) return detalhe || 'Recurso não encontrado nesta API.';
+      if (status === 400) return detalhe || 'A API recusou os dados enviados (verifique os campos).';
+      if (detalhe) return detalhe;
       return `O servidor respondeu com erro ${status}.`;
     }
     return 'Sem resposta do servidor. Verifique a conexão e a URL da API.';

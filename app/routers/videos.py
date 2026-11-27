@@ -25,7 +25,8 @@ _DURACAO_LINK_VIDEO_SEG = 3600
 
 
 def _assinatura_video(file_id: str, expiracao: int) -> str:
-    mensagem = f"{settings.google_drive_folder_id}:{file_id}:{expiracao}".encode("utf-8")
+    escopo = getattr(settings, "google_drive_apps_script_url", "") or settings.google_drive_folder_id
+    mensagem = f"{escopo}:{file_id}:{expiracao}".encode("utf-8")
     return hmac.new(settings.jwt_secret.encode("utf-8"), mensagem, hashlib.sha256).hexdigest()
 
 
@@ -54,8 +55,8 @@ class VideosDriveResponseContract(BaseModel):
     summary="Lista vídeos da pasta configurada no Google Drive",
     description=(
         "Lista todos os arquivos de vídeo da pasta do Google Drive configurada no servidor "
-        "(`GOOGLE_DRIVE_API_KEY` e `GOOGLE_DRIVE_FOLDER_ID`). A pasta precisa estar compartilhada "
-        "para leitura de qualquer pessoa com o link.\n\n"
+        "(`GOOGLE_DRIVE_APPS_SCRIPT_URL`, ou `GOOGLE_DRIVE_API_KEY` + `GOOGLE_DRIVE_FOLDER_ID`). "
+        "A pasta precisa estar compartilhada para leitura de qualquer pessoa com o link.\n\n"
         "**Onde aparece no site:** aba **Vídeos do Drive** (botão **Atualizar lista**)."
     ),
     dependencies=[Depends(sem_query_params)],

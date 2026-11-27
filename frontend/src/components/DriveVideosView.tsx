@@ -63,7 +63,7 @@ export function DriveVideosView() {
             <p className="font-semibold">Não foi possível carregar os vídeos.</p>
             <p className="mt-1 text-xs text-rose-200/80">{error}</p>
             <p className="mt-2 text-xs text-rose-200/80">
-              Confira o ID da pasta e se ela permite leitura para qualquer pessoa com o link.
+              Confira a variável GOOGLE_DRIVE_APPS_SCRIPT_URL no servidor e se a pasta permite leitura para qualquer pessoa com o link.
             </p>
           </div>
         </div>
