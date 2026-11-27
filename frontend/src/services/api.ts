@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+const defaultApiBaseUrl =
+  import.meta.env.DEV || window.location.port === '3000'
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : window.location.origin;
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000'),
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

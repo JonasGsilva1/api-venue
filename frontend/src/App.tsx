@@ -4,6 +4,7 @@ import {
   Bot,
   Camera,
   Compass,
+  Film,
   LogIn,
   Plus,
   Radio,
@@ -19,6 +20,7 @@ import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
 import { ApiToast } from './components/ui/ApiToast';
 import { LoginModal } from './components/auth/LoginModal';
 import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
+import { DriveVideosView } from './components/DriveVideosView';
 import { useAuth } from './context/AuthContext';
 import { useOpsActions } from './hooks/useOpsActions';
 import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
@@ -101,7 +103,7 @@ export default function App() {
   const [dropoff, setDropoff] = useState<AnalyticsSummaryResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'instagramavel' | 'predicao'>('tudo');
+  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'instagramavel' | 'predicao' | 'videos'>('tudo');
   const [show3DMap, setShow3DMap] = useState(true);
   const [selectedAtracaoId, setSelectedAtracaoId] = useState<string | null>(null);
   const [filtroSetor, setFiltroSetor] = useState<string | null>(null);
@@ -454,6 +456,19 @@ export default function App() {
               >
                 <span>Síntese Acumulada</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('videos')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
+                  activeTab === 'videos'
+                    ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Film className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Vídeos do Drive</span>
+              </button>
             </div>
 
             <button
@@ -556,6 +571,9 @@ export default function App() {
             />
           </div>
         )}
+
+        {/* Seção: Vídeos do Google Drive */}
+        {activeTab === 'videos' && <DriveVideosView />}
 
         {/* Seção 3: Pontos Instagramáveis */}
         {(activeTab === 'tudo' || activeTab === 'instagramavel') && (

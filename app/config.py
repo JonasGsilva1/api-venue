@@ -45,6 +45,10 @@ class Settings:
     # ── CORS ─────────────────────────────────────────────────────────────────
     cors_origins: tuple[str, ...]
 
+    # ── Google Drive ────────────────────────────────────────────────────────
+    google_drive_api_key: str
+    google_drive_folder_id: str
+
 
 def carregar_settings() -> Settings:
     timeout = _env_float("AI_ENGINE_TIMEOUT_SEG", 2.5)
@@ -62,6 +66,8 @@ def carregar_settings() -> Settings:
         window_time_min=_env_int("WINDOW_TIME_MIN", 30),
         deslocamento_medio_min=_env_int("DESLOCAMENTO_MEDIO_MIN", 8),
         cors_origins=origins or ("*",),
+        google_drive_api_key=os.getenv("GOOGLE_DRIVE_API_KEY", ""),
+        google_drive_folder_id=os.getenv("GOOGLE_DRIVE_FOLDER_ID", ""),
     )
 
 

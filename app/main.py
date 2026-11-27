@@ -27,7 +27,7 @@ from app.config import settings
 from app.contracts import HealthResponseContract
 from app.errors import registrar_handlers, sem_query_params
 from app.repositories.memory_db import agora_utc, memory_db
-from app.routers import auth, ops, predicoes, stream, telemetry, venue
+from app.routers import auth, ops, predicoes, stream, telemetry, venue, videos
 from app.services.event_bus import event_bus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -50,6 +50,7 @@ API do painel **Venue Intelligence / RaizEvento** para acompanhar filas, lotaç�
 | **Predições de Gargalos (IA)** | Aba **Predições de Gargalos (IA)** |
 | **Instagramáveis** | Aba **Instagramáveis** e botão **+ Atração** no topo |
 | **Síntese Acumulada** | Aba **Síntese Acumulada** e botão **Simular Pico** |
+| **Vídeos do Drive** | Aba **Vídeos do Drive** no topo do site |
 | **Tempo Real** | Canal de atualizações ao vivo (para uso futuro no site) |
 | **Sistema** | Indicador **Conexão com a API** no topo do site e checagem do servidor |
 
@@ -70,6 +71,7 @@ TAGS = [
     {"name": "Predições de Gargalos (IA)", "description": "Aba Predições de Gargalos (IA): previsão de filas e teste de cálculo de espera."},
     {"name": "Instagramáveis", "description": "Aba Instagramáveis e botão + Atração: fotos, luzes, pausa e cadastro de atrações."},
     {"name": "Síntese Acumulada", "description": "Aba Síntese Acumulada: resumo do evento, simular pico, mapa de calor e taxa de abandono."},
+    {"name": "Vídeos do Drive", "description": "Aba Vídeos do Drive: lista e reproduz os vídeos hospedados na pasta do Google Drive."},
     {"name": "Tempo Real", "description": "Canal ao vivo conectado ao cabeçalho do site para atualizar leituras e alertas automaticamente."},
     {"name": "Sistema", "description": "Conexão com a API no cabeçalho do site e checagem se o servidor está no ar."},
 ]
@@ -96,7 +98,7 @@ app.add_middleware(
 
 registrar_handlers(app)
 
-for modulo in (auth, telemetry, predicoes, ops, venue, stream):
+for modulo in (auth, telemetry, predicoes, ops, venue, stream, videos):
     app.include_router(modulo.router)
 
 
