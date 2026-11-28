@@ -332,6 +332,18 @@ class PredicaoGargaloResponseContract(ContratoEstrito):
     tempo_estimado_formacao_fila: str = Field(..., examples=["03m 30s"])
 
 
+class AmostraEsperaContract(ContratoEstrito):
+    timestamp_ms: int = Field(..., ge=0)
+    espera_min: float = Field(..., ge=0.0)
+
+
+class ZonaHistoricoPredicaoContract(ContratoEstrito):
+    zona_id: str = Field(..., min_length=1, max_length=64)
+    nome: str = Field(..., min_length=1, max_length=160)
+    setor: str = Field(..., min_length=1, max_length=120)
+    amostras: List[AmostraEsperaContract] = Field(default_factory=list, max_length=500)
+
+
 class PredicaoFilaZonaContract(ContratoEstrito):
     zona_id: str = Field(..., examples=["zona-1"])
     nome: str = Field(..., examples=["Z1 | Acesso Estande Principal"])

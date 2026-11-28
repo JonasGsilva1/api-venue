@@ -1,28 +1,26 @@
 """
 Motor interno de IA (fallback local in-process quando `AI_ENGINE_URL` não está configurada).
 
-Toda a matemática pura reside no serviço independente `ai_service.inference`; este módulo
-adapta `ZonaRecord` do repositório local e preserva a interface interna do backend.
+Sem dependências externas de pacotes irmãos: permite que o repositório do Backend
+seja executado e implantado no Render de forma 100% independente.
 """
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
-from ai_service.inference import (
-    CONFIANCA_TEMPO_REAL,
-    DENSIDADE_SATURACAO_M2,
-    TEMPO_ESPERA_MAX_SEG,
-    MotorIAIndisponivelError,
-    ResultadoInferencia,
-    aplicar_regras_valores,
-    calcular_inferencia_valores,
-    detectar_anomalias,
-    executar_inferencia,
-    formatar_tempo,
-)
 from app.config import settings
-from app.repositories.memory_db import ZonaRecord
+from app.repositories.memory_db import (
+    LIMIAR_NFC_LENTO_SEG,
+    ZonaRecord,
+    calcular_densidade,
+    classificar_status_cor,
+)
+
+TEMPO_ESPERA_MAX_SEG = 3600
+DENSIDADE_SATURACAO_M2 = 1.5
+CONFIANCA_TEMPO_REAL = 0.94
 
 ZONA_REFERENCIA = ZonaRecord(
     id=0,
@@ -37,6 +35,34 @@ ZONA_REFERENCIA = ZonaRecord(
 )
 
 
+class MotorIAIndisponivelError(Exception):
+    """Motor de IA fora do ar (aciona o Circuit Breaker / CONTINGENCIA_503)."""
+
+
+@dataclass
+class ResultadoInferencia:
+    pax_count: int
+    tempo_espera_seg: int
+    densidade_m2: float
+    status_cor: str
+    confianca_ia: float
+    anomalias: List[str] = field(default_factory=list)
+
+
+def formatar_tempo(segundos: int) -> str:
+    minutos, seg = divmod(max(0, int(segundos)), 60)
+    return f"{minutos}m {seg:02d}s"
+
+
+def detectar_anomalias(densidade: float, taxa_nfc: Optional[int]) -> List[str]:
+    anomalias: List[str] = []
+    if taxa_nfc is not None and taxa_nfc >= LIMIAR_NFC_LENTO_SEG:
+        anomalias.append("NFC_LENTO")
+    if densidade >= DENSIDADE_SATURACAO_M2:
+        anomalias.append("SATURACAO")
+    return anomalias
+
+
 def aplicar_regras(
     zona: ZonaRecord,
     pax: int,
@@ -45,17 +71,24 @@ def aplicar_regras(
     taxa_nfc: Optional[int],
 ) -> ResultadoInferencia:
     """Regras de negócio comuns a TODOS os modos de leitura (tempo real e contingências)."""
-    return aplicar_regras_valores(zona.area_m2, pax, tempo_espera_seg, confianca, taxa_nfc)
+    tempo = int(round(min(max(tempo_espera_seg, 0), TEMPO_ESPERA_MAX_SEG)))
+    densidade = calcular_densidade(pax, zona.area_m2)
+    return ResultadoInferencia(
+        pax_count=pax,
+        tempo_espera_seg=tempo,
+        densidade_m2=densidade,
+        status_cor=classificar_status_cor(tempo),
+        confianca_ia=round(confianca, 2),
+        anomalias=detectar_anomalias(densidade, taxa_nfc),
+    )
 
 
 def calcular_inferencia(zona: ZonaRecord, pax: int, taxa_nfc: Optional[int]) -> ResultadoInferencia:
-    return calcular_inferencia_valores(
-        area_m2=zona.area_m2,
-        tempo_servico_seg=zona.tempo_servico_seg,
-        postos_atendimento=zona.postos_atendimento,
-        pax=pax,
-        taxa_nfc=taxa_nfc,
-    )
+    if taxa_nfc is not None:
+        tempo = pax * taxa_nfc / max(1, zona.postos_atendimento)
+    else:
+        tempo = pax * zona.tempo_servico_seg
+    return aplicar_regras(zona, pax, int(round(tempo)), CONFIANCA_TEMPO_REAL, taxa_nfc)
 
 
 async def inferir(
@@ -65,15 +98,12 @@ async def inferir(
     simular_falha: str = "NENHUMA",
 ) -> ResultadoInferencia:
     """Chamada assíncrona local ao motor. `simular_falha` permite reproduzir 504/503 pelo Swagger."""
-    return await executar_inferencia(
-        area_m2=zona.area_m2,
-        tempo_servico_seg=zona.tempo_servico_seg,
-        postos_atendimento=zona.postos_atendimento,
-        pax=pax,
-        taxa_nfc=taxa_nfc,
-        simular_falha=simular_falha,
-        timeout_seg=settings.ai_timeout_seg,
-    )
+    if simular_falha == "DOWN_503":
+        raise MotorIAIndisponivelError("Motor de IA indisponível (simulação DOWN_503).")
+    if simular_falha == "TIMEOUT_504":
+        await asyncio.sleep(settings.ai_timeout_seg + 5)
+    await asyncio.sleep(0)
+    return calcular_inferencia(zona, pax, taxa_nfc)
 
 
 async def inferir_com_timeout(

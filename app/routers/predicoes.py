@@ -5,14 +5,14 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ai_service.contracts import AmostraEspera, ZonaHistoricoPredicao
 from app.auth import UsuarioAutenticado, exigir_leitura, exigir_operacao
 from app.contracts import (
     AcionarFluxoRequestContract,
     AcionarFluxoResponseContract,
-    PredicaoFilaZonaContract,
+    AmostraEsperaContract,
     PredicaoGargaloResponseContract,
     PredicoesFilasResponseContract,
+    ZonaHistoricoPredicaoContract,
 )
 from app.errors import RESPOSTAS_PADRAO, sem_query_params
 from app.repositories.memory_db import memory_db
@@ -67,14 +67,14 @@ async def prever_filas_zonas(usuario: UsuarioAutenticado = Depends(exigir_leitur
             key=lambda item: item.timestamp,
         )
         amostras = [
-            AmostraEspera(
+            AmostraEsperaContract(
                 timestamp_ms=int(l.timestamp.timestamp() * 1000),
                 espera_min=round(l.tempo_espera_seg / 60.0, 2),
             )
             for l in leituras
         ]
         zonas_historico.append(
-            ZonaHistoricoPredicao(
+            ZonaHistoricoPredicaoContract(
                 zona_id=f"zona-{zona.id}",
                 nome=zona.nome,
                 setor=zona.tipo,
@@ -83,16 +83,9 @@ async def prever_filas_zonas(usuario: UsuarioAutenticado = Depends(exigir_leitur
         )
 
     try:
-        resultado = await ai_client.calcular_predicoes_filas(zonas_historico, limite_espera_min=8.0)
+        return await ai_client.calcular_predicoes_filas(zonas_historico, limite_espera_min=8.0)
     except MotorIAIndisponivelError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
-
-    return PredicoesFilasResponseContract(
-        limite_espera_min=resultado.limite_espera_min,
-        total_zonas=resultado.total_zonas,
-        alertas_ativos=resultado.alertas_ativos,
-        previsoes=[PredicaoFilaZonaContract(**item.model_dump()) for item in resultado.previsoes],
-    )
 
 
 @router.post(

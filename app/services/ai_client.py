@@ -1,23 +1,26 @@
 """
-Cliente HTTP entre o Backend (`app/`) e o Mecanismo de IA (`ai_service/`).
+Cliente HTTP entre o Backend (`app/`) e o serviço separado do Mecanismo de IA.
 
-- Quando `AI_ENGINE_URL` está configurada no ambiente (ex.: deploy separado no Render),
+- Quando `AI_ENGINE_URL` está configurada no ambiente (deploy separado no Render),
   envia requisições HTTP para `/ai/v1/*` com cabeçalho opcional `X-AI-Secret`.
-- Quando `AI_ENGINE_URL` está vazia, executa em processo via `ai_engine`, `yolo_vision`
-  e `ai_service.prediction` para manter compatibilidade local e nos testes existentes.
+- Quando `AI_ENGINE_URL` está vazia, usa o fallback local em processo para manter
+  o ambiente local e os testes funcionando sem precisar subir o segundo servidor.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional, Sequence
+from typing import List, Optional, Sequence
 
 import httpx
 
-from ai_service.contracts import AiPredicaoResponse, ZonaHistoricoPredicao
-from ai_service.prediction import calcular_predicoes_lote
 from app.config import settings
-from app.contracts import CoordinateContract
+from app.contracts import (
+    CoordinateContract,
+    PredicaoFilaZonaContract,
+    PredicoesFilasResponseContract,
+    ZonaHistoricoPredicaoContract,
+)
 from app.repositories.memory_db import ZonaRecord
 from app.services import ai_engine, yolo_vision
 from app.services.ai_engine import MotorIAIndisponivelError, ResultadoInferencia
@@ -45,6 +48,101 @@ def _headers() -> dict[str, str]:
 
 def _criar_async_client(timeout: float) -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=timeout)
+
+
+def _calcular_predicoes_fallback(
+    zonas_historico: Sequence[ZonaHistoricoPredicaoContract],
+    limite_espera_min: float,
+) -> PredicoesFilasResponseContract:
+    previsoes: List[PredicaoFilaZonaContract] = []
+    for zona in zonas_historico:
+        amostras = sorted(zona.amostras, key=lambda a: a.timestamp_ms)
+        n = len(amostras)
+        atual = round(amostras[-1].espera_min, 2) if n > 0 else 0.0
+        if n < 5:
+            previsoes.append(
+                PredicaoFilaZonaContract(
+                    zona_id=zona.zona_id,
+                    nome=zona.nome,
+                    setor=zona.setor,
+                    amostras_usadas=n,
+                    suficiente=False,
+                    espera_atual_min=atual,
+                    confianca_pct=0.0,
+                    nivel_alerta="COLETANDO",
+                )
+            )
+            continue
+
+        t0 = amostras[0].timestamp_ms
+        xs = [(a.timestamp_ms - t0) / 60000.0 for a in amostras]
+        ys = [a.espera_min for a in amostras]
+        mx = sum(xs) / n
+        my = sum(ys) / n
+        sxx = sum((xs[i] - mx) ** 2 for i in range(n))
+        if sxx == 0:
+            previsoes.append(
+                PredicaoFilaZonaContract(
+                    zona_id=zona.zona_id,
+                    nome=zona.nome,
+                    setor=zona.setor,
+                    amostras_usadas=n,
+                    suficiente=False,
+                    espera_atual_min=atual,
+                    confianca_pct=0.0,
+                    nivel_alerta="COLETANDO",
+                )
+            )
+            continue
+
+        sxy = sum((xs[i] - mx) * (ys[i] - my) for i in range(n))
+        syy = sum((ys[i] - my) ** 2 for i in range(n))
+        inclinacao = sxy / sxx
+        intercepto = my - inclinacao * mx
+        r2 = 0.0 if syy == 0 else (sxy * sxy) / (sxx * syy)
+        agora = xs[-1]
+        confianca = max(0.0, min(1.0, r2 * min(1.0, n / 12.0)))
+
+        if atual >= limite_espera_min:
+            minutos_ate_limite: Optional[float] = 0.0
+            nivel_alerta = "ESTOUROU"
+        else:
+            minutos_ate_limite = round((limite_espera_min - atual) / inclinacao, 1) if inclinacao > 0.05 else None
+            if minutos_ate_limite is not None and confianca >= 0.4:
+                if minutos_ate_limite <= 5.0:
+                    nivel_alerta = "URGENTE"
+                elif minutos_ate_limite <= 15.0:
+                    nivel_alerta = "AVISO"
+                else:
+                    nivel_alerta = "ESTAVEL"
+            else:
+                nivel_alerta = "ESTAVEL"
+
+        previsoes.append(
+            PredicaoFilaZonaContract(
+                zona_id=zona.zona_id,
+                nome=zona.nome,
+                setor=zona.setor,
+                amostras_usadas=n,
+                suficiente=True,
+                espera_atual_min=atual,
+                projecao_5m=round(max(0.0, intercepto + inclinacao * (agora + 5.0)), 2),
+                projecao_10m=round(max(0.0, intercepto + inclinacao * (agora + 10.0)), 2),
+                projecao_15m=round(max(0.0, intercepto + inclinacao * (agora + 15.0)), 2),
+                velocidade_min_por_min=round(inclinacao, 3),
+                minutos_ate_limite=minutos_ate_limite,
+                confianca_pct=round(confianca * 100.0, 1),
+                nivel_alerta=nivel_alerta,  # type: ignore[arg-type]
+            )
+        )
+
+    alertas = sum(1 for p in previsoes if p.nivel_alerta in ("ESTOUROU", "URGENTE", "AVISO"))
+    return PredicoesFilasResponseContract(
+        limite_espera_min=limite_espera_min,
+        total_zonas=len(previsoes),
+        alertas_ativos=alertas,
+        previsoes=previsoes,
+    )
 
 
 async def inferir_com_timeout(
@@ -148,12 +246,12 @@ async def escanear_frame_yolo(
 
 
 async def calcular_predicoes_filas(
-    zonas_historico: Sequence[ZonaHistoricoPredicao],
+    zonas_historico: Sequence[ZonaHistoricoPredicaoContract],
     limite_espera_min: float = 8.0,
-) -> AiPredicaoResponse:
+) -> PredicoesFilasResponseContract:
     url = _ai_engine_url()
     if not url:
-        return calcular_predicoes_lote(zonas_historico, limite_espera_min)
+        return _calcular_predicoes_fallback(zonas_historico, limite_espera_min)
 
     payload = {
         "zonas": [z.model_dump(mode="json") for z in zonas_historico],
@@ -169,4 +267,4 @@ async def calcular_predicoes_filas(
     if resp.status_code >= 500 or resp.status_code in (401, 403):
         raise MotorIAIndisponivelError(f"Mecanismo de IA respondeu com HTTP {resp.status_code}.")
     resp.raise_for_status()
-    return AiPredicaoResponse.model_validate(resp.json())
+    return PredicoesFilasResponseContract.model_validate(resp.json())
