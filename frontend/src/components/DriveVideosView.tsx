@@ -39,7 +39,7 @@ export function DriveVideosView() {
         <div>
           <h2 id="drive-videos-titulo" className="flex items-center gap-2 text-base font-bold text-raiz-text-light sm:text-lg">
             <Film className="h-5 w-5 text-raiz-accent" />
-            Vídeos do Google Drive
+            Vídeos em Nuvem
           </h2>
           <p className="mt-1 text-xs text-raiz-text-light/75">
             Vídeos da pasta configurada no servidor. A reprodução é transmitida pelo backend.
@@ -71,7 +71,7 @@ export function DriveVideosView() {
 
       {loading && videos.length === 0 && !error && (
         <p role="status" className="rounded-xl border border-raiz-border-dark bg-raiz-section p-8 text-center text-sm text-raiz-text-light/75">
-          Buscando vídeos no Drive...
+          Buscando vídeos em nuvem...
         </p>
       )}
 

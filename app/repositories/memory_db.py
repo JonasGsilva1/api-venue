@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import math
 import threading
+import time
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 
 def agora_utc() -> datetime:
@@ -517,9 +518,21 @@ def calcular_densidade(pax: int, area_m2: float) -> float:
 class MemoryDB:
     """Singleton thread-safe com todo o estado da aplicação."""
 
+    backend_name = "memory"
+
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self.reset()
+
+    def close(self) -> None:
+        return None
+
+    def ping(self) -> tuple[bool, float, int, Optional[str]]:
+        inicio = time.perf_counter()
+        with self._lock:
+            total = len(self._zonas)
+        latencia_ms = round((time.perf_counter() - inicio) * 1000.0, 2)
+        return True, latencia_ms, total, None
 
     # ── ciclo de vida ────────────────────────────────────────────────────────
     def reset(self) -> None:
@@ -617,7 +630,13 @@ class MemoryDB:
                 if l.timestamp >= limite and l.modo_leitura == "TEMPO_REAL"
             ]
 
-    def registrar_leitura(self, leitura: LeituraRecord) -> LeituraRecord:
+    def registrar_leitura(
+        self,
+        leitura: LeituraRecord,
+        coordenadas: Optional[List[Dict[str, float]]] = None,
+        aviso_contingencia: Optional[str] = None,
+        taxa_nfc_seg_por_pessoa: Optional[int] = None,
+    ) -> LeituraRecord:
         with self._lock:
             registro = self._append_leitura(leitura)
             zona = self.obter_zona(registro.pdv_id)
@@ -983,5 +1002,73 @@ class MemoryDB:
             resolved_id = aliases.get(camera_id, camera_id)
             return self._cameras.get(resolved_id)
 
+    def registrar_yolo_scan(
+        self,
+        video_origem: str,
+        frame_indice: int,
+        motor_visao: str,
+        resolucao_frame: str,
+        pdv_fila_id: int,
+        pdv_estande_id: int,
+        pessoas_detectadas_total: int,
+        pessoas_zona_fila: int,
+        pessoas_zona_estande: int,
+        alerta_assistido_ativo: bool,
+        coordenadas_fila: List[Dict[str, float]],
+        coordenadas_estande: List[Dict[str, float]],
+        leitura_fila_id: Optional[int],
+        leitura_estande_id: Optional[int],
+    ) -> None:
+        return None
 
-memory_db = MemoryDB()
+
+class RepositoryProxy:
+    """Proxy transparente que delega para PostgreSQL (Supabase) ou MemoryDB."""
+
+    def __init__(self, target: Any) -> None:
+        object.__setattr__(self, "_target", target)
+
+    def __getattr__(self, nome: str) -> Any:
+        return getattr(object.__getattribute__(self, "_target"), nome)
+
+    def __setattr__(self, nome: str, valor: Any) -> None:
+        if nome == "_target":
+            object.__setattr__(self, nome, valor)
+        else:
+            setattr(object.__getattribute__(self, "_target"), nome, valor)
+
+    @property
+    def target(self) -> Any:
+        return object.__getattribute__(self, "_target")
+
+    def set_target(self, target: Any) -> None:
+        object.__setattr__(self, "_target", target)
+
+
+def _criar_repositorio(database_url: Optional[str] = None) -> Any:
+    from app.config import settings
+
+    url = settings.database_url if database_url is None else database_url.strip()
+    if url:
+        from app.repositories.postgres_db import PostgresDB
+
+        return PostgresDB(
+            database_url=url,
+            min_conn=settings.database_pool_min,
+            max_conn=settings.database_pool_max,
+            connect_timeout=settings.database_connect_timeout,
+        )
+    return MemoryDB()
+
+
+def reconfigurar_repositorio(database_url: str = "") -> Any:
+    """Alterna o repositório ativo em tempo de execução (útil para testes e scripts)."""
+    atual = memory_db.target
+    if hasattr(atual, "close"):
+        atual.close()
+    novo = _criar_repositorio(database_url)
+    memory_db.set_target(novo)
+    return novo
+
+
+memory_db = RepositoryProxy(_criar_repositorio())

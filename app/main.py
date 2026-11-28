@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict
 
@@ -23,14 +24,15 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import settings
-from app.contracts import HealthResponseContract
+from app.config import mascarar_database_url, settings
+from app.contracts import DatabaseHealthContract, HealthResponseContract
 from app.errors import registrar_handlers, sem_query_params
 from app.repositories.memory_db import agora_utc, memory_db
 from app.routers import auth, ops, predicoes, stream, telemetry, venue, videos
 from app.services.event_bus import event_bus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logger = logging.getLogger(__name__)
 
 VERSAO = "2.0.0"
 
@@ -76,6 +78,17 @@ TAGS = [
     {"name": "Sistema", "description": "Conexão com a API no cabeçalho do site e checagem se o servidor está no ar."},
 ]
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    destino = mascarar_database_url(settings.database_url) or "in-memory"
+    logger.info("Repositório ativo: %s (%s)", memory_db.backend_name, destino)
+    try:
+        yield
+    finally:
+        if hasattr(memory_db, "close"):
+            memory_db.close()
+
+
 app = FastAPI(
     title="Venue Intelligence Core · RaizEvento API",
     version=VERSAO,
@@ -84,6 +97,7 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     openapi_tags=TAGS,
+    lifespan=lifespan,
     swagger_ui_parameters={"persistAuthorization": True, "displayRequestDuration": True, "tryItOutEnabled": True},
 )
 
@@ -156,6 +170,27 @@ async def health() -> HealthResponseContract:
         status_operacional_evento=memory_db.status_operacional,  # type: ignore[arg-type]
         motor_ia_online=memory_db.motor_ia_online,
         conexoes_tempo_real=event_bus.conexoes,
+    )
+
+
+@app.get(
+    "/health/db",
+    response_model=DatabaseHealthContract,
+    status_code=status.HTTP_200_OK,
+    tags=["Sistema"],
+    summary="Saúde do Banco de Dados",
+    description="Verifica a conectividade e a latência com o banco de dados ativo (PostgreSQL/Supabase ou memória).",
+    dependencies=[Depends(sem_query_params)],
+)
+async def health_db() -> DatabaseHealthContract:
+    conectado, latencia_ms, zonas, detalhe = memory_db.ping()
+    return DatabaseHealthContract(
+        status="ok" if conectado else "erro",
+        backend=memory_db.backend_name,  # type: ignore[arg-type]
+        conectado=conectado,
+        latencia_ms=latencia_ms,
+        zonas_carregadas=zonas,
+        detalhe=detalhe,
     )
 
 

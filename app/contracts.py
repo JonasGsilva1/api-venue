@@ -124,6 +124,15 @@ class HealthResponseContract(ContratoEstrito):
     conexoes_tempo_real: int = Field(..., ge=0, description="Quantas telas estão conectadas ao vivo.", examples=[2])
 
 
+class DatabaseHealthContract(ContratoEstrito):
+    status: Literal["ok", "erro"] = Field(..., examples=["ok"])
+    backend: Literal["postgresql", "memory"] = Field(..., examples=["postgresql"])
+    conectado: bool = Field(..., examples=[True])
+    latencia_ms: float = Field(..., ge=0.0, examples=[12.4])
+    zonas_carregadas: int = Field(..., ge=0, examples=[5])
+    detalhe: Optional[str] = Field(None, examples=[None])
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # Módulo A — Telemetria de Câmeras, Motor de IA e Resiliência
 # ════════════════════════════════════════════════════════════════════════════

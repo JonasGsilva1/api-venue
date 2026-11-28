@@ -148,6 +148,7 @@ async def analisar_frame(
             ritmo = round(pacote.transacoes_pos_ultimos_3m / 3, 2)
             base = f"{ritmo} passagens/min na catraca para {pax_bruto} pax"
 
+    aviso_contingencia = None if base is None else _AVISOS[modo].format(base=base, timeout=settings.ai_timeout_seg)
     anterior = memory_db.ultima_leitura(zona.id)
     registro = memory_db.registrar_leitura(
         LeituraRecord(
@@ -157,7 +158,10 @@ async def analisar_frame(
             anomalias=resultado.anomalias,
             modo_leitura=modo, sensor_status=pacote.sensor_status,
             transacoes_pos_ultimos_3m=pacote.transacoes_pos_ultimos_3m,
-        )
+        ),
+        coordenadas=[{"x": c.x, "y": c.y} for c in pacote.coordenadas_simuladas],
+        aviso_contingencia=aviso_contingencia,
+        taxa_nfc_seg_por_pessoa=pacote.taxa_nfc_seg_por_pessoa,
     )
     leitura = leitura_para_contrato(registro)
 
@@ -172,7 +176,7 @@ async def analisar_frame(
         sucesso=modo == "TEMPO_REAL",
         http_status=http_status,  # type: ignore[arg-type]
         modo_leitura=modo,  # type: ignore[arg-type]
-        aviso_contingencia=None if base is None else _AVISOS[modo].format(base=base, timeout=settings.ai_timeout_seg),
+        aviso_contingencia=aviso_contingencia,
         leitura=leitura,
     )
     if http_status != 201:
@@ -261,6 +265,15 @@ async def escanear_frame_yolo(
     except MotorIAIndisponivelError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
+    coords_fila_dict = [
+        {"x": float(c["x"] if isinstance(c, dict) else c.x), "y": float(c["y"] if isinstance(c, dict) else c.y)}
+        for c in visao.coordenadas_fila
+    ]
+    coords_estande_dict = [
+        {"x": float(c["x"] if isinstance(c, dict) else c.x), "y": float(c["y"] if isinstance(c, dict) else c.y)}
+        for c in visao.coordenadas_estande
+    ]
+
     reg_fila = memory_db.registrar_leitura(
         LeituraRecord(
             id=0,
@@ -275,7 +288,8 @@ async def escanear_frame_yolo(
             modo_leitura="TEMPO_REAL",
             sensor_status="ONLINE",
             transacoes_pos_ultimos_3m=max(1, pax_estande * 2),
-        )
+        ),
+        coordenadas=coords_fila_dict,
     )
     reg_estande = memory_db.registrar_leitura(
         LeituraRecord(
@@ -291,7 +305,26 @@ async def escanear_frame_yolo(
             modo_leitura="TEMPO_REAL",
             sensor_status="ONLINE",
             transacoes_pos_ultimos_3m=pax_estande,
-        )
+        ),
+        coordenadas=coords_estande_dict,
+    )
+
+    alerta_assistido = pax_fila >= 6 or inf_fila.tempo_espera_seg >= 210
+    memory_db.registrar_yolo_scan(
+        video_origem=payload.video_origem,
+        frame_indice=visao.frame_processado,
+        motor_visao=visao.motor_visao,
+        resolucao_frame=visao.resolucao_frame,
+        pdv_fila_id=zona_fila.id,
+        pdv_estande_id=zona_estande.id,
+        pessoas_detectadas_total=pax_fila + pax_estande,
+        pessoas_zona_fila=pax_fila,
+        pessoas_zona_estande=pax_estande,
+        alerta_assistido_ativo=alerta_assistido,
+        coordenadas_fila=coords_fila_dict,
+        coordenadas_estande=coords_estande_dict,
+        leitura_fila_id=reg_fila.id,
+        leitura_estande_id=reg_estande.id,
     )
 
     leitura_fila_contrato = leitura_para_contrato(reg_fila)
@@ -311,8 +344,6 @@ async def escanear_frame_yolo(
             leitura=leitura_estande_contrato,
         )
     )
-
-    alerta_assistido = pax_fila >= 6 or inf_fila.tempo_espera_seg >= 210
 
     return YoloScanResponseContract(
         motor_visao=visao.motor_visao,  # type: ignore[arg-type]

@@ -467,7 +467,7 @@ export default function App() {
                 }`}
               >
                 <Film className="w-3.5 h-3.5 text-raiz-accent" />
-                <span>Vídeos do Drive</span>
+                <span>Vídeos em Nuvem</span>
               </button>
             </div>
 
@@ -572,7 +572,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Seção: Vídeos do Google Drive */}
+        {/* Seção: Vídeos em Nuvem */}
         {activeTab === 'videos' && <DriveVideosView />}
 
         {/* Seção 3: Pontos Instagramáveis */}

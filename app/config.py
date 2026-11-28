@@ -5,7 +5,23 @@ Sem dependências extras: leitura direta de `os.environ`, validada no boot.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+from dotenv import load_dotenv
+
+
+def _carregar_dotenv_se_aplicavel() -> None:
+    """Carrega `.env` fora do pytest para manter testes unitários isolados em memória."""
+    if "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules:
+        return
+    if os.getenv("DISABLE_DOTENV", "").strip().lower() in {"1", "true", "yes", "sim", "on"}:
+        return
+    load_dotenv(override=False)
+
+
+_carregar_dotenv_se_aplicavel()
 
 
 def _env_bool(nome: str, padrao: bool) -> bool:
@@ -29,8 +45,49 @@ def _env_str(nome: str, padrao: str = "") -> str:
     return os.getenv(nome, padrao).strip().strip('"').strip("'")
 
 
+def normalizar_database_url(url: str) -> str:
+    """Normaliza `postgres://` para `postgresql://` e aplica `sslmode=require` no Supabase."""
+    limpa = url.strip().strip('"').strip("'")
+    if not limpa:
+        return ""
+    if limpa.startswith("postgres://"):
+        limpa = "postgresql://" + limpa[len("postgres://"):]
+
+    partes = urlsplit(limpa)
+    host = (partes.hostname or "").lower()
+    if host.endswith("supabase.com") or host.endswith("supabase.co"):
+        params = parse_qsl(partes.query, keep_blank_values=True)
+        if not any(k.lower() == "sslmode" for k, _ in params):
+            params.append(("sslmode", "require"))
+            limpa = urlunsplit((partes.scheme, partes.netloc, partes.path, urlencode(params), partes.fragment))
+    return limpa
+
+
+def mascarar_database_url(url: str) -> str:
+    """Oculta credenciais da string de conexão para uso seguro em logs."""
+    limpa = url.strip()
+    if not limpa:
+        return ""
+    try:
+        partes = urlsplit(limpa)
+    except ValueError:
+        return "***"
+    if not partes.netloc or "@" not in partes.netloc:
+        return limpa
+    credenciais, host_porta = partes.netloc.rsplit("@", 1)
+    usuario = credenciais.split(":", 1)[0] if ":" in credenciais else credenciais
+    netloc_mascarado = f"{usuario}:***@{host_porta}" if usuario else f"***@{host_porta}"
+    return urlunsplit((partes.scheme, netloc_mascarado, partes.path, partes.query, partes.fragment))
+
+
 @dataclass(frozen=True)
 class Settings:
+    # ── Banco de Dados (PostgreSQL / Supabase) ───────────────────────────────
+    database_url: str
+    database_pool_min: int
+    database_pool_max: int
+    database_connect_timeout: int
+
     # ── Autenticação JWT (RBAC) ──────────────────────────────────────────────
     jwt_secret: str
     jwt_algoritmo: str
@@ -62,7 +119,13 @@ def carregar_settings() -> Settings:
     if timeout <= 0:
         raise ValueError("AI_ENGINE_TIMEOUT_SEG deve ser > 0")
     origins = tuple(o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip())
+    pool_min = max(1, _env_int("DATABASE_POOL_MIN", 1))
+    pool_max = max(pool_min, _env_int("DATABASE_POOL_MAX", 10))
     return Settings(
+        database_url=normalizar_database_url(_env_str("DATABASE_URL")),
+        database_pool_min=pool_min,
+        database_pool_max=pool_max,
+        database_connect_timeout=max(1, _env_int("DATABASE_CONNECT_TIMEOUT", 10)),
         jwt_secret=os.getenv("JWT_SECRET", "raizevento-dev-secret-troque-em-producao-2026"),
         jwt_algoritmo="HS256",
         jwt_expiracao_min=_env_int("JWT_EXPIRACAO_MIN", 480),
