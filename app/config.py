@@ -41,6 +41,8 @@ class Settings:
 
     # ── Motor de IA / Resiliência ────────────────────────────────────────────
     ai_timeout_seg: float
+    ai_engine_url: str
+    ai_engine_secret: str
 
     # ── Analytics (Drop-off / CES) ───────────────────────────────────────────
     window_time_min: int
@@ -68,6 +70,8 @@ def carregar_settings() -> Settings:
         habilitar_emissor_dev=_env_bool("AUTH_DEV_ISSUER", True),
         auth_permissivo=_env_bool("AUTH_PERMISSIVE", False),
         ai_timeout_seg=timeout,
+        ai_engine_url=_env_str("AI_ENGINE_URL").rstrip("/"),
+        ai_engine_secret=_env_str("AI_ENGINE_SECRET"),
         window_time_min=_env_int("WINDOW_TIME_MIN", 30),
         deslocamento_medio_min=_env_int("DESLOCAMENTO_MEDIO_MIN", 8),
         cors_origins=origins or ("*",),

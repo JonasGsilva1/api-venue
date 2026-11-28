@@ -28,7 +28,7 @@ from app.contracts import (
 )
 from app.errors import RESPOSTA_404, RESPOSTAS_PADRAO, ResilienciaHTTPException, sem_query_params
 from app.repositories.memory_db import LeituraRecord, agora_utc, memory_db
-from app.services import ai_engine, yolo_vision
+from app.services import ai_client, ai_engine
 from app.services.ai_engine import MotorIAIndisponivelError, ResultadoInferencia, formatar_tempo
 from app.services.event_bus import criar_evento, event_bus
 from app.services.mappers import leitura_para_contrato
@@ -129,7 +129,7 @@ async def analisar_frame(
         )
     else:
         try:
-            resultado = await ai_engine.inferir_com_timeout(
+            resultado = await ai_client.inferir_com_timeout(
                 zona, pax_bruto, pacote.taxa_nfc_seg_por_pessoa, pacote.simular_falha_ia,
             )
             modo = "TEMPO_REAL"
@@ -200,9 +200,12 @@ async def processar_inferencia(
     usuario: UsuarioAutenticado = Depends(exigir_operacao),
 ) -> InferenceResponseContract:
     zona = memory_db.obter_zona(payload.pdv_id) or ai_engine.ZONA_REFERENCIA
-    r = ai_engine.calcular_inferencia(
-        zona, len(payload.coordenadas_simuladas), payload.taxa_nfc_seg_por_pessoa,
-    )
+    try:
+        r = await ai_client.calcular_inferencia(
+            zona, len(payload.coordenadas_simuladas), payload.taxa_nfc_seg_por_pessoa,
+        )
+    except MotorIAIndisponivelError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     return InferenceResponseContract(
         pdv_id=payload.pdv_id,
         pax_count=r.pax_count,
@@ -239,18 +242,24 @@ async def escanear_frame_yolo(
     if zona_estande is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Zona de estande {payload.pdv_estande_id} não existe.")
 
-    visao = yolo_vision.processar_frame_yolo(
-        video_origem=payload.video_origem,
-        frame_indice=payload.frame_indice,
-        pessoas_fila_simuladas=payload.pessoas_fila_simuladas,
-        pessoas_estande_simuladas=payload.pessoas_estande_simuladas,
-    )
+    try:
+        visao = await ai_client.escanear_frame_yolo(
+            video_origem=payload.video_origem,
+            frame_indice=payload.frame_indice,
+            pessoas_fila_simuladas=payload.pessoas_fila_simuladas,
+            pessoas_estande_simuladas=payload.pessoas_estande_simuladas,
+        )
+    except MotorIAIndisponivelError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
     pax_fila = len(visao.coordenadas_fila)
     pax_estande = len(visao.coordenadas_estande)
 
-    inf_fila = ai_engine.calcular_inferencia(zona_fila, pax_fila, None)
-    inf_estande = ai_engine.calcular_inferencia(zona_estande, pax_estande, None)
+    try:
+        inf_fila = await ai_client.calcular_inferencia(zona_fila, pax_fila, None)
+        inf_estande = await ai_client.calcular_inferencia(zona_estande, pax_estande, None)
+    except MotorIAIndisponivelError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
     reg_fila = memory_db.registrar_leitura(
         LeituraRecord(

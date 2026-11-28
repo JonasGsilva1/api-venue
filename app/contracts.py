@@ -332,6 +332,29 @@ class PredicaoGargaloResponseContract(ContratoEstrito):
     tempo_estimado_formacao_fila: str = Field(..., examples=["03m 30s"])
 
 
+class PredicaoFilaZonaContract(ContratoEstrito):
+    zona_id: str = Field(..., examples=["zona-1"])
+    nome: str = Field(..., examples=["Z1 | Acesso Estande Principal"])
+    setor: str = Field(..., examples=["CATRACA"])
+    amostras_usadas: int = Field(..., ge=0, examples=[15])
+    suficiente: bool = Field(..., examples=[True])
+    espera_atual_min: float = Field(..., ge=0.0, examples=[3.8])
+    projecao_5m: Optional[float] = Field(None, examples=[4.5])
+    projecao_10m: Optional[float] = Field(None, examples=[5.2])
+    projecao_15m: Optional[float] = Field(None, examples=[6.0])
+    velocidade_min_por_min: float = Field(0.0, examples=[0.14])
+    minutos_ate_limite: Optional[float] = Field(None, examples=[30.0])
+    confianca_pct: float = Field(..., ge=0.0, le=100.0, examples=[88.5])
+    nivel_alerta: Literal["COLETANDO", "ESTOUROU", "URGENTE", "AVISO", "ESTAVEL"] = Field(..., examples=["ESTAVEL"])
+
+
+class PredicoesFilasResponseContract(ContratoEstrito):
+    limite_espera_min: float = Field(..., examples=[8.0])
+    total_zonas: int = Field(..., ge=0, examples=[5])
+    alertas_ativos: int = Field(..., ge=0, examples=[1])
+    previsoes: List[PredicaoFilaZonaContract]
+
+
 class AcionarFluxoRequestContract(ContratoEstrito):
     model_config = ConfigDict(
         extra="forbid",
