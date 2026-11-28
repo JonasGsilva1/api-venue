@@ -61,41 +61,41 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800/95 backdrop-blur-md border border-slate-700/80 text-white shadow-xl hover:border-amber-500/50 transition-all group"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-raiz-dark/90 hover:bg-raiz-border-dark/95 backdrop-blur-md border border-raiz-border-dark/80 text-raiz-text-light shadow-xl hover:border-amber-500/50 transition-all group"
           title="Abrir escala de concentração e controles do mapa de calor"
         >
           <div className="relative">
-            <Flame className={`w-4 h-4 ${isHeatmapActive ? 'text-amber-400 fill-amber-400/30 animate-pulse' : 'text-slate-400'}`} />
+            <Flame className={`w-4 h-4 ${isHeatmapActive ? 'text-amber-400 fill-amber-400/30 animate-pulse' : 'text-raiz-text-light/75'}`} />
             {isHeatmapActive && (
               <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
             )}
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-[11px] font-bold text-slate-200 group-hover:text-amber-300 transition-colors">
+            <span className="text-[11px] font-bold text-raiz-text-light group-hover:text-amber-300 transition-colors">
               Concentração
             </span>
-            <span className="text-[10px] font-mono text-cyan-400">
+            <span className="text-[10px] font-mono text-raiz-accent">
               {isHeatmapActive ? `Opacidade ${percentage}%` : 'Desativado'}
             </span>
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-transform" />
+          <ChevronDown className="w-3.5 h-3.5 text-raiz-text-light/75 group-hover:text-raiz-text-light transition-transform" />
         </button>
       )}
 
       {/* Painel Flutuante Completo */}
       {isExpanded && (
-        <div className="w-[260px] sm:w-[280px] p-3.5 sm:p-4 rounded-2xl bg-[#0B0F19]/92 backdrop-blur-md border border-slate-700/80 shadow-2xl text-xs space-y-3.5 animate-in fade-in duration-200">
+        <div className="w-[260px] sm:w-[280px] p-3.5 sm:p-4 rounded-2xl bg-raiz-dark/92 backdrop-blur-md border border-raiz-border-dark/80 shadow-2xl text-xs space-y-3.5 animate-in fade-in duration-200">
           {/* Cabeçalho do Painel */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/90">
+          <div className="flex items-center justify-between pb-2.5 border-b border-raiz-border-dark/90">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400">
                 <Flame className="w-4 h-4 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wide flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-raiz-text-light uppercase tracking-wide flex items-center gap-1.5">
                   Escala de Concentração
                 </h3>
-                <p className="text-[10px] text-slate-400 font-medium">
+                <p className="text-[10px] text-raiz-text-light/75 font-medium">
                   Densidade de público na arena
                 </p>
               </div>
@@ -108,7 +108,7 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
                 className={`p-1.5 rounded-lg transition-colors border ${
                   isHeatmapActive
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                    : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-slate-200'
+                    : 'bg-raiz-border-dark/80 text-raiz-text-light/75 border-raiz-border-dark hover:text-raiz-text-light'
                 }`}
               >
                 {isHeatmapActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -117,7 +117,7 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
               <button
                 onClick={() => setIsExpanded(false)}
                 title="Minimizar painel"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+                className="p-1.5 rounded-lg text-raiz-text-light/75 hover:text-raiz-text-light hover:bg-raiz-border-dark/80 transition-colors"
               >
                 <ChevronUp className="w-3.5 h-3.5" />
               </button>
@@ -159,8 +159,8 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
               {/* 1. Alta Concentração */}
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#ef4444] shadow-sm shadow-red-500/50" />
-                  <span className="font-bold text-slate-100 text-xs leading-none">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-red-500/50" />
+                  <span className="font-bold text-raiz-text-light text-xs leading-none">
                     Alta concentração
                   </span>
                 </div>
@@ -168,11 +168,11 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
                   <span className="text-[10px] font-semibold text-rose-400 font-mono">
                     &ge; 85%
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono">
+                  <span className="text-[9px] text-raiz-text-light/75 font-mono">
                     #ef4444
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 pl-3.5 leading-tight">
+                <span className="text-[10px] text-raiz-text-light/75 pl-3.5 leading-tight">
                   Vermelho / Laranja vivo
                 </span>
               </div>
@@ -180,8 +180,8 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
               {/* 2. Média Concentração */}
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#f59e0b] shadow-sm shadow-amber-500/50" />
-                  <span className="font-bold text-slate-200 text-xs leading-none">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50" />
+                  <span className="font-bold text-raiz-text-light text-xs leading-none">
                     Média concentração
                   </span>
                 </div>
@@ -189,11 +189,11 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
                   <span className="text-[10px] font-semibold text-amber-400 font-mono">
                     50% a 75%
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono">
+                  <span className="text-[9px] text-raiz-text-light/75 font-mono">
                     #f59e0b
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 pl-3.5 leading-tight">
+                <span className="text-[10px] text-raiz-text-light/75 pl-3.5 leading-tight">
                   Amarelo / Transição
                 </span>
               </div>
@@ -201,20 +201,20 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
               {/* 3. Baixa Concentração */}
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#10b981] shadow-sm shadow-emerald-500/50" />
-                  <span className="font-bold text-slate-300 text-xs leading-none">
+                  <span className="w-2 h-2 rounded-full bg-raiz-accent shadow-sm shadow-raiz-accent/50" />
+                  <span className="font-bold text-raiz-text-light/75 text-xs leading-none">
                     Baixa concentração
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between mt-0.5 pl-3.5">
-                  <span className="text-[10px] font-semibold text-cyan-400 font-mono">
+                  <span className="text-[10px] font-semibold text-raiz-accent font-mono">
                     &lt; 35%
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono">
+                  <span className="text-[9px] text-raiz-text-light/75 font-mono">
                     #10b981 / #06b6d4
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 pl-3.5 leading-tight">
+                <span className="text-[10px] text-raiz-text-light/75 pl-3.5 leading-tight">
                   Verde / Azul fluido
                 </span>
               </div>
@@ -222,13 +222,13 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
           </div>
 
           {/* Controles de Intensidade (Slider em Tempo Real) */}
-          <div className="pt-2.5 border-t border-slate-800/90 space-y-2">
+          <div className="pt-2.5 border-t border-raiz-border-dark/90 space-y-2">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-300 font-semibold flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-raiz-text-light/75 font-semibold flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-raiz-accent" />
                 Opacidade Global
               </span>
-              <span className="font-mono font-bold text-cyan-300 bg-cyan-950/70 px-1.5 py-0.5 rounded border border-cyan-800/50 text-[10px]">
+              <span className="font-mono font-bold text-raiz-accent bg-raiz-accent/10 px-1.5 py-0.5 rounded border border-raiz-accent/50 text-[10px]">
                 {percentage}%
               </span>
             </div>
@@ -242,7 +242,7 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
                 value={intensity}
                 onChange={handleSliderChange}
                 aria-label="Slider de intensidade do mapa de calor"
-                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 focus:outline-none"
+                className="w-full h-1.5 bg-raiz-border-dark rounded-lg appearance-none cursor-pointer accent-raiz-accent hover:accent-raiz-accent focus:outline-none"
               />
             </div>
 
@@ -261,8 +261,8 @@ export const HeatmapLegendControls: React.FC<HeatmapLegendControlsProps> = ({
                     onClick={() => onIntensityChange(p.val)}
                     className={`py-1 text-[10px] font-medium rounded-md transition-colors border ${
                       isActive
-                        ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-sm shadow-cyan-500/20'
-                        : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-slate-200'
+                        ? 'bg-raiz-accent text-raiz-text-dark font-bold border-raiz-accent/40 shadow-sm shadow-raiz-accent/20'
+                        : 'bg-raiz-dark/70 text-raiz-text-light/75 border-raiz-border-dark hover:bg-raiz-border-dark hover:text-raiz-text-light'
                     }`}
                   >
                     {p.label}

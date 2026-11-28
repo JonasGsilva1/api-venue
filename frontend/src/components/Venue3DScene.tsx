@@ -30,7 +30,7 @@ export interface MetricasFluxo {
 export const STATUS_FLUXO: Record<StatusFluxo, { rotulo: string; classes: string }> = {
   operacional: {
     rotulo: 'FLUXO NORMAL',
-    classes: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    classes: 'border-raiz-accent/30 bg-raiz-accent/15 text-raiz-accent',
   },
   atencao: {
     rotulo: 'ATENÇÃO',
@@ -607,7 +607,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       const bCtx = badgeCanvas.getContext('2d');
       if (bCtx) {
         // Fundo escuro com cantos arredondados
-        bCtx.fillStyle = 'rgba(11, 15, 25, 0.95)';
+        bCtx.fillStyle = 'rgba(18, 28, 20, 0.95)';
         if (typeof bCtx.roundRect === 'function') {
           bCtx.roundRect(8, 8, 344, 80, 16);
         } else {
@@ -627,7 +627,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         bCtx.fill();
 
         // Texto branco no formato ex: "Z1: 16p - 86%"
-        bCtx.fillStyle = '#FFFFFF';
+        bCtx.fillStyle = '#EEF0E6';
         bCtx.font = 'bold 32px "Segoe UI", system-ui, -apple-system, sans-serif';
         bCtx.textAlign = 'left';
         bCtx.textBaseline = 'middle';
@@ -1220,14 +1220,14 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   }, []);
 
   return (
-    <div className="relative w-full h-[480px] sm:h-[540px] md:h-[600px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none flex flex-col pb-12 sm:pb-14">
+    <div className="relative w-full h-[480px] sm:h-[540px] md:h-[600px] rounded-2xl overflow-hidden border border-raiz-border-dark bg-raiz-dark shadow-lg select-none flex flex-col pb-12 sm:pb-14">
       {/* Container da Canvas com flex-1 para respeitar o padding inferior de respiro */}
       <div ref={mountRef} className="w-full flex-1 cursor-grab active:cursor-grabbing" />
 
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-xs text-white shadow-md">
-        <Compass className="w-4 h-4 text-cyan-400 animate-spin-slow" />
-        <span className="font-semibold text-slate-100">Arena 3D Interativa</span>
-        <span className="text-slate-400 hidden sm:inline">· 7 Câmeras de Fluxo e Acesso</span>
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-raiz-dark/85 backdrop-blur-md border border-raiz-border-dark text-xs text-raiz-text-light shadow-md">
+        <Compass className="w-4 h-4 text-raiz-accent animate-spin-slow" />
+        <span className="font-semibold text-raiz-text-light">Arena 3D Interativa</span>
+        <span className="text-raiz-text-light/75 hidden sm:inline">· 7 Câmeras de Fluxo e Acesso</span>
       </div>
 
       {/* Controles do Canto Superior Direito: Modo Noturno e Componente Flutuante de Concentração / Heatmap */}
@@ -1236,9 +1236,9 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
           <button
             onClick={toggleLighting}
             title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
-            className="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white transition-colors shadow-md"
+            className="p-2 rounded-xl bg-raiz-dark/85 hover:bg-raiz-border-dark backdrop-blur-md border border-raiz-border-dark text-raiz-text-light hover:text-raiz-text-light transition-colors shadow-md"
           >
-            {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
+            {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-raiz-accent" />}
           </button>
         </div>
 
@@ -1250,25 +1250,25 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       </div>
 
       {selectedCamera && (
-        <div className="absolute top-14 left-4 z-20 max-w-[280px] sm:max-w-[320px] p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-cyan-500/40 shadow-2xl text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2">
+        <div className="absolute top-14 left-4 z-20 max-w-[280px] sm:max-w-[320px] p-3 rounded-xl bg-raiz-dark/95 backdrop-blur-md border border-raiz-accent/40 shadow-2xl text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-start justify-between gap-2 border-b border-raiz-border-dark pb-2">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400">
+              <div className="w-7 h-7 rounded-lg bg-raiz-accent/15 border border-raiz-accent/30 flex items-center justify-center text-raiz-accent">
                 <Camera className="w-4 h-4 animate-pulse" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-slate-100">{selectedCamera.codigo}</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/50">
+                  <span className="font-bold text-raiz-text-light">{selectedCamera.codigo}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-raiz-accent/10 text-raiz-accent border border-raiz-accent/50">
                     {selectedCamera.fps} FPS
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 truncate max-w-[190px]">{selectedCamera.nome}</p>
+                <p className="text-[11px] text-raiz-text-light/75 truncate max-w-[190px]">{selectedCamera.nome}</p>
               </div>
             </div>
             <button
               onClick={() => handleSelectCamera(null)}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              className="text-raiz-text-light/75 hover:text-raiz-text-light p-1 rounded-lg hover:bg-raiz-border-dark transition-colors"
               title="Fechar Inspecionar Câmera"
             >
               <X className="w-3.5 h-3.5" />
@@ -1276,24 +1276,24 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div className="col-span-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Setor / Área</span>
-              <span className="font-semibold text-slate-200 truncate block">{selectedCamera.setor}</span>
+            <div className="col-span-2 p-2 rounded-lg bg-raiz-dark/60 border border-raiz-border-dark/60">
+              <span className="text-raiz-text-light/75 block text-[10px]">Setor / Área</span>
+              <span className="font-semibold text-raiz-text-light truncate block">{selectedCamera.setor}</span>
             </div>
-            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Pessoas / Densidade</span>
-              <span className="font-semibold text-cyan-300 block">
+            <div className="p-2 rounded-lg bg-raiz-dark/60 border border-raiz-border-dark/60">
+              <span className="text-raiz-text-light/75 block text-[10px]">Pessoas / Densidade</span>
+              <span className="font-semibold text-raiz-accent block">
                 {selectedCamera.metricas.contagemPessoas} pessoas / {selectedCamera.metricas.densidadePessoasM2.toFixed(1)} p/m²
               </span>
             </div>
-            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Taxa de Passagem</span>
-              <span className="font-semibold text-cyan-300 block">
+            <div className="p-2 rounded-lg bg-raiz-dark/60 border border-raiz-border-dark/60">
+              <span className="text-raiz-text-light/75 block text-[10px]">Taxa de Passagem</span>
+              <span className="font-semibold text-raiz-accent block">
                 {selectedCamera.metricas.taxaPassagemPessoasMinuto} pessoas/min
               </span>
             </div>
-            <div className="col-span-2 flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400">Nível de Lotação</span>
+            <div className="col-span-2 flex items-center justify-between gap-2 p-2 rounded-lg bg-raiz-dark/60 border border-raiz-border-dark/60">
+              <span className="text-raiz-text-light/75">Nível de Lotação</span>
               <span className={`rounded-md border px-2 py-1 text-[10px] font-bold tracking-wide ${STATUS_FLUXO[selectedCamera.status].classes}`}>
                 {STATUS_FLUXO[selectedCamera.status].rotulo}
               </span>
@@ -1301,13 +1301,13 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
           </div>
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[10px] text-slate-400 flex items-center gap-1">
-              <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+            <span className="text-[10px] text-raiz-text-light/75 flex items-center gap-1">
+              <Radio className="w-3 h-3 text-raiz-accent animate-pulse" />
               Feed de Telemetria Ativo
             </span>
             <button
               onClick={() => handleSelectCamera(selectedCamera)}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 transition-colors flex items-center gap-1 font-semibold"
+              className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-raiz-accent hover:bg-raiz-accent/90 text-raiz-text-dark transition-colors flex items-center gap-1 font-semibold"
             >
               <Eye className="w-3 h-3" />
               Focar
@@ -1325,7 +1325,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         <div className="flex flex-col items-center">
           <button
             onClick={() => setHudCollapsed(!hudCollapsed)}
-            className="px-3 py-1 rounded-t-lg bg-slate-900 border-t border-x border-slate-700 text-[11px] text-slate-300 hover:text-white flex items-center gap-1 shadow-md"
+            className="px-3 py-1 rounded-t-lg bg-raiz-dark border-t border-x border-raiz-border-dark text-[11px] text-raiz-text-light/75 hover:text-raiz-text-light flex items-center gap-1 shadow-md"
           >
             {hudCollapsed ? (
               <>
@@ -1340,13 +1340,13 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
             )}
           </button>
 
-          <div className="flex flex-wrap items-center justify-center gap-1 p-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700 shadow-xl">
-            <span className="text-[11px] text-slate-400 px-1.5 font-medium hidden sm:inline">Perspectiva:</span>
+          <div className="flex flex-wrap items-center justify-center gap-1 p-1.5 rounded-xl bg-raiz-dark/95 backdrop-blur-md border border-raiz-border-dark shadow-xl">
+            <span className="text-[11px] text-raiz-text-light/75 px-1.5 font-medium hidden sm:inline">Perspectiva:</span>
 
             <button
               onClick={() => applyPreset('geral')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'geral' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                activePreset === 'geral' ? 'bg-raiz-accent text-raiz-text-dark shadow-sm' : 'text-raiz-text-light/75 hover:bg-raiz-light/5'
               }`}
             >
               Visão Geral
@@ -1356,8 +1356,8 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
               onClick={() => applyPreset('cams_fluxo')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activePreset === 'cams_fluxo'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40 hover:bg-emerald-900/50'
+                  ? 'bg-raiz-accent text-raiz-text-dark shadow-sm'
+                  : 'text-raiz-accent bg-raiz-accent/10 border border-raiz-accent/40 hover:bg-raiz-accent/10'
               }`}
             >
               <Camera className="w-3 h-3" />
@@ -1368,8 +1368,8 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
               onClick={() => applyPreset('cams_ent')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activePreset === 'cams_ent'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-sky-300 bg-sky-950/40 border border-sky-800/40 hover:bg-sky-900/50'
+                  ? 'bg-raiz-accent text-raiz-text-dark shadow-sm'
+                  : 'text-raiz-accent bg-raiz-accent/10 border border-raiz-accent/40 hover:bg-raiz-accent/15'
               }`}
             >
               <Camera className="w-3 h-3" />
@@ -1379,7 +1379,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
             <button
               onClick={() => applyPreset('instas')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'instas' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                activePreset === 'instas' ? 'bg-raiz-accent text-raiz-text-dark shadow-sm' : 'text-raiz-text-light/75 hover:bg-raiz-light/5'
               }`}
             >
               Instagramáveis
@@ -1388,7 +1388,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
             <button
               onClick={() => applyPreset('aerea')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'aerea' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                activePreset === 'aerea' ? 'bg-raiz-accent text-raiz-text-dark shadow-sm' : 'text-raiz-text-light/75 hover:bg-raiz-light/5'
               }`}
             >
               Vista Aérea

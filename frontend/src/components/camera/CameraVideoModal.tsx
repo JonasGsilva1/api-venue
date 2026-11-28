@@ -212,7 +212,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
       poly.forEach((p) => {
         ctx.beginPath();
         ctx.arc(p.x * W, p.y * H, 5.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#070c18';
+        ctx.fillStyle = '#121C14';
         ctx.fill();
         ctx.lineWidth = 2;
         ctx.strokeStyle = stroke;
@@ -220,7 +220,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
       });
     };
 
-    drawZone(zonaEstandeRef.current, '#10b981', 'rgba(16, 185, 129, 0.12)', 'ESTANDE');
+    drawZone(zonaEstandeRef.current, '#C7D8A5', 'rgba(199, 216, 165, 0.14)', 'ESTANDE');
     drawZone(zonaFilaRef.current, '#f43f5e', 'rgba(244, 63, 94, 0.14)', 'FILA');
 
     // Caixas delimitadoras + ponto nos pés
@@ -230,7 +230,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
       const w = (d.x2 - d.x1) * W;
       const h = (d.y2 - d.y1) * H;
       const color =
-        d.zona === 'fila' ? '#fb7185' : d.zona === 'estande' ? '#34d399' : '#94a3b8';
+        d.zona === 'fila' ? '#fb7185' : d.zona === 'estande' ? '#C7D8A5' : '#94a3b8';
 
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
@@ -241,7 +241,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
       const tw = ctx.measureText(tag).width + 8;
       ctx.fillStyle = color;
       ctx.fillRect(x, Math.max(0, y - 16), tw, 16);
-      ctx.fillStyle = '#070c18';
+      ctx.fillStyle = '#142117';
       ctx.fillText(tag, x + 4, Math.max(11, y - 4));
 
       // Ponto dos pés
@@ -601,18 +601,18 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
       aria-modal="true"
       aria-label={`Analisar vídeo ${item.camera.codigo}`}
     >
-      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cyan-500/40 bg-[#0b1220] shadow-2xl">
+      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-raiz-accent/40 bg-raiz-dark shadow-2xl">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-950/70 bg-[#080d1a] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-raiz-border-dark bg-raiz-section px-4 py-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-500/40 bg-cyan-950/40 text-cyan-300">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-raiz-accent/40 bg-raiz-accent/10 text-raiz-accent">
               <Camera className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-sm font-black text-white">Analisar vídeo · {item.camera.codigo}</span>
-                <span className="truncate text-xs text-slate-300">{item.camera.nome}</span>
-                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-950/60 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-300">
+                <span className="font-mono text-sm font-black text-raiz-text-light">Analisar vídeo · {item.camera.codigo}</span>
+                <span className="truncate text-xs text-raiz-text-light/75">{item.camera.nome}</span>
+                <span className="inline-flex items-center gap-1 rounded-md border border-raiz-accent/40 bg-raiz-accent/10 px-2 py-0.5 font-mono text-[10px] font-bold text-raiz-accent">
                   <Cpu className="h-3 w-3" />
                   {modelState === 'loading'
                     ? 'Carregando YOLOv8n...'
@@ -621,7 +621,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                       : `YOLOv8n ONNX · ${backendName.toUpperCase()}`}
                 </span>
               </div>
-              <p className="text-[11px] font-mono text-slate-400 truncate">
+              <p className="text-[11px] font-mono text-raiz-text-light/55 truncate">
                 {item.zona
                   ? `Zona vinculada: ${item.zona.nome} (ID ${item.zona.id})`
                   : `Zona padrão mapeada: PDV #${pdvId} (${zonaAreaM2} m² · cap. ${zonaCapacidade} pax)`}
@@ -633,7 +633,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Fechar janela de vídeo"
-            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="rounded-lg p-1.5 text-raiz-text-light/75 transition-colors hover:bg-raiz-border-dark hover:text-raiz-text-light"
           >
             <X className="h-5 w-5" />
           </button>
@@ -650,7 +650,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 const file = e.dataTransfer.files[0];
                 if (file) handleVideoFile(file);
               }}
-              className="relative aspect-video w-full overflow-hidden rounded-xl border border-cyan-900/60 bg-[#050912]"
+              className="relative aspect-video w-full overflow-hidden rounded-xl border border-raiz-border-dark bg-black"
             >
               {videoUrl ? (
                 <>
@@ -683,13 +683,13 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-full w-full flex-col items-center justify-center gap-2 p-6 text-center transition-colors hover:bg-cyan-950/20"
+                  className="flex h-full w-full flex-col items-center justify-center gap-2 p-6 text-center transition-colors hover:bg-raiz-section/40"
                 >
-                  <Upload className="h-9 w-9 text-cyan-400" />
-                  <span className="text-sm font-bold text-white">
+                  <Upload className="h-9 w-9 text-raiz-accent" />
+                  <span className="text-sm font-bold text-raiz-text-light">
                     Clique ou arraste um vídeo (.mp4 / .webm)
                   </span>
-                  <span className="max-w-sm text-xs text-slate-400">
+                  <span className="max-w-sm text-xs text-raiz-text-light/75">
                     O vídeo é analisado localmente no seu navegador pelo YOLOv8n e apenas as coordenadas
                     anônimas (x, y) são enviadas à API.
                   </span>
@@ -715,13 +715,13 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
             )}
 
             {/* Controles do Player e Calibração */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#080d1a] px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-raiz-border-dark bg-raiz-section px-3 py-2">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={togglePlay}
                   disabled={!videoUrl || modelState !== 'ready'}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-black text-slate-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-raiz-accent px-3 py-1.5 text-xs font-black text-raiz-text-dark transition-colors hover:bg-raiz-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                   <span>{isPlaying ? 'Pausar' : videoEnded ? 'Reassistir' : 'Analisar'}</span>
@@ -732,7 +732,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                   onClick={handleRestart}
                   disabled={!videoUrl}
                   title="Reiniciar vídeo"
-                  className="rounded-lg border border-slate-700 bg-[#0d1527] p-1.5 text-slate-300 hover:text-white disabled:opacity-40"
+                  className="rounded-lg border border-raiz-border-dark bg-raiz-dark p-1.5 text-raiz-text-light/75 hover:text-raiz-text-light disabled:opacity-40"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
@@ -740,7 +740,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1 rounded-lg border border-cyan-800/60 bg-[#0d1527] px-2.5 py-1.5 text-[11px] font-semibold text-cyan-300 hover:bg-[#13203b]"
+                  className="inline-flex items-center gap-1 rounded-lg border border-raiz-accent/40 bg-raiz-dark px-2.5 py-1.5 text-[11px] font-semibold text-raiz-accent hover:bg-raiz-accent/10"
                 >
                   <Upload className="h-3 w-3" />
                   <span>{videoName ? 'Trocar vídeo' : 'Escolher vídeo'}</span>
@@ -750,14 +750,14 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                   type="button"
                   onClick={() => void handleServerScan()}
                   disabled={serverScanBusy}
-                  className="inline-flex items-center gap-1 rounded-lg border border-fuchsia-700/60 bg-fuchsia-950/40 px-2.5 py-1.5 text-[11px] font-semibold text-fuchsia-200 hover:bg-fuchsia-900/50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-raiz-accent/40 bg-raiz-accent/10 px-2.5 py-1.5 text-[11px] font-semibold text-raiz-accent hover:bg-raiz-accent/20 disabled:opacity-50"
                 >
                   <Cpu className="h-3 w-3" />
                   <span>{serverScanBusy ? 'Testando...' : 'Testar no servidor'}</span>
                 </button>
               </div>
 
-              <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
+              <div className="flex items-center gap-3 text-[11px] font-mono text-raiz-text-light/75">
                 <label className="flex items-center gap-1.5">
                   <span>Conf: {Math.round(confThreshold * 100)}%</span>
                   <input
@@ -767,7 +767,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                     step={0.05}
                     value={confThreshold}
                     onChange={(e) => setConfThreshold(Number(e.target.value))}
-                    className="w-16 accent-cyan-400"
+                    className="w-16 accent-raiz-accent"
                   />
                 </label>
 
@@ -777,7 +777,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                     setZonaFila(clonePolygon(DEFAULT_ZONA_FILA));
                     setZonaEstande(clonePolygon(DEFAULT_ZONA_ESTANDE));
                   }}
-                  className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800"
+                  className="rounded border border-raiz-border-dark px-2 py-1 text-[10px] text-raiz-text-light/75 hover:bg-raiz-border-dark"
                 >
                   Resetar zonas
                 </button>
@@ -785,7 +785,7 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
             </div>
 
             {videoUrl && (
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+              <div className="flex items-center justify-between text-[11px] font-mono text-raiz-text-light/75 px-1">
                 <span className="truncate">{videoName}</span>
                 <span>
                   {formatarDuracao(Math.round(currentTimeSec))} / {formatarDuracao(Math.round(durationSec))} ·
@@ -796,10 +796,10 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
 
             {/* Gráfico de Linha do Tempo */}
             {timeline.length > 1 && (
-              <div className="rounded-xl border border-slate-800 bg-[#080d1a] p-3 space-y-1.5">
+              <div className="rounded-xl border border-raiz-border-dark bg-raiz-section p-3 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-mono">
-                  <span className="font-bold text-slate-300">Evolução da Fila no Vídeo</span>
-                  <span className="text-slate-400">
+                  <span className="font-bold text-raiz-text-light">Evolução da Fila no Vídeo</span>
+                  <span className="text-raiz-text-light/75">
                     Pico: <strong className="text-rose-400">{peakFila} pax</strong> · Espera máx:{' '}
                     <strong className="text-amber-300">{formatarDuracao(maxEspera)}</strong>
                   </span>
@@ -825,9 +825,9 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
 
           {/* Coluna Direita: Métricas da API & Alerta Assistido */}
           <div className="space-y-3 lg:col-span-5">
-            <div className="rounded-xl border border-cyan-900/60 bg-[#080d1a] p-3.5 space-y-3">
+            <div className="rounded-xl border border-raiz-border-dark bg-raiz-section p-3.5 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-cyan-300">
+                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-raiz-accent">
                   <Activity className="h-4 w-4" />
                   <span>Resultado da análise</span>
                 </h3>
@@ -843,50 +843,50 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-2.5">
                   <span className="text-[10px] font-mono text-rose-300">FILA (ZONA VERMELHA)</span>
-                  <p className="mt-0.5 font-mono text-xl font-black text-white">{filaCount} pax</p>
+                  <p className="mt-0.5 font-mono text-xl font-black text-raiz-text-light">{filaCount} pax</p>
                 </div>
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-2.5">
-                  <span className="text-[10px] font-mono text-emerald-300">ESTANDE (ZONA VERDE)</span>
-                  <p className="mt-0.5 font-mono text-xl font-black text-white">{estandeCount} pax</p>
+                <div className="rounded-lg border border-raiz-accent/40 bg-raiz-accent/10 p-2.5">
+                  <span className="text-[10px] font-mono text-raiz-accent">ESTANDE (ZONA VERDE)</span>
+                  <p className="mt-0.5 font-mono text-xl font-black text-raiz-text-light">{estandeCount} pax</p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-[#0d1527] p-2.5">
-                  <span className="text-[10px] font-mono text-slate-400">ESPERA ESTIMADA</span>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-white">
+                <div className="rounded-lg border border-raiz-border-dark bg-raiz-dark p-2.5">
+                  <span className="text-[10px] font-mono text-raiz-text-light/55">ESPERA ESTIMADA</span>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-raiz-text-light">
                     {leitura ? formatarDuracao(leitura.tempo_espera_seg) : '—'}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-[#0d1527] p-2.5">
-                  <span className="text-[10px] font-mono text-slate-400">DENSIDADE</span>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-white">
+                <div className="rounded-lg border border-raiz-border-dark bg-raiz-dark p-2.5">
+                  <span className="text-[10px] font-mono text-raiz-text-light/55">DENSIDADE</span>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-raiz-text-light">
                     {leitura ? `${leitura.densidade_m2.toFixed(2)} p/m²` : '—'}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-[#0d1527] p-2.5">
-                  <span className="text-[10px] font-mono text-slate-400">OCUPAÇÃO ({zonaCapacidade} MAX)</span>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-white">
-                    {ocupacaoPct}% <span className="text-xs font-normal text-slate-400">({totalNaCena} na cena)</span>
+                <div className="rounded-lg border border-raiz-border-dark bg-raiz-dark p-2.5">
+                  <span className="text-[10px] font-mono text-raiz-text-light/55">OCUPAÇÃO ({zonaCapacidade} MAX)</span>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-raiz-text-light">
+                    {ocupacaoPct}% <span className="text-xs font-normal text-raiz-text-light/75">({totalNaCena} na cena)</span>
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-[#0d1527] p-2.5">
-                  <span className="text-[10px] font-mono text-slate-400">PASSAGEM / CONFIANÇA</span>
-                  <p className="mt-0.5 font-mono text-sm font-bold text-cyan-300">
+                <div className="rounded-lg border border-raiz-border-dark bg-raiz-dark p-2.5">
+                  <span className="text-[10px] font-mono text-raiz-text-light/55">PASSAGEM / CONFIANÇA</span>
+                  <p className="mt-0.5 font-mono text-sm font-bold text-raiz-accent">
                     {taxaPassagemMin} p/min · {confiancaMediaPct}%
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-2.5 text-center font-mono">
+              <div className="grid grid-cols-3 gap-2 border-t border-raiz-border-dark pt-2.5 text-center font-mono">
                 <div>
-                  <span className="block text-[10px] text-slate-500">ENTRADAS</span>
-                  <span className="text-xs font-bold text-cyan-300">{trackerStats.entradas}</span>
+                  <span className="block text-[10px] text-raiz-text-light/55">ENTRADAS</span>
+                  <span className="text-xs font-bold text-raiz-accent">{trackerStats.entradas}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500">SAÍDAS</span>
-                  <span className="text-xs font-bold text-slate-200">{trackerStats.saidas}</span>
+                  <span className="block text-[10px] text-raiz-text-light/55">SAÍDAS</span>
+                  <span className="text-xs font-bold text-raiz-text-light">{trackerStats.saidas}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500">PERMANÊNCIA</span>
-                  <span className="text-xs font-bold text-emerald-300">
+                  <span className="block text-[10px] text-raiz-text-light/55">PERMANÊNCIA</span>
+                  <span className="text-xs font-bold text-raiz-accent">
                     {trackerStats.permanenciaMediaSeg > 0
                       ? `${trackerStats.permanenciaMediaSeg.toFixed(1)}s`
                       : '—'}
@@ -926,22 +926,22 @@ export const CameraVideoModal: React.FC<CameraVideoModalProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-emerald-300">
+              <div className="flex items-center gap-2 rounded-xl border border-raiz-accent/40 bg-raiz-accent/10 p-3 text-xs text-raiz-accent">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>Fluxo sob controle nesta câmera. Nenhum gargalo ativo no momento.</span>
               </div>
             )}
 
             {dispatchFeedback && (
-              <div className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-3 py-2 text-xs text-cyan-200">
+              <div className="rounded-lg border border-raiz-accent/40 bg-raiz-accent/10 px-3 py-2 text-xs text-raiz-accent">
                 {dispatchFeedback}
               </div>
             )}
 
             {videoEnded && timeline.length > 0 && (
-              <div className="rounded-xl border border-cyan-500/30 bg-[#080d1a] p-3 text-xs space-y-1">
-                <p className="font-bold text-cyan-300">Resumo da Análise do Vídeo</p>
-                <p className="text-slate-300">
+              <div className="rounded-xl border border-raiz-accent/30 bg-raiz-section p-3 text-xs space-y-1">
+                <p className="font-bold text-raiz-accent">Resumo da Análise do Vídeo</p>
+                <p className="text-raiz-text-light/75">
                   Pico simultâneo na fila: <strong>{peakFila} pessoas</strong> · Espera máxima:{' '}
                   <strong>{formatarDuracao(maxEspera)}</strong> · Total rastreado:{' '}
                   <strong>{trackerStats.entradas} entradas</strong>.

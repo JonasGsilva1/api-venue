@@ -23,7 +23,7 @@ export interface HeatmapCardProps {
 const ESTADO_OPERACIONAL: Record<EstadoOperacional, { rotulo: string; classes: string }> = {
   NORMAL: {
     rotulo: 'Normal',
-    classes: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    classes: 'bg-raiz-accent/15 text-raiz-accent border-raiz-accent/40',
   },
   PRESSAO_MODERADA: {
     rotulo: 'Pressão moderada',
@@ -35,7 +35,7 @@ const ESTADO_OPERACIONAL: Record<EstadoOperacional, { rotulo: string; classes: s
   },
   ESTAVEL: {
     rotulo: 'Estável',
-    classes: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    classes: 'bg-raiz-accent/15 text-raiz-accent border-raiz-accent/40',
   },
   ACAO_EM_ANDAMENTO: {
     rotulo: 'Ação em andamento',
@@ -44,7 +44,7 @@ const ESTADO_OPERACIONAL: Record<EstadoOperacional, { rotulo: string; classes: s
 };
 
 const STATUS_COR: Record<StatusCor, { ponto: string; rotulo: string }> = {
-  VERDE: { ponto: 'bg-emerald-400', rotulo: 'Fluxo normal' },
+  VERDE: { ponto: 'bg-raiz-accent', rotulo: 'Fluxo normal' },
   AMARELO: { ponto: 'bg-amber-400', rotulo: 'Atenção' },
   VERMELHO: { ponto: 'bg-rose-500', rotulo: 'Crítico' },
 };
@@ -62,9 +62,9 @@ function horaDaUltimaLeitura(zonas: ZonaPublico[]): string | null {
 }
 
 const Indicador: React.FC<{ rotulo: string; valor: string }> = ({ rotulo, valor }) => (
-  <div className="bg-[#0B0F19] border border-[#1E293B] rounded-lg px-3 py-2">
-    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{rotulo}</p>
-    <p className="font-mono text-sm text-gray-100 mt-0.5">{valor}</p>
+  <div className="bg-raiz-dark border border-raiz-border-dark rounded-lg px-3 py-2">
+    <p className="text-[10px] font-semibold text-raiz-text-light/55 uppercase tracking-wider">{rotulo}</p>
+    <p className="font-mono text-sm text-raiz-text-light mt-0.5">{valor}</p>
   </div>
 );
 
@@ -81,7 +81,7 @@ const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
       viewBox={`0 0 ${PLANTA} ${PLANTA}`}
       role="img"
       aria-label={`Mapa de calor com ${comPosicao.length} zonas`}
-      className="w-full h-auto rounded-lg bg-[#0B0F19] border border-[#1E293B]"
+      className="w-full h-auto rounded-lg bg-raiz-dark border border-raiz-border-dark"
     >
       <defs>
         {comPosicao.map((z) => {
@@ -98,8 +98,8 @@ const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
 
       {LINHAS_GRADE.map((n) => (
         <React.Fragment key={n}>
-          <line x1={n} y1={0} x2={n} y2={PLANTA} stroke="#1E293B" strokeWidth={1} />
-          <line x1={0} y1={n} x2={PLANTA} y2={n} stroke="#1E293B" strokeWidth={1} />
+          <line x1={n} y1={0} x2={n} y2={PLANTA} stroke="#3A4D3F" strokeWidth={1} />
+          <line x1={0} y1={n} x2={PLANTA} y2={n} stroke="#3A4D3F" strokeWidth={1} />
         </React.Fragment>
       ))}
 
@@ -138,15 +138,15 @@ const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
                 className="motion-safe:animate-pulse"
               />
             )}
-            <circle cx={x} cy={y} r={14} fill="#0B0F19" stroke={cor} strokeWidth={5} />
+            <circle cx={x} cy={y} r={14} fill="#121C14" stroke={cor} strokeWidth={5} />
             <text
               x={xTexto}
               y={y + 48}
               textAnchor={ancora}
               fontSize={30}
               fontWeight={700}
-              fill="#F3F4F6"
-              stroke="#0B0F19"
+              fill="#EEF0E6"
+              stroke="#121C14"
               strokeWidth={6}
               paintOrder="stroke"
             >
@@ -157,8 +157,8 @@ const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
               y={y + 80}
               textAnchor={ancora}
               fontSize={26}
-              fill="#D1D5DB"
-              stroke="#0B0F19"
+              fill="#C7D8A5"
+              stroke="#121C14"
               strokeWidth={6}
               paintOrder="stroke"
             >
@@ -186,17 +186,17 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
   return (
     <section
       aria-label="Mapa de calor do estande"
-      className={clsx('rounded-xl border border-[#1E293B] bg-[#131B2E] p-4 sm:p-5', className)}
+      className={clsx('rounded-xl border border-raiz-border-dark bg-raiz-section p-4 sm:p-5', className)}
     >
       <header className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <Flame size={18} className="text-[#FFD600]" aria-hidden="true" />
-          <h2 className="text-sm font-semibold tracking-wide text-gray-100">Mapa de calor</h2>
+          <Flame size={18} className="text-raiz-accent" aria-hidden="true" />
+          <h2 className="text-sm font-semibold tracking-wide text-raiz-text-light">Mapa de calor</h2>
           {simulated && <SeloSimulado />}
         </div>
         <div className="flex items-center gap-3">
           {atualizadoEm && (
-            <span className="font-mono text-[11px] text-gray-500">Atualizado às {atualizadoEm}</span>
+            <span className="font-mono text-[11px] text-raiz-text-light/55">Atualizado às {atualizadoEm}</span>
           )}
           {estado && (
             <span className={clsx('px-2 py-0.5 text-xs rounded font-mono border', estado.classes)}>
@@ -207,13 +207,13 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
       </header>
 
       {loading ? (
-        <div className="aspect-square max-w-xl mx-auto rounded-lg bg-[#0B0F19] border border-[#1E293B] motion-safe:animate-pulse" />
+        <div className="aspect-square max-w-xl mx-auto rounded-lg bg-raiz-dark border border-raiz-border-dark motion-safe:animate-pulse" />
       ) : error ? (
         <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
           Não foi possível carregar o mapa de calor. {error}
         </div>
       ) : zonas.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-[#1E293B] p-8 text-center text-sm text-gray-500">
+        <div className="rounded-lg border-2 border-dashed border-raiz-border-dark p-8 text-center text-sm text-raiz-text-light/55">
           Nenhuma zona disponível no momento.
         </div>
       ) : (
@@ -227,7 +227,7 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
                   style={{ background: GRADIENTE_LEGENDA }}
                   aria-hidden="true"
                 />
-                <div className="flex justify-between mt-1 text-[10px] text-gray-500 uppercase tracking-wider">
+                <div className="flex justify-between mt-1 text-[10px] text-raiz-text-light/55 uppercase tracking-wider">
                   <span>Baixa (0%)</span>
                   <span>Média</span>
                   <span>Alta ({LIMITE_ALERTA_OCUPACAO}%+ alerta)</span>
@@ -252,13 +252,13 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
             )}
 
             <div>
-              <div className="grid grid-cols-[minmax(0,1fr)_3rem_3.5rem_4.5rem] gap-2 px-1 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="grid grid-cols-[minmax(0,1fr)_3rem_3.5rem_4.5rem] gap-2 px-1 pb-1 text-[10px] font-semibold text-raiz-text-light/55 uppercase tracking-wider">
                 <span>Zona</span>
                 <span className="text-right">Pess.</span>
                 <span className="text-right">Ocup.</span>
                 <span className="text-right">Espera</span>
               </div>
-              <ul className="divide-y divide-[#1E293B] border-t border-[#1E293B]">
+              <ul className="divide-y divide-raiz-border-dark border-t border-raiz-border-dark">
                 {zonas.map((z) => {
                   const status = z.statusCor ? STATUS_COR[z.statusCor] : null;
                   const emAlerta = z.ocupacaoPct >= LIMITE_ALERTA_OCUPACAO;
@@ -268,21 +268,21 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
                       className="grid grid-cols-[minmax(0,1fr)_3rem_3.5rem_4.5rem] gap-2 items-center px-1 py-2"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-100 truncate">{z.codigo}</p>
-                        <p className="text-[11px] text-gray-500 truncate" title={z.titulo}>
+                        <p className="text-xs font-semibold text-raiz-text-light truncate">{z.codigo}</p>
+                        <p className="text-[11px] text-raiz-text-light/55 truncate" title={z.titulo}>
                           {z.titulo}
                         </p>
                       </div>
-                      <span className="font-mono text-sm text-gray-200 text-right">{z.pessoas}</span>
+                      <span className="font-mono text-sm text-raiz-text-light text-right">{z.pessoas}</span>
                       <span
                         className={clsx(
                           'font-mono text-sm text-right',
-                          emAlerta ? 'text-rose-400 font-bold' : 'text-gray-200',
+                          emAlerta ? 'text-rose-400 font-bold' : 'text-raiz-text-light',
                         )}
                       >
                         {z.ocupacaoPct}%
                       </span>
-                      <span className="flex items-center justify-end gap-1.5 font-mono text-[11px] text-gray-300">
+                      <span className="flex items-center justify-end gap-1.5 font-mono text-[11px] text-raiz-text-light/75">
                         {status && (
                           <span
                             className={clsx('inline-block size-2 rounded-full', status.ponto)}

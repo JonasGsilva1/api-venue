@@ -50,33 +50,33 @@ function prioridade(l: Linha): number {
 function corValor(valor: number): string {
   if (valor >= LIMITE_ESPERA_MIN) return 'text-rose-400';
   if (valor >= LIMITE_ESPERA_MIN * 0.75) return 'text-amber-300';
-  return 'text-emerald-400';
+  return 'text-raiz-accent';
 }
 
 function EstouraEm({ linha }: { linha: Linha }) {
   if (!linha.previsao) {
     return (
-      <span className="text-slate-500">
+      <span className="text-raiz-text-light/55">
         Coletando dados ({Math.min(linha.amostras, MIN_AMOSTRAS)}/{MIN_AMOSTRAS})
       </span>
     );
   }
   const min = linha.previsao.minutosAteLimite;
-  if (min === null) return <span className="text-emerald-400">Estável</span>;
+  if (min === null) return <span className="text-raiz-accent">Estável</span>;
   if (min === 0) return <span className="text-rose-400 font-bold">Já estourou</span>;
-  const cor = min <= 5 ? 'text-rose-400' : min <= 15 ? 'text-amber-300' : 'text-slate-300';
+  const cor = min <= 5 ? 'text-rose-400' : min <= 15 ? 'text-amber-300' : 'text-raiz-text-light/75';
   return <span className={`${cor} font-bold`}>em ~{Math.max(1, Math.round(min))} min</span>;
 }
 
 function BarraConfianca({ valor }: { valor: number }) {
   const pct = Math.round(Math.max(0, Math.min(1, valor)) * 100);
-  const cor = valor >= 0.7 ? 'bg-emerald-400' : valor >= CONFIANCA_MINIMA ? 'bg-amber-400' : 'bg-slate-500';
+  const cor = valor >= 0.7 ? 'bg-raiz-accent' : valor >= CONFIANCA_MINIMA ? 'bg-amber-400' : 'bg-raiz-border-dark';
   return (
     <div className="flex items-center gap-2 min-w-[96px]">
-      <div className="h-1.5 w-16 rounded-full bg-slate-800 overflow-hidden">
+      <div className="h-1.5 w-16 rounded-full bg-raiz-border-dark overflow-hidden">
         <div className={`h-full ${cor}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[11px] font-mono text-slate-300 tabular-nums">{pct}%</span>
+      <span className="text-[11px] font-mono text-raiz-text-light/75 tabular-nums">{pct}%</span>
     </div>
   );
 }
@@ -199,19 +199,19 @@ export function PredicaoGargalosView({
     <section className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <Bot className="w-5 h-5 text-fuchsia-400" />
+          <h2 className="text-base sm:text-lg font-bold text-raiz-text-light flex items-center gap-2">
+            <Bot className="w-5 h-5 text-raiz-accent" />
             <span>Predição de Gargalos (IA)</span>
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-raiz-text-light/75">
             Tendência do tempo de espera nas zonas monitoradas e atrações. Limite de gargalo:{' '}
             {LIMITE_ESPERA_MIN} min.
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono font-bold">
           <span className="text-rose-300">{emRisco} em risco</span>
-          <span className="text-slate-500">·</span>
-          <span className="inline-flex items-center gap-1 text-slate-400">
+          <span className="text-raiz-text-light/55">·</span>
+          <span className="inline-flex items-center gap-1 text-raiz-text-light/75">
             <Clock className="w-3.5 h-3.5" />
             {coletando} coletando dados
           </span>
@@ -226,28 +226,28 @@ export function PredicaoGargalosView({
 
       {/* Previsão Ativa do Servidor (GET /api/v1/predicoes/gargalos + POST /api/v1/predicoes/acionar-fluxo) */}
       {predicaoApi && (
-        <div className="rounded-xl border border-fuchsia-500/40 bg-[#140b24] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="rounded-xl border border-raiz-accent/40 bg-raiz-section p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="rounded bg-rose-600 px-2 py-0.5 font-mono text-[10px] font-bold text-white">
                 {predicaoApi.nivel_predito}
               </span>
-              <span className="font-bold text-white">{predicaoApi.setor}</span>
+              <span className="font-bold text-raiz-text-light">{predicaoApi.setor}</span>
               <span className="font-mono text-amber-300">
                 Formação em {predicaoApi.tempo_estimado_formacao_fila}
               </span>
             </div>
-            <p className="text-xs text-slate-300">{predicaoApi.motivo}</p>
+            <p className="text-xs text-raiz-text-light/75">{predicaoApi.motivo}</p>
             <p className="text-xs font-semibold text-amber-300">
               Ação recomendada: {predicaoApi.acao_recomendada}
             </p>
-            {acaoFeedback && <p className="text-xs text-emerald-300 font-mono">{acaoFeedback}</p>}
+            {acaoFeedback && <p className="text-xs text-raiz-accent font-mono">{acaoFeedback}</p>}
           </div>
           <button
             type="button"
             onClick={() => void handleExecutarAcao()}
             disabled={acionando}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-fuchsia-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-fuchsia-400 disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-raiz-accent px-4 py-2 text-xs font-bold text-raiz-text-dark hover:bg-raiz-accent/90 disabled:opacity-50"
           >
             <Zap className="h-3.5 w-3.5" />
             <span>{acionando ? 'Executando...' : 'Executar ação recomendada'}</span>
@@ -255,10 +255,10 @@ export function PredicaoGargalosView({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1220]">
+      <div className="overflow-x-auto rounded-xl border border-raiz-border-dark bg-raiz-dark">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-left text-slate-400 border-b border-slate-800">
+            <tr className="text-left text-raiz-text-light/75 border-b border-raiz-border-dark">
               <th className="px-3 py-2.5 font-semibold">Zona / Atração</th>
               <th className="px-3 py-2.5 font-semibold">Atual</th>
               <th className="px-3 py-2.5 font-semibold">+5 min</th>
@@ -270,10 +270,10 @@ export function PredicaoGargalosView({
           </thead>
           <tbody>
             {linhas.map((l) => (
-              <tr key={l.id} className="border-b border-slate-800/70 last:border-0">
+              <tr key={l.id} className="border-b border-raiz-border-dark/70 last:border-0">
                 <td className="px-3 py-2.5">
-                  <div className="font-bold text-white">{l.nome}</div>
-                  <div className="text-[11px] text-slate-500 font-mono">
+                  <div className="font-bold text-raiz-text-light">{l.nome}</div>
+                  <div className="text-[11px] text-raiz-text-light/55 font-mono">
                     {l.codigo} · {l.tipo} · {l.setor}
                   </div>
                 </td>
@@ -286,7 +286,7 @@ export function PredicaoGargalosView({
                     <td
                       key={h}
                       className={`px-3 py-2.5 font-mono tabular-nums ${
-                        v === undefined ? 'text-slate-600' : corValor(v)
+                        v === undefined ? 'text-raiz-text-light/55' : corValor(v)
                       }`}
                     >
                       {v === undefined ? '—' : `${v.toFixed(1)} min`}
@@ -300,7 +300,7 @@ export function PredicaoGargalosView({
                   {l.previsao ? (
                     <BarraConfianca valor={l.previsao.confianca} />
                   ) : (
-                    <span className="text-slate-600">—</span>
+                    <span className="text-raiz-text-light/55">—</span>
                   )}
                 </td>
               </tr>
@@ -312,19 +312,19 @@ export function PredicaoGargalosView({
       {/* Teste rápido de cálculo de fila (POST /api/v1/inferencia) */}
       <form
         onSubmit={(e) => void handleCalcularFila(e)}
-        className="rounded-xl border border-slate-800 bg-[#0b1220] p-4 space-y-3"
+        className="rounded-xl border border-raiz-border-dark bg-raiz-section p-4 space-y-3"
       >
-        <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
+        <div className="flex items-center gap-2 text-xs font-bold text-raiz-accent">
           <Calculator className="h-4 w-4" />
           <span>Calcular fila (teste, sem salvar)</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Zona</label>
+            <label className="block text-[11px] text-raiz-text-light/75 mb-1">Zona</label>
             <select
               value={simPdvId}
               onChange={(e) => setSimPdvId(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white"
+              className="w-full rounded-lg border border-raiz-border-dark bg-raiz-dark px-3 py-2 text-xs text-raiz-text-light"
             >
               {(zonas.length > 0
                 ? zonas
@@ -341,18 +341,18 @@ export function PredicaoGargalosView({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Pessoas na zona</label>
+            <label className="block text-[11px] text-raiz-text-light/75 mb-1">Pessoas na zona</label>
             <input
               type="number"
               min={0}
               max={500}
               value={simPessoas}
               onChange={(e) => setSimPessoas(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white"
+              className="w-full rounded-lg border border-raiz-border-dark bg-raiz-dark px-3 py-2 text-xs text-raiz-text-light"
             />
           </div>
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Segundos na catraca (opcional)</label>
+            <label className="block text-[11px] text-raiz-text-light/75 mb-1">Segundos na catraca (opcional)</label>
             <input
               type="number"
               min={1}
@@ -360,27 +360,27 @@ export function PredicaoGargalosView({
               placeholder="Automático"
               value={simTaxaNfc}
               onChange={(e) => setSimTaxaNfc(e.target.value)}
-              className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white"
+              className="w-full rounded-lg border border-raiz-border-dark bg-raiz-dark px-3 py-2 text-xs text-raiz-text-light"
             />
           </div>
           <button
             type="submit"
             disabled={simBusy}
-            className="rounded-lg bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
+            className="rounded-lg bg-raiz-accent px-4 py-2 text-xs font-bold text-raiz-text-dark hover:bg-raiz-accent/90 disabled:opacity-50"
           >
             {simBusy ? 'Calculando...' : 'Calcular fila'}
           </button>
         </div>
 
         {simResultado && (
-          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-cyan-900/50 bg-[#070d18] px-3 py-2 text-xs font-mono">
-            <span className="text-white">
+          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-raiz-border-dark bg-raiz-dark px-3 py-2 text-xs font-mono">
+            <span className="text-raiz-text-light">
               Pessoas: <strong>{simResultado.pax_count}</strong>
             </span>
-            <span className="text-cyan-300">
+            <span className="text-raiz-accent">
               Espera: <strong>{simResultado.tempo_espera_fmt}</strong>
             </span>
-            <span className="text-slate-300">
+            <span className="text-raiz-text-light/75">
               Densidade: <strong>{simResultado.densidade_m2.toFixed(2)} p/m²</strong>
             </span>
             <span className="text-amber-300">

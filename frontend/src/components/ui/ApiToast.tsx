@@ -8,9 +8,9 @@ interface ApiToastProps {
 }
 
 const ESTILOS: Record<OpsFeedback['tipo'], string> = {
-  ok: 'border-emerald-500/50 bg-emerald-950/90 text-emerald-200',
+  ok: 'border-raiz-accent/50 bg-raiz-accent/10 text-raiz-accent',
   erro: 'border-rose-500/50 bg-rose-950/90 text-rose-200',
-  info: 'border-cyan-500/50 bg-[#0d1527]/95 text-cyan-200',
+  info: 'border-raiz-accent/50 bg-raiz-section/95 text-raiz-accent',
 };
 
 // Aviso flutuante com o resultado das chamadas à API. Some sozinho (exceto "info").

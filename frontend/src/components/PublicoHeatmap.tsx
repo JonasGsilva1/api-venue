@@ -319,29 +319,29 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
   return (
     <div
       className={clsx(
-        'rounded-2xl border border-[#1E293B] bg-[#111827] text-gray-100 shadow-2xl transition-all overflow-hidden flex flex-col',
+        'rounded-2xl border border-raiz-border-dark bg-raiz-section text-raiz-text-light shadow-2xl transition-all overflow-hidden flex flex-col',
         expandido ? 'fixed inset-4 z-50 overflow-y-auto' : 'w-full',
         className
       )}
     >
-      {/* 1. CABEÇALHO TÁTICO (#111827 + Destaque #FFD600) */}
-      <header className="px-5 py-4 border-b border-[#1E293B] bg-[#0E1526]/80 flex flex-wrap items-center justify-between gap-4">
+      {/* 1. CABEÇALHO TÁTICO */}
+      <header className="px-5 py-4 border-b border-raiz-border-dark bg-raiz-section/80 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-[#FFD600]/10 border border-[#FFD600]/30 text-[#FFD600] flex items-center justify-center">
+          <div className="p-2 rounded-xl bg-raiz-accent/15 border border-raiz-accent/30 text-raiz-accent flex items-center justify-center">
             <Flame size={20} className="motion-safe:animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-gray-100 tracking-wide">
+              <h2 className="text-base font-bold text-raiz-text-light tracking-wide">
                 Mapa de Calor & Fluxo 3D
               </h2>
               {simulated && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-[#FFD600]/20 text-[#FFD600] border border-[#FFD600]/40">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/40">
                   Simulação
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-raiz-text-light/75">
               Densidade volumétrica e dinâmica de circulação por setor no estande RAIZ
             </p>
           </div>
@@ -350,7 +350,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
         {/* Controles de camadas e simulação */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Cenários rápidos */}
-          <div className="flex items-center bg-[#090D16] p-1 rounded-lg border border-[#1E293B] text-xs">
+          <div className="flex items-center bg-raiz-dark p-1 rounded-lg border border-raiz-border-dark text-xs">
             <button
               type="button"
               onClick={() => setCenario('pico')}
@@ -358,7 +358,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                 'px-2.5 py-1 rounded font-medium transition-colors',
                 cenario === 'pico'
                   ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 font-semibold'
-                  : 'text-gray-400 hover:text-gray-200'
+                  : 'text-raiz-text-light/75 hover:text-raiz-text-light'
               )}
             >
               Pico (Alerta)
@@ -370,7 +370,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                 'px-2.5 py-1 rounded font-medium transition-colors',
                 cenario === 'medio'
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold'
-                  : 'text-gray-400 hover:text-gray-200'
+                  : 'text-raiz-text-light/75 hover:text-raiz-text-light'
               )}
             >
               Moderado
@@ -381,8 +381,8 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               className={clsx(
                 'px-2.5 py-1 rounded font-medium transition-colors',
                 cenario === 'baixo'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-semibold'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/40 font-semibold'
+                  : 'text-raiz-text-light/75 hover:text-raiz-text-light'
               )}
             >
               Tranquilo
@@ -397,8 +397,8 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
             className={clsx(
               'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all',
               simulacaoAoVivo
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-[#090D16] border-[#1E293B] text-gray-400 hover:text-gray-200'
+                ? 'bg-raiz-accent/15 border-raiz-accent/30 text-raiz-accent'
+                : 'bg-raiz-dark border-raiz-border-dark text-raiz-text-light/75 hover:text-raiz-text-light'
             )}
           >
             {simulacaoAoVivo ? <Pause size={13} /> : <Play size={13} />}
@@ -406,15 +406,15 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
           </button>
 
           {/* Alternar camadas */}
-          <div className="flex items-center bg-[#090D16] p-1 rounded-lg border border-[#1E293B] text-xs gap-1">
+          <div className="flex items-center bg-raiz-dark p-1 rounded-lg border border-raiz-border-dark text-xs gap-1">
             <button
               type="button"
               onClick={() => setMostrarCalor((v) => !v)}
               className={clsx(
                 'px-2 py-1 rounded flex items-center gap-1 font-medium transition-all',
                 mostrarCalor
-                  ? 'bg-[#FFD600] text-[#090D16] font-bold shadow'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-raiz-accent text-raiz-text-dark font-bold shadow'
+                  : 'text-raiz-text-light/75 hover:text-raiz-text-light'
               )}
             >
               <Flame size={13} />
@@ -426,8 +426,8 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               className={clsx(
                 'px-2 py-1 rounded flex items-center gap-1 font-medium transition-all',
                 mostrarFluxo
-                  ? 'bg-[#FFD600] text-[#090D16] font-bold shadow'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-raiz-accent text-raiz-text-dark font-bold shadow'
+                  : 'text-raiz-text-light/75 hover:text-raiz-text-light'
               )}
             >
               <Waves size={13} />
@@ -439,8 +439,8 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               className={clsx(
                 'px-2 py-1 rounded flex items-center gap-1 font-medium transition-all',
                 mostrarRotulos
-                  ? 'bg-[#FFD600] text-[#090D16] font-bold shadow'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-raiz-accent text-raiz-text-dark font-bold shadow'
+                  : 'text-raiz-text-light/75 hover:text-raiz-text-light'
               )}
             >
               <Eye size={13} />
@@ -453,7 +453,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
             type="button"
             onClick={() => setExpandido((v) => !v)}
             title={expandido ? 'Minimizar' : 'Tela cheia'}
-            className="p-1.5 rounded-lg border border-[#1E293B] bg-[#090D16] text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg border border-raiz-border-dark bg-raiz-dark text-raiz-text-light/75 hover:text-raiz-text-light transition-colors"
           >
             {expandido ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
@@ -461,40 +461,40 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
       </header>
 
       {/* 2. BARRA DE MÉTRICAS RÁPIDAS SUPERIOR */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 py-3 bg-[#090D16]/60 border-b border-[#1E293B] text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 py-3 bg-raiz-dark/60 border-b border-raiz-border-dark text-xs">
         <div className="flex items-center gap-2">
-          <Users size={16} className="text-[#FFD600]" />
+          <Users size={16} className="text-raiz-accent" />
           <div>
-            <span className="text-[10px] text-gray-400 uppercase font-semibold">Total Presente</span>
-            <p className="font-mono text-sm font-bold text-gray-100">{totalPessoas} pessoas</p>
+            <span className="text-[10px] text-raiz-text-light/75 uppercase font-semibold">Total Presente</span>
+            <p className="font-mono text-sm font-bold text-raiz-text-light">{totalPessoas} pessoas</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Flame size={16} className="text-rose-400" />
           <div>
-            <span className="text-[10px] text-gray-400 uppercase font-semibold">Densidade Máxima</span>
-            <p className="font-mono text-sm font-bold text-gray-100">{densidadeMaxima.toFixed(2)} pess./m²</p>
+            <span className="text-[10px] text-raiz-text-light/75 uppercase font-semibold">Densidade Máxima</span>
+            <p className="font-mono text-sm font-bold text-raiz-text-light">{densidadeMaxima.toFixed(2)} pess./m²</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Waves size={16} className="text-cyan-400" />
+          <Waves size={16} className="text-raiz-accent" />
           <div>
-            <span className="text-[10px] text-gray-400 uppercase font-semibold">Fluxo Geral Médio</span>
-            <p className="font-mono text-sm font-bold text-gray-100">0.68 m/s (~42 pess/min)</p>
+            <span className="text-[10px] text-raiz-text-light/75 uppercase font-semibold">Fluxo Geral Médio</span>
+            <p className="font-mono text-sm font-bold text-raiz-text-light">0.68 m/s (~42 pess/min)</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <AlertTriangle
             size={16}
-            className={setoresEmAlerta.length > 0 ? 'text-amber-400 animate-pulse' : 'text-emerald-400'}
+            className={setoresEmAlerta.length > 0 ? 'text-amber-400 animate-pulse' : 'text-raiz-accent'}
           />
           <div>
-            <span className="text-[10px] text-gray-400 uppercase font-semibold">Zonas em Alerta</span>
-            <p className="font-mono text-sm font-bold text-gray-100">
+            <span className="text-[10px] text-raiz-text-light/75 uppercase font-semibold">Zonas em Alerta</span>
+            <p className="font-mono text-sm font-bold text-raiz-text-light">
               {setoresEmAlerta.length > 0 ? (
                 <span className="text-rose-400">{setoresEmAlerta.length} zona(s) (&gt;{LIMITE_ALERTA_OCUPACAO}%)</span>
               ) : (
-                <span className="text-emerald-400">Fluxo Normal</span>
+                <span className="text-raiz-accent">Fluxo Normal</span>
               )}
             </p>
           </div>
@@ -502,9 +502,9 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
       </div>
 
       {/* 3. ÁREA PRINCIPAL: MAPA ISOMÉTRICO (ESQUERDA) + LEGENDA VERTICAL IDENTICA AO PRINT (DIREITA) */}
-      <div className="relative p-4 sm:p-6 bg-[#090D16] flex-1 flex flex-col lg:flex-row items-stretch gap-6">
+      <div className="relative p-4 sm:p-6 bg-raiz-dark flex-1 flex flex-col lg:flex-row items-stretch gap-6">
         {/* VIEWPORT DO MAPA ISOMÉTRICO COM RENDER 3D + SVG HEATMAP OVERLAY */}
-        <div className="relative flex-1 rounded-2xl overflow-hidden border border-[#1E293B] bg-[#05070D] shadow-inner flex items-center justify-center group min-h-[380px] sm:min-h-[460px]">
+        <div className="relative flex-1 rounded-2xl overflow-hidden border border-raiz-border-dark bg-raiz-dark shadow-inner flex items-center justify-center group min-h-[380px] sm:min-h-[460px]">
           {/* Imagem base do estande RAIZ 3D */}
           <img
             src={standBoothImage}
@@ -537,7 +537,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38BDF8" opacity="0.8" />
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-raiz-accent)" opacity="0.8" />
               </marker>
 
               {/* Gradiente radial para cada setor baseado em corDeCalor e intensidadeDeCalor */}
@@ -574,7 +574,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                   cy="490"
                   rx="360"
                   ry="180"
-                  fill="#1D4ED8"
+                  fill="var(--color-raiz-accent)"
                   opacity="0.22"
                 />
 
@@ -624,7 +624,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                       <path
                         d={pathData}
                         fill="none"
-                        stroke="#0284C7"
+                        stroke="var(--color-raiz-accent)"
                         strokeWidth={isFoco ? 5 : 3}
                         strokeOpacity={isFoco ? 0.7 : 0.35}
                         strokeLinecap="round"
@@ -634,7 +634,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                       <path
                         d={pathData}
                         fill="none"
-                        stroke="#38BDF8"
+                        stroke="var(--color-raiz-accent)"
                         strokeWidth={isFoco ? 4 : 2.5}
                         strokeDasharray="8 8"
                         strokeLinecap="round"
@@ -649,8 +649,8 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                         width="52"
                         height="20"
                         rx="10"
-                        fill="#090D16"
-                        stroke="#38BDF8"
+                        fill="var(--color-raiz-dark)"
+                        stroke="var(--color-raiz-accent)"
                         strokeWidth="1"
                         opacity="0.9"
                       />
@@ -660,7 +660,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                         textAnchor="middle"
                         fontSize="10"
                         fontWeight="600"
-                        fill="#E0F2FE"
+                        fill="var(--color-raiz-text-light)"
                         fontFamily="monospace"
                       >
                         {rota.taxaPessMin} p/m
@@ -710,7 +710,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                           cy={s.posicao3D.y}
                           r="30"
                           fill="none"
-                          stroke="#FFD600"
+                          stroke="var(--color-raiz-accent)"
                           strokeWidth="3.5"
                           strokeDasharray="5 3"
                         />
@@ -721,7 +721,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                         cx={s.posicao3D.x}
                         cy={s.posicao3D.y}
                         r="18"
-                        fill="#090D16"
+                        fill="var(--color-raiz-dark)"
                         stroke={cor}
                         strokeWidth="4"
                         className="transition-colors duration-300 shadow-lg"
@@ -734,7 +734,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                         textAnchor="middle"
                         fontSize="11"
                         fontWeight="800"
-                        fill="#FFFFFF"
+                        fill="var(--color-raiz-text-light)"
                         fontFamily="system-ui"
                       >
                         {s.codigo}
@@ -751,7 +751,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                           width="116"
                           height="24"
                           rx="6"
-                          fill="#090D16"
+                          fill="var(--color-raiz-dark)"
                           stroke={cor}
                           strokeWidth="1.5"
                           opacity="0.95"
@@ -762,7 +762,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                           textAnchor="middle"
                           fontSize="10"
                           fontWeight="700"
-                          fill="#F9FAFB"
+                          fill="var(--color-raiz-text-light)"
                           fontFamily="system-ui"
                         >
                           {s.codigo}: {s.pessoas}p • {s.ocupacaoPct}%
@@ -776,8 +776,8 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
           </svg>
 
           {/* Dica de interação flutuante */}
-          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-[#090D16]/85 backdrop-blur-md border border-[#1E293B] text-[11px] text-gray-300 flex items-center gap-2 pointer-events-none">
-            <span className="size-2 rounded-full bg-[#FFD600] animate-pulse" />
+          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-raiz-dark/85 backdrop-blur-md border border-raiz-border-dark text-[11px] text-raiz-text-light/75 flex items-center gap-2 pointer-events-none">
+            <span className="size-2 rounded-full bg-raiz-accent animate-pulse" />
             <span>Clique nos setores para inspecionar densidade e fluxo</span>
           </div>
         </div>
@@ -785,14 +785,14 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
         {/* LEGENDA VERTICAL — IDENTICA À REFERÊNCIA DO PRINT */}
         <aside
           aria-label="Legenda de Concentração de Público"
-          className="lg:w-48 xl:w-56 flex-shrink-0 flex flex-col justify-between p-4 rounded-xl bg-[#0E1526]/90 border border-[#1E293B] shadow-xl"
+          className="lg:w-48 xl:w-56 flex-shrink-0 flex flex-col justify-between p-4 rounded-xl bg-raiz-section/90 border border-raiz-border-dark shadow-xl"
         >
           <div>
-            <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-[#FFD600]" />
+            <h3 className="text-xs font-bold text-raiz-text-light uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-raiz-accent" />
               Densidade
             </h3>
-            <p className="text-[11px] text-gray-400 mb-5">
+            <p className="text-[11px] text-raiz-text-light/75 mb-5">
               Escala térmica calculada por ocupação/m²
             </p>
 
@@ -822,10 +822,10 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               <div className="flex flex-col justify-between h-64 sm:h-72 py-1 select-none">
                 {/* 1. Alta Concentração */}
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-100 leading-tight">
+                  <span className="text-sm font-bold text-raiz-text-light leading-tight">
                     Alta
                   </span>
-                  <span className="text-xs text-gray-400 leading-tight">
+                  <span className="text-xs text-raiz-text-light/75 leading-tight">
                     concentração
                   </span>
                   <span className="text-[10px] font-mono text-rose-400 mt-0.5 font-semibold">
@@ -835,10 +835,10 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
 
                 {/* 2. Média Concentração */}
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-200 leading-tight">
+                  <span className="text-sm font-bold text-raiz-text-light leading-tight">
                     Média
                   </span>
-                  <span className="text-xs text-gray-400 leading-tight">
+                  <span className="text-xs text-raiz-text-light/75 leading-tight">
                     concentração
                   </span>
                   <span className="text-[10px] font-mono text-amber-400 mt-0.5 font-semibold">
@@ -848,13 +848,13 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
 
                 {/* 3. Baixa Concentração */}
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-300 leading-tight">
+                  <span className="text-sm font-bold text-raiz-text-light/75 leading-tight">
                     Baixa
                   </span>
-                  <span className="text-xs text-gray-400 leading-tight">
+                  <span className="text-xs text-raiz-text-light/75 leading-tight">
                     concentração
                   </span>
-                  <span className="text-[10px] font-mono text-blue-400 mt-0.5 font-semibold">
+                  <span className="text-[10px] font-mono text-raiz-accent mt-0.5 font-semibold">
                     &lt; 35%
                   </span>
                 </div>
@@ -863,10 +863,10 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
           </div>
 
           {/* Controle fino de intensidade de calor */}
-          <div className="mt-6 pt-4 border-t border-[#1E293B]">
-            <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5 font-mono">
+          <div className="mt-6 pt-4 border-t border-raiz-border-dark">
+            <div className="flex items-center justify-between text-[11px] text-raiz-text-light/75 mb-1.5 font-mono">
               <span className="flex items-center gap-1">
-                <Sliders size={12} className="text-[#FFD600]" />
+                <Sliders size={12} className="text-raiz-accent" />
                 Intensidade
               </span>
               <span>{intensidadeGlobal}%</span>
@@ -877,18 +877,18 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               max={150}
               value={intensidadeGlobal}
               onChange={(e) => setIntensidadeGlobal(Number(e.target.value))}
-              className="w-full accent-[#FFD600] h-1.5 bg-[#090D16] rounded-lg appearance-none cursor-pointer"
+              className="w-full accent-raiz-accent h-1.5 bg-raiz-dark rounded-lg appearance-none cursor-pointer"
             />
           </div>
         </aside>
       </div>
 
       {/* 4. PAINEL DETALHADO DE INSPEÇÃO DE SETOR / LISTA DE ZONAS */}
-      <div className="border-t border-[#1E293B] bg-[#0E1526]/90 p-4 sm:p-5">
+      <div className="border-t border-raiz-border-dark bg-raiz-section/90 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-[#FFD600]" />
-            <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+            <Sparkles size={16} className="text-raiz-accent" />
+            <h3 className="text-xs font-bold text-raiz-text-light uppercase tracking-wider">
               {setorSelecionado ? `Detalhamento Tático — ${setorSelecionado.codigo}` : 'Setores do Estande'}
             </h3>
           </div>
@@ -896,7 +896,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
             <button
               type="button"
               onClick={() => setSetorSelecionado(null)}
-              className="text-xs font-semibold text-[#FFD600] hover:underline"
+              className="text-xs font-semibold text-raiz-accent hover:underline"
             >
               Ver todos os setores
             </button>
@@ -905,7 +905,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
 
         {/* Se um setor estiver selecionado, exibe HUD de alta definição */}
         {setorSelecionado ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-[#090D16] p-4 rounded-xl border border-[#1E293B]">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-raiz-dark p-4 rounded-xl border border-raiz-border-dark">
             <div className="md:col-span-1">
               <div className="flex items-center gap-2">
                 <span
@@ -914,9 +914,9 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                     backgroundColor: corDeCalor(intensidadeDeCalor(setorSelecionado.ocupacaoPct)),
                   }}
                 />
-                <h4 className="font-bold text-sm text-gray-100">{setorSelecionado.titulo}</h4>
+                <h4 className="font-bold text-sm text-raiz-text-light">{setorSelecionado.titulo}</h4>
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">{setorSelecionado.subtitulo}</p>
+              <p className="text-xs text-raiz-text-light/75 mt-0.5">{setorSelecionado.subtitulo}</p>
               <div className="mt-2">
                 <span
                   className={clsx(
@@ -925,7 +925,7 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                       ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                       : setorSelecionado.ocupacaoPct >= 60
                       ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                      : 'bg-raiz-accent/15 text-raiz-accent border-raiz-accent/40'
                   )}
                 >
                   {setorSelecionado.ocupacaoPct >= LIMITE_ALERTA_OCUPACAO
@@ -935,13 +935,13 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               </div>
             </div>
 
-            <div className="p-3 bg-[#111827] rounded-lg border border-[#1E293B]">
-              <span className="text-[10px] uppercase font-semibold text-gray-400">Pessoas / Capacidade</span>
-              <p className="font-mono text-lg font-bold text-gray-100 mt-1">
+            <div className="p-3 bg-raiz-section rounded-lg border border-raiz-border-dark">
+              <span className="text-[10px] uppercase font-semibold text-raiz-text-light/75">Pessoas / Capacidade</span>
+              <p className="font-mono text-lg font-bold text-raiz-text-light mt-1">
                 {setorSelecionado.pessoas}{' '}
-                <span className="text-xs text-gray-400 font-normal">/ {setorSelecionado.capacidade} máx</span>
+                <span className="text-xs text-raiz-text-light/75 font-normal">/ {setorSelecionado.capacidade} máx</span>
               </p>
-              <div className="mt-2 h-1.5 rounded-full bg-[#090D16] overflow-hidden">
+              <div className="mt-2 h-1.5 rounded-full bg-raiz-dark overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -952,24 +952,24 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
               </div>
             </div>
 
-            <div className="p-3 bg-[#111827] rounded-lg border border-[#1E293B]">
-              <span className="text-[10px] uppercase font-semibold text-gray-400">Densidade Estimada</span>
-              <p className="font-mono text-lg font-bold text-gray-100 mt-1">
+            <div className="p-3 bg-raiz-section rounded-lg border border-raiz-border-dark">
+              <span className="text-[10px] uppercase font-semibold text-raiz-text-light/75">Densidade Estimada</span>
+              <p className="font-mono text-lg font-bold text-raiz-text-light mt-1">
                 {setorSelecionado.densidadeM2}{' '}
-                <span className="text-xs text-gray-400 font-normal">pess./m²</span>
+                <span className="text-xs text-raiz-text-light/75 font-normal">pess./m²</span>
               </p>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-raiz-text-light/75 mt-1">
                 Área útil: {setorSelecionado.areaM2} m²
               </p>
             </div>
 
-            <div className="p-3 bg-[#111827] rounded-lg border border-[#1E293B]">
-              <span className="text-[10px] uppercase font-semibold text-gray-400">Fluxo & Permanência</span>
-              <p className="font-mono text-lg font-bold text-[#FFD600] mt-1">
+            <div className="p-3 bg-raiz-section rounded-lg border border-raiz-border-dark">
+              <span className="text-[10px] uppercase font-semibold text-raiz-text-light/75">Fluxo & Permanência</span>
+              <p className="font-mono text-lg font-bold text-raiz-accent mt-1">
                 {setorSelecionado.taxaFluxoMin}{' '}
-                <span className="text-xs text-gray-300 font-normal">pess./min</span>
+                <span className="text-xs text-raiz-text-light/75 font-normal">pess./min</span>
               </p>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-raiz-text-light/75 mt-1">
                 Tempo fila/espera: {formatarDuracao(setorSelecionado.esperaSeg)}
               </p>
             </div>
@@ -987,25 +987,25 @@ export const PublicoHeatmap: React.FC<PublicoHeatmapProps> = ({
                   type="button"
                   onClick={() => handleSelectSetor(s)}
                   className={clsx(
-                    'p-2.5 rounded-xl border text-left transition-all hover:border-[#FFD600]/60 bg-[#090D16]',
-                    emAlerta ? 'border-rose-500/50' : 'border-[#1E293B]'
+                    'p-2.5 rounded-xl border text-left transition-all hover:border-raiz-accent/60 bg-raiz-dark',
+                    emAlerta ? 'border-rose-500/50' : 'border-raiz-border-dark'
                   )}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-xs font-bold text-[#FFD600]">{s.codigo}</span>
+                    <span className="font-mono text-xs font-bold text-raiz-accent">{s.codigo}</span>
                     <span
                       className="size-2 rounded-full"
                       style={{ backgroundColor: cor }}
                       title={`${s.ocupacaoPct}% ocupação`}
                     />
                   </div>
-                  <p className="text-xs font-medium text-gray-200 truncate" title={s.titulo}>
+                  <p className="text-xs font-medium text-raiz-text-light truncate" title={s.titulo}>
                     {s.titulo}
                   </p>
                   <div className="flex items-baseline justify-between mt-1 font-mono text-[11px]">
-                    <span className="text-gray-400">{s.pessoas} pess.</span>
+                    <span className="text-raiz-text-light/75">{s.pessoas} pess.</span>
                     <span
-                      className={clsx('font-bold', emAlerta ? 'text-rose-400' : 'text-gray-300')}
+                      className={clsx('font-bold', emAlerta ? 'text-rose-400' : 'text-raiz-text-light/75')}
                     >
                       {s.ocupacaoPct}%
                     </span>

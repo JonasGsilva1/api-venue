@@ -37,11 +37,11 @@ export function DriveVideosView() {
     <section className="space-y-5 animate-in fade-in duration-200" aria-labelledby="drive-videos-titulo">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 id="drive-videos-titulo" className="flex items-center gap-2 text-base font-bold text-white sm:text-lg">
-            <Film className="h-5 w-5 text-cyan-400" />
+          <h2 id="drive-videos-titulo" className="flex items-center gap-2 text-base font-bold text-raiz-text-light sm:text-lg">
+            <Film className="h-5 w-5 text-raiz-accent" />
             Vídeos do Google Drive
           </h2>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-raiz-text-light/75">
             Vídeos da pasta configurada no servidor. A reprodução é transmitida pelo backend.
           </p>
         </div>
@@ -49,7 +49,7 @@ export function DriveVideosView() {
           type="button"
           onClick={atualizarVideos}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-900/60 bg-[#0d1527] px-3 py-2 text-xs font-semibold text-cyan-300 transition-colors hover:bg-[#131d33] disabled:cursor-wait disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-raiz-accent/40 bg-raiz-section px-3 py-2 text-xs font-semibold text-raiz-accent transition-colors hover:bg-raiz-accent/15 disabled:cursor-wait disabled:opacity-60"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Atualizar lista
@@ -70,16 +70,16 @@ export function DriveVideosView() {
       )}
 
       {loading && videos.length === 0 && !error && (
-        <p role="status" className="rounded-xl border border-slate-800 bg-[#0b1220] p-8 text-center text-sm text-slate-400">
+        <p role="status" className="rounded-xl border border-raiz-border-dark bg-raiz-section p-8 text-center text-sm text-raiz-text-light/75">
           Buscando vídeos no Drive...
         </p>
       )}
 
       {!loading && !error && videos.length === 0 && (
-        <div className="rounded-xl border border-slate-800 bg-[#0b1220] p-8 text-center">
-          <Film className="mx-auto h-8 w-8 text-slate-600" />
-          <p className="mt-3 text-sm font-semibold text-slate-300">Nenhum vídeo encontrado</p>
-          <p className="mt-1 text-xs text-slate-500">
+        <div className="rounded-xl border border-raiz-border-dark bg-raiz-section p-8 text-center">
+          <Film className="mx-auto h-8 w-8 text-raiz-text-light/55" />
+          <p className="mt-3 text-sm font-semibold text-raiz-text-light">Nenhum vídeo encontrado</p>
+          <p className="mt-1 text-xs text-raiz-text-light/55">
             Verifique se há arquivos de vídeo na pasta e se ela está compartilhada para leitura.
           </p>
         </div>
@@ -88,7 +88,7 @@ export function DriveVideosView() {
       {videos.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {videos.map((video) => (
-            <article key={video.id} className="overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220]">
+            <article key={video.id} className="overflow-hidden rounded-xl border border-raiz-border-dark bg-raiz-section">
               <video
                 className="aspect-video w-full bg-black object-contain"
                 controls
@@ -100,10 +100,10 @@ export function DriveVideosView() {
                 Seu navegador não oferece suporte à reprodução de vídeo.
               </video>
               <div className="p-3">
-                <p className="truncate text-sm font-semibold text-slate-200" title={video.name}>
+                <p className="truncate text-sm font-semibold text-raiz-text-light" title={video.name}>
                   {video.name}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-raiz-text-light/55">
                   {video.size ? `${(video.size / (1024 * 1024)).toFixed(1)} MB · ` : ''}
                   {video.mime_type}
                 </p>

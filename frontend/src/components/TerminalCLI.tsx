@@ -96,38 +96,38 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl bg-[#090d16] border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden font-mono text-xs">
-        <div className="flex items-center justify-between px-4 py-3 bg-[#0d1527] border-b border-cyan-900/50">
-          <div className="flex items-center gap-2 text-cyan-400">
-            <TerminalIcon className="w-4 h-4 text-emerald-400" />
-            <span className="font-bold tracking-tight text-white">Terminal Operacional &amp; Execução de Diagnóstico CLI</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-300">ONLINE</span>
+      <div className="w-full max-w-2xl bg-raiz-dark border border-raiz-accent/40 rounded-2xl shadow-2xl overflow-hidden font-mono text-xs">
+        <div className="flex items-center justify-between px-4 py-3 bg-raiz-section border-b border-raiz-border-dark">
+          <div className="flex items-center gap-2 text-raiz-accent">
+            <TerminalIcon className="w-4 h-4 text-raiz-accent" />
+            <span className="font-bold tracking-tight text-raiz-text-light">Terminal Operacional &amp; Execução de Diagnóstico CLI</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-raiz-accent/10 border border-raiz-accent/40 text-raiz-accent">ONLINE</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+            className="p-1 text-raiz-text-light/75 hover:text-raiz-text-light rounded-md hover:bg-raiz-border-dark transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-4 h-72 overflow-y-auto space-y-1 text-slate-300 bg-[#060a12]">
+        <div className="p-4 h-72 overflow-y-auto space-y-1 text-raiz-text-light/75 bg-raiz-dark">
           {logs.map((log, idx) => (
             <div
               key={idx}
               className={
                 log.startsWith('>')
-                  ? 'text-emerald-400 font-bold'
+                  ? 'text-raiz-accent font-bold'
                   : log.startsWith('[SUCESSO]')
-                    ? 'text-cyan-300'
+                    ? 'text-raiz-accent'
                     : log.startsWith('[OK]')
-                      ? 'text-emerald-300'
+                      ? 'text-raiz-accent'
                       : log.startsWith('[ERRO]')
                         ? 'text-rose-400'
                         : log.startsWith('[INFO]')
                           ? 'text-amber-300'
-                          : 'text-slate-300'
+                          : 'text-raiz-text-light/75'
               }
             >
               {log}
@@ -140,21 +140,21 @@ export const TerminalCLI: React.FC<TerminalCLIProps> = ({ isOpen, onClose, onRun
             e.preventDefault();
             void executeCommand(inputVal);
           }}
-          className="flex items-center gap-2 p-3 bg-[#0d1527] border-t border-cyan-900/50"
+          className="flex items-center gap-2 p-3 bg-raiz-section border-t border-raiz-border-dark"
         >
-          <span className="text-emerald-400 font-bold">{'>_'}</span>
+          <span className="text-raiz-accent font-bold">{'>_'}</span>
           <input
             type="text"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
             placeholder="Digite um comando (ex: status, despachos, yolo-scan, pico-sim, help)..."
-            className="flex-1 bg-transparent text-white focus:outline-none placeholder-slate-500 text-xs"
+            className="flex-1 bg-transparent text-raiz-text-light focus:outline-none placeholder-raiz-text-light/55 text-xs"
             autoFocus
           />
           <button
             type="submit"
             disabled={executando}
-            className="px-3 py-1 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-slate-950 font-bold rounded-lg transition-colors text-xs"
+            className="px-3 py-1 bg-raiz-accent hover:bg-raiz-accent/90 disabled:opacity-50 text-raiz-text-dark font-bold rounded-lg transition-colors text-xs"
           >
             {executando ? '...' : 'Enviar'}
           </button>

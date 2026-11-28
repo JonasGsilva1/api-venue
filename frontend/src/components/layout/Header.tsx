@@ -24,38 +24,38 @@ export const Header: React.FC = () => {
   }, []);
 
   return (
-    <header className="h-16 bg-[#131B2E] border-b border-[#1E293B] px-6 flex items-center justify-between text-white">
+    <header className="h-16 bg-raiz-section border-b border-raiz-border-dark px-6 flex items-center justify-between text-raiz-text-light">
       <div className="flex items-center gap-4">
-        <h1 className="font-bold text-lg tracking-wider text-[#FFD600]">
-          RAIZ <span className="text-gray-400 font-normal">// Venue Intelligence</span>
+        <h1 className="font-bold text-lg tracking-wider text-raiz-accent">
+          RAIZ <span className="text-raiz-text-light/75 font-normal">// Venue Intelligence</span>
         </h1>
-        <span className={`px-2 py-0.5 text-xs rounded font-mono flex items-center gap-1 ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+        <span className={`px-2 py-0.5 text-xs rounded font-mono flex items-center gap-1 ${isOnline ? 'bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
           {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
           {isOnline ? 'ONLINE' : 'OFFLINE'}
         </span>
       </div>
 
       <div className="flex items-center gap-6">
-        <div className="font-mono text-sm text-gray-300 bg-[#0B0F19] px-3 py-1 rounded border border-[#1E293B]">
+        <div className="font-mono text-sm text-raiz-text-light/75 bg-raiz-dark px-3 py-1 rounded border border-raiz-border-dark">
           {time}
         </div>
 
         <button
           onClick={() => setCrisisMode(!crisisMode)}
-          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded transition-colors ${crisisMode ? 'bg-rose-600 text-white animate-pulse' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded transition-colors ${crisisMode ? 'bg-rose-600 text-raiz-text-light animate-pulse' : 'bg-raiz-border-dark text-raiz-text-light/75 hover:bg-raiz-border-dark'}`}
         >
           <ShieldAlert size={14} />
           {crisisMode ? 'MODO CRISE ATIVO' : 'MODO CRISE'}
         </button>
 
-        <div className="flex items-center gap-3 border-l border-[#1E293B] pl-4">
+        <div className="flex items-center gap-3 border-l border-raiz-border-dark pl-4">
           <div className="text-right">
             <p className="text-xs font-medium">{user?.name || 'Operador'}</p>
-            <p className="text-[10px] text-gray-400 capitalize">{user?.role || 'Tech Lead'}</p>
+            <p className="text-[10px] text-raiz-text-light/75 capitalize">{user?.role || 'Tech Lead'}</p>
           </div>
           <button
             onClick={logout}
-            className="p-1.5 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 hover:bg-raiz-border-dark rounded-lg text-raiz-text-light/75 hover:text-raiz-text-light transition-colors"
             title="Sair"
           >
             <LogOut size={16} />

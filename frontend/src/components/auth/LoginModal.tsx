@@ -54,24 +54,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       aria-modal="true"
       aria-label="Login"
     >
-      <div className="w-full max-w-md rounded-2xl border border-cyan-500/40 bg-[#0b1220] p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="w-full max-w-md rounded-2xl border border-raiz-accent/40 bg-raiz-dark p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-raiz-border-dark pb-3">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-cyan-400" />
-            <h3 className="text-base font-bold text-white">Login</h3>
+            <ShieldCheck className="h-5 w-5 text-raiz-accent" />
+            <h3 className="text-base font-bold text-raiz-text-light">Login</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar login"
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="rounded-lg p-1 text-raiz-text-light/75 hover:bg-raiz-border-dark hover:text-raiz-text-light"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-3 rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-slate-300">
-          Sessão atual: <strong className="text-cyan-300">{user?.name ?? 'Operador'}</strong> ({user?.role ?? 'admin'})
+        <div className="mt-3 rounded-lg border border-raiz-border-dark bg-raiz-section px-3 py-2 text-xs text-raiz-text-light/75">
+          Sessão atual: <strong className="text-raiz-accent">{user?.name ?? 'Operador'}</strong> ({user?.role ?? 'admin'})
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -83,8 +83,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             }}
             className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold ${
               modo === 'login'
-                ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300'
-                : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
+                ? 'border-raiz-accent/40 bg-raiz-accent/15 text-raiz-accent'
+                : 'border-raiz-border-dark text-raiz-text-light/75 hover:bg-raiz-section'
             }`}
           >
             <LogIn className="h-3.5 w-3.5" />
@@ -98,8 +98,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             }}
             className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold ${
               modo === 'token'
-                ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300'
-                : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
+                ? 'border-raiz-accent/40 bg-raiz-accent/15 text-raiz-accent'
+                : 'border-raiz-border-dark text-raiz-text-light/75 hover:bg-raiz-section'
             }`}
           >
             <KeyRound className="h-3.5 w-3.5" />
@@ -113,7 +113,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
         )}
         {sucesso && (
-          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
+          <div className="mt-3 rounded-lg border border-raiz-accent/40 bg-raiz-accent/10 px-3 py-2 text-xs text-raiz-accent">
             {sucesso}
           </div>
         )}
@@ -121,23 +121,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         {modo === 'login' ? (
           <form onSubmit={(e) => void handleLogin(e)} className="mt-4 space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">E-mail</label>
+              <label className="mb-1 block text-xs font-semibold text-raiz-text-light/75">E-mail</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-raiz-border-dark bg-raiz-section px-3 py-2 text-xs text-raiz-text-light focus:border-raiz-accent/40 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">Senha</label>
+              <label className="mb-1 block text-xs font-semibold text-raiz-text-light/75">Senha</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-raiz-border-dark bg-raiz-section px-3 py-2 text-xs text-raiz-text-light focus:border-raiz-accent/40 focus:outline-none"
               />
             </div>
             <div className="flex items-center justify-between pt-2">
@@ -147,14 +147,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   usarTokenPadrao();
                   onClose();
                 }}
-                className="text-xs font-semibold text-slate-400 hover:text-cyan-300"
+                className="text-xs font-semibold text-raiz-text-light/75 hover:text-raiz-accent"
               >
                 Usar token padrão
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
+                className="rounded-lg bg-raiz-accent px-4 py-2 text-xs font-bold text-raiz-text-dark hover:bg-raiz-accent/90 disabled:opacity-50"
               >
                 {loading ? 'Entrando...' : 'Entrar'}
               </button>
@@ -163,7 +163,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         ) : (
           <form onSubmit={(e) => void handleGerarToken(e)} className="mt-4 space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-raiz-text-light/75">
                 Usuário técnico (letras minúsculas, números, `.`, `_`, `-`)
               </label>
               <input
@@ -172,15 +172,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 pattern="^[a-z0-9._-]{3,60}$"
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-raiz-border-dark bg-raiz-section px-3 py-2 text-xs text-raiz-text-light focus:border-raiz-accent/40 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">Papel</label>
+              <label className="mb-1 block text-xs font-semibold text-raiz-text-light/75">Papel</label>
               <select
                 value={papel}
                 onChange={(e) => setPapel(e.target.value as PapelUsuario)}
-                className="w-full rounded-lg border border-slate-800 bg-[#070d18] px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded-lg border border-raiz-border-dark bg-raiz-section px-3 py-2 text-xs text-raiz-text-light focus:border-raiz-accent/40 focus:outline-none"
               >
                 <option value="admin">admin (acesso total)</option>
                 <option value="operador">operador (leitura e ações)</option>
@@ -194,14 +194,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   usarTokenPadrao();
                   onClose();
                 }}
-                className="text-xs font-semibold text-slate-400 hover:text-cyan-300"
+                className="text-xs font-semibold text-raiz-text-light/75 hover:text-raiz-accent"
               >
                 Restaurar token admin
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-emerald-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50"
+                className="rounded-lg bg-raiz-accent px-4 py-2 text-xs font-bold text-raiz-text-dark hover:bg-raiz-accent/90 disabled:opacity-50"
               >
                 {loading ? 'Gerando...' : 'Gerar token'}
               </button>

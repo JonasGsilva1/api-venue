@@ -14,7 +14,7 @@ export const SeloSimulado: React.FC<SeloSimuladoProps> = ({
 }) => (
   <span
     title={detalhe}
-    className="px-1.5 py-0.5 text-[10px] rounded font-mono uppercase tracking-wider bg-[#FFD600]/10 text-[#FFD600] border border-[#FFD600]/30"
+    className="px-1.5 py-0.5 text-[10px] rounded font-mono uppercase tracking-wider bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/30"
   >
     {texto}
   </span>

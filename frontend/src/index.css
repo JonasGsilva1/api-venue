@@ -1,18 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-brand-dark: #0B0F19;
-  --color-brand-panel: #131B2E;
-  --color-brand-yellow: #FFD600;
-  --color-brand-border: #1E293B;
+  /* Tipografia */
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Tokens legados mapeados para a identidade RAIZ */
+  --color-brand-dark: #121C14;
+  --color-brand-panel: #132A1C;
+  --color-brand-yellow: #C7D8A5;
+  --color-brand-border: #3A4D3F;
+
+  /* Tokens completos da identidade RAIZ */
+  --color-raiz-dark: #121C14;
+  --color-raiz-section: #132A1C;
+  --color-raiz-light: #F2F0E6;
+  --color-raiz-accent: #C7D8A5;
+  --color-raiz-text-light: #EEF0E6;
+  --color-raiz-text-dark: #142117;
+  --color-raiz-border-dark: #3A4D3F;
+  --color-raiz-border-light: #D5D2C5;
 }
 
-body {
-  background-color: var(--color-brand-dark);
-  color: #FFFFFF;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  margin: 0;
-  @apply antialiased transition-colors duration-200;
+@layer base {
+  body {
+    background-color: var(--color-raiz-dark);
+    color: var(--color-raiz-text-light);
+    font-family: var(--font-sans);
+    margin: 0;
+    @apply antialiased transition-colors duration-200;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    letter-spacing: -0.02em;
+  }
 }

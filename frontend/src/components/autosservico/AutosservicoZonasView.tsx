@@ -117,12 +117,12 @@ export const AutosservicoZonasView: React.FC = () => {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-gray-100">Autosserviço & Zonas Interativas</h2>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-[#FFD600]/20 text-[#FFD600] border border-[#FFD600]/40">
+            <h2 className="text-xl font-bold text-raiz-text-light">Autosserviço & Zonas Interativas</h2>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/40">
               Módulo Tático
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-raiz-text-light/75 mt-0.5">
             Totens autônomos, dispensação de kits, espaço instagramável e lounges de conexão
           </p>
         </div>
@@ -132,9 +132,9 @@ export const AutosservicoZonasView: React.FC = () => {
           <button
             type="button"
             onClick={handleSolicitarReposicao}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-[#111827] text-gray-200 border border-[#1E293B] hover:border-[#FFD600]/50 hover:text-white transition-all shadow-md"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-raiz-section text-raiz-text-light border border-raiz-border-dark hover:border-raiz-accent/50 hover:text-raiz-text-light transition-all shadow-md"
           >
-            <Send size={14} className="text-[#FFD600]" />
+            <Send size={14} className="text-raiz-accent" />
             <span>Notificar Reposição de Estoque</span>
           </button>
         </div>
@@ -142,14 +142,14 @@ export const AutosservicoZonasView: React.FC = () => {
 
       {/* Alerta de chamado de reposição */}
       {chamadoReposicaoEnviado && (
-        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between animate-fadeIn">
+        <div className="p-3 rounded-xl bg-raiz-accent/15 border border-raiz-accent/30 text-raiz-accent text-xs flex items-center justify-between animate-fadeIn">
           <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+            <CheckCircle2 size={16} className="text-raiz-accent shrink-0" />
             <span>
               <strong>Alerta de Reposição Emitido:</strong> Equipe de apoio do estande acionada via rádio para conferência e reposição de insumos.
             </span>
           </div>
-          <span className="font-mono text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded">
+          <span className="font-mono text-[10px] bg-raiz-accent/15 px-2 py-0.5 rounded">
             Enviado com sucesso
           </span>
         </div>
@@ -158,28 +158,28 @@ export const AutosservicoZonasView: React.FC = () => {
       {/* 2. KPIS GERAIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Retiradas Totais */}
-        <div className="p-4 rounded-xl bg-[#111827] border border-[#1E293B] shadow-lg">
-          <div className="flex items-center justify-between text-gray-400 text-xs">
+        <div className="p-4 rounded-xl bg-raiz-section border border-raiz-border-dark shadow-lg">
+          <div className="flex items-center justify-between text-raiz-text-light/75 text-xs">
             <span className="font-semibold uppercase tracking-wider text-[10px]">Retiradas Autônomas</span>
-            <ShoppingBag size={16} className="text-[#FFD600]" />
+            <ShoppingBag size={16} className="text-raiz-accent" />
           </div>
-          <p className="font-mono text-2xl font-bold text-gray-100 mt-2">
-            {totalRetiradas} <span className="text-sm font-normal text-gray-400">itens</span>
+          <p className="font-mono text-2xl font-bold text-raiz-text-light mt-2">
+            {totalRetiradas} <span className="text-sm font-normal text-raiz-text-light/75">itens</span>
           </p>
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-400">
-            <span className="font-mono text-emerald-400 font-semibold">98.4%</span>
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-raiz-text-light/75">
+            <span className="font-mono text-raiz-accent font-semibold">98.4%</span>
             <span>sucesso na primeira tentativa</span>
           </div>
         </div>
 
         {/* KPI 2: Nível Geral de Estoque */}
-        <div className="p-4 rounded-xl bg-[#111827] border border-[#1E293B] shadow-lg">
-          <div className="flex items-center justify-between text-gray-400 text-xs">
+        <div className="p-4 rounded-xl bg-raiz-section border border-raiz-border-dark shadow-lg">
+          <div className="flex items-center justify-between text-raiz-text-light/75 text-xs">
             <span className="font-semibold uppercase tracking-wider text-[10px]">Estoque Médio</span>
-            <Package size={16} className="text-[#FFD600]" />
+            <Package size={16} className="text-raiz-accent" />
           </div>
-          <p className="font-mono text-2xl font-bold text-gray-100 mt-2">
-            {mediaEstoquePct}% <span className="text-sm font-normal text-gray-400">disponível</span>
+          <p className="font-mono text-2xl font-bold text-raiz-text-light mt-2">
+            {mediaEstoquePct}% <span className="text-sm font-normal text-raiz-text-light/75">disponível</span>
           </p>
           <div className="mt-2 flex items-center gap-2 text-[11px]">
             {totensEmAlerta.length > 0 ? (
@@ -188,7 +188,7 @@ export const AutosservicoZonasView: React.FC = () => {
                 1 totem requer reposição
               </span>
             ) : (
-              <span className="text-emerald-400 flex items-center gap-1">
+              <span className="text-raiz-accent flex items-center gap-1">
                 <CheckCircle2 size={12} />
                 Sem risco de ruptura
               </span>
@@ -197,30 +197,30 @@ export const AutosservicoZonasView: React.FC = () => {
         </div>
 
         {/* KPI 3: Engajamento Instagramável */}
-        <div className="p-4 rounded-xl bg-[#111827] border border-[#1E293B] shadow-lg">
-          <div className="flex items-center justify-between text-gray-400 text-xs">
+        <div className="p-4 rounded-xl bg-raiz-section border border-raiz-border-dark shadow-lg">
+          <div className="flex items-center justify-between text-raiz-text-light/75 text-xs">
             <span className="font-semibold uppercase tracking-wider text-[10px]">Espaço Instagramável</span>
-            <Camera size={16} className="text-[#FFD600]" />
+            <Camera size={16} className="text-raiz-accent" />
           </div>
-          <p className="font-mono text-2xl font-bold text-gray-100 mt-2">
-            528 <span className="text-sm font-normal text-gray-400">interações</span>
+          <p className="font-mono text-2xl font-bold text-raiz-text-light mt-2">
+            528 <span className="text-sm font-normal text-raiz-text-light/75">interações</span>
           </p>
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-400">
-            <span className="font-mono text-gray-300 font-semibold">3m 15s</span>
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-raiz-text-light/75">
+            <span className="font-mono text-raiz-text-light/75 font-semibold">3m 15s</span>
             <span>permanência média</span>
           </div>
         </div>
 
         {/* KPI 4: Pontuação CES (Facilidade de Uso) */}
-        <div className="p-4 rounded-xl bg-[#111827] border border-[#1E293B] shadow-lg">
-          <div className="flex items-center justify-between text-gray-400 text-xs">
+        <div className="p-4 rounded-xl bg-raiz-section border border-raiz-border-dark shadow-lg">
+          <div className="flex items-center justify-between text-raiz-text-light/75 text-xs">
             <span className="font-semibold uppercase tracking-wider text-[10px]">Índice de Usabilidade (CES)</span>
-            <Sparkles size={16} className="text-[#FFD600]" />
+            <Sparkles size={16} className="text-raiz-accent" />
           </div>
-          <p className="font-mono text-2xl font-bold text-gray-100 mt-2">
-            4.8 <span className="text-sm font-normal text-gray-400">/ 5.0</span>
+          <p className="font-mono text-2xl font-bold text-raiz-text-light mt-2">
+            4.8 <span className="text-sm font-normal text-raiz-text-light/75">/ 5.0</span>
           </p>
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-emerald-400">
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-raiz-accent">
             <Check size={12} />
             <span>Fluxo autônomo sem atrito</span>
           </div>
@@ -228,18 +228,18 @@ export const AutosservicoZonasView: React.FC = () => {
       </div>
 
       {/* 3. TOTENS E TERMINAIS AUTÔNOMOS */}
-      <div className="rounded-xl bg-[#111827] border border-[#1E293B] p-5 shadow-lg">
+      <div className="rounded-xl bg-raiz-section border border-raiz-border-dark p-5 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-sm font-bold text-gray-100 uppercase tracking-wider flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[#FFD600]" />
+            <h3 className="text-sm font-bold text-raiz-text-light uppercase tracking-wider flex items-center gap-2">
+              <span className="size-2 rounded-full bg-raiz-accent" />
               Totens e Dispensers de Autosserviço
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-raiz-text-light/75 mt-0.5">
               Níveis em tempo real de suprimentos, volumetria de retiradas e botões de teste
             </p>
           </div>
-          <span className="text-[11px] text-gray-400 font-mono">
+          <span className="text-[11px] text-raiz-text-light/75 font-mono">
             3 terminais online
           </span>
         </div>
@@ -254,18 +254,18 @@ export const AutosservicoZonasView: React.FC = () => {
               <div
                 key={t.id}
                 className={clsx(
-                  'rounded-xl p-4 border bg-[#090D16] transition-all flex flex-col justify-between',
+                  'rounded-xl p-4 border bg-raiz-dark transition-all flex flex-col justify-between',
                   isRuptura
                     ? 'border-rose-500/50 shadow-rose-950/20 shadow-lg'
                     : isAtencao
                     ? 'border-amber-500/50'
-                    : 'border-[#1E293B]'
+                    : 'border-raiz-border-dark'
                 )}
               >
                 <div>
                   {/* Cabeçalho */}
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#111827] text-[#FFD600] border border-[#1E293B]">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-raiz-section text-raiz-accent border border-raiz-border-dark">
                       {t.codigo}
                     </span>
                     <span
@@ -275,7 +275,7 @@ export const AutosservicoZonasView: React.FC = () => {
                           ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                           : isAtencao
                           ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                          : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                          : 'bg-raiz-accent/15 text-raiz-accent border-raiz-accent/40'
                       )}
                     >
                       {isRuptura ? 'Ruptura' : isAtencao ? 'Reposição Necessária' : 'Operacional'}
@@ -283,53 +283,53 @@ export const AutosservicoZonasView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 mt-1">
-                    {t.tipoIcone === 'kit' && <Package size={16} className="text-[#FFD600]" />}
+                    {t.tipoIcone === 'kit' && <Package size={16} className="text-raiz-accent" />}
                     {t.tipoIcone === 'cafe' && <Coffee size={16} className="text-amber-400" />}
-                    {t.tipoIcone === 'catalogo' && <Smartphone size={16} className="text-cyan-400" />}
-                    <h4 className="font-bold text-sm text-gray-100">{t.nome}</h4>
+                    {t.tipoIcone === 'catalogo' && <Smartphone size={16} className="text-raiz-accent" />}
+                    <h4 className="font-bold text-sm text-raiz-text-light">{t.nome}</h4>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">{t.funcao}</p>
+                  <p className="text-xs text-raiz-text-light/75 mt-1">{t.funcao}</p>
 
                   {/* Nível de Estoque */}
-                  <div className="mt-4 p-3 rounded-lg bg-[#111827] border border-[#1E293B]">
+                  <div className="mt-4 p-3 rounded-lg bg-raiz-section border border-raiz-border-dark">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-400">Estoque atual:</span>
-                      <span className="font-mono font-bold text-gray-100">
+                      <span className="text-raiz-text-light/75">Estoque atual:</span>
+                      <span className="font-mono font-bold text-raiz-text-light">
                         {t.estoqueAtual} / {t.estoqueMaximo} ({pct}%)
                       </span>
                     </div>
 
-                    <div className="mt-2 h-2 rounded-full bg-[#090D16] overflow-hidden">
+                    <div className="mt-2 h-2 rounded-full bg-raiz-dark overflow-hidden">
                       <div
                         className={clsx(
                           'h-full rounded-full transition-all duration-300',
-                          isRuptura ? 'bg-rose-500' : isAtencao ? 'bg-amber-400' : 'bg-emerald-400'
+                          isRuptura ? 'bg-rose-500' : isAtencao ? 'bg-amber-400' : 'bg-raiz-accent'
                         )}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-raiz-text-light/75">
                       <span>Retiradas hoje:</span>
-                      <span className="font-mono text-gray-200">{t.retiradasHoje} acessos</span>
+                      <span className="font-mono text-raiz-text-light">{t.retiradasHoje} acessos</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Ações interativas */}
-                <div className="mt-4 pt-3 border-t border-[#1E293B] flex items-center justify-between gap-2">
+                <div className="mt-4 pt-3 border-t border-raiz-border-dark flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => handleRetirada(t.id)}
                     disabled={t.estoqueAtual === 0}
-                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-[#111827] hover:bg-gray-800 border border-[#1E293B] text-xs font-semibold text-gray-200 hover:text-[#FFD600] disabled:opacity-40 transition-colors"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-raiz-section hover:bg-raiz-border-dark border border-raiz-border-dark text-xs font-semibold text-raiz-text-light hover:text-raiz-accent disabled:opacity-40 transition-colors"
                   >
                     Simular Retirada
                   </button>
                   <button
                     type="button"
                     onClick={() => handleReabastecer(t.id)}
-                    className="p-1.5 rounded-lg bg-[#111827] hover:bg-gray-800 border border-[#1E293B] text-gray-400 hover:text-emerald-400 transition-colors"
+                    className="p-1.5 rounded-lg bg-raiz-section hover:bg-raiz-border-dark border border-raiz-border-dark text-raiz-text-light/75 hover:text-raiz-accent transition-colors"
                     title="Restaurar estoque para 100%"
                   >
                     <RotateCcw size={14} />
@@ -344,67 +344,67 @@ export const AutosservicoZonasView: React.FC = () => {
       {/* 4. ZONAS DE EXPERIÊNCIA & ENGAJAMENTO (INSTAGRAMÁVEL + LOUNGE) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Espaço Instagramável */}
-        <div className="rounded-xl bg-[#111827] border border-[#1E293B] p-5 shadow-lg">
+        <div className="rounded-xl bg-raiz-section border border-raiz-border-dark p-5 shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Camera size={18} className="text-[#FFD600]" />
-              <h3 className="text-sm font-bold text-gray-100 uppercase tracking-wider">
+              <Camera size={18} className="text-raiz-accent" />
+              <h3 className="text-sm font-bold text-raiz-text-light uppercase tracking-wider">
                 Painel Instagramável RAIZ
               </h3>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/30">
               Sensor IA Ativo
             </span>
           </div>
-          <p className="text-xs text-gray-400 mb-4">
+          <p className="text-xs text-raiz-text-light/75 mb-4">
             Parede de led vertical, cenografia viva e hashtag do evento #RaizPortoDigital
           </p>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#090D16] border border-[#1E293B] text-xs">
-              <span className="text-gray-400">Pessoas no ponto focal:</span>
-              <span className="font-mono text-sm font-bold text-gray-100">6 pessoas</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-raiz-dark border border-raiz-border-dark text-xs">
+              <span className="text-raiz-text-light/75">Pessoas no ponto focal:</span>
+              <span className="font-mono text-sm font-bold text-raiz-text-light">6 pessoas</span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#090D16] border border-[#1E293B] text-xs">
-              <span className="text-gray-400">Tempo de foto & permanência:</span>
-              <span className="font-mono text-sm font-bold text-[#FFD600]">3m 20s</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-raiz-dark border border-raiz-border-dark text-xs">
+              <span className="text-raiz-text-light/75">Tempo de foto & permanência:</span>
+              <span className="font-mono text-sm font-bold text-raiz-accent">3m 20s</span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#090D16] border border-[#1E293B] text-xs">
-              <span className="text-gray-400">Status de engajamento:</span>
-              <span className="font-mono text-emerald-400 font-semibold">Alta circulação</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-raiz-dark border border-raiz-border-dark text-xs">
+              <span className="text-raiz-text-light/75">Status de engajamento:</span>
+              <span className="font-mono text-raiz-accent font-semibold">Alta circulação</span>
             </div>
           </div>
         </div>
 
         {/* Lounge de Conexão */}
-        <div className="rounded-xl bg-[#111827] border border-[#1E293B] p-5 shadow-lg">
+        <div className="rounded-xl bg-raiz-section border border-raiz-border-dark p-5 shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <BatteryCharging size={18} className="text-cyan-400" />
-              <h3 className="text-sm font-bold text-gray-100 uppercase tracking-wider">
+              <BatteryCharging size={18} className="text-raiz-accent" />
+              <h3 className="text-sm font-bold text-raiz-text-light uppercase tracking-wider">
                 Lounge Conexão & Carga
               </h3>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-raiz-accent/15 text-raiz-accent border border-raiz-accent/30">
               6 Estações
             </span>
           </div>
-          <p className="text-xs text-gray-400 mb-4">
+          <p className="text-xs text-raiz-text-light/75 mb-4">
             Poltronas com carregamento por indução e conexão Wi-Fi dedicada
           </p>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#090D16] border border-[#1E293B] text-xs">
-              <span className="text-gray-400">Poltronas ocupadas:</span>
-              <span className="font-mono text-sm font-bold text-gray-100">4 / 6 estações (67%)</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-raiz-dark border border-raiz-border-dark text-xs">
+              <span className="text-raiz-text-light/75">Poltronas ocupadas:</span>
+              <span className="font-mono text-sm font-bold text-raiz-text-light">4 / 6 estações (67%)</span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#090D16] border border-[#1E293B] text-xs">
-              <span className="text-gray-400">Permanência média de recarga:</span>
-              <span className="font-mono text-sm font-bold text-[#FFD600]">14m 10s</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-raiz-dark border border-raiz-border-dark text-xs">
+              <span className="text-raiz-text-light/75">Permanência média de recarga:</span>
+              <span className="font-mono text-sm font-bold text-raiz-accent">14m 10s</span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[#090D16] border border-[#1E293B] text-xs">
-              <span className="text-gray-400">Disponibilidade imediata:</span>
-              <span className="font-mono text-emerald-400 font-semibold">2 vagas livres</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-raiz-dark border border-raiz-border-dark text-xs">
+              <span className="text-raiz-text-light/75">Disponibilidade imediata:</span>
+              <span className="font-mono text-raiz-accent font-semibold">2 vagas livres</span>
             </div>
           </div>
         </div>

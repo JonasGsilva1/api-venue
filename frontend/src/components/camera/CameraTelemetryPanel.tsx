@@ -11,7 +11,7 @@ import { SeloSimulado } from '../publico/SeloSimulado';
 import { CameraVideoModal } from './CameraVideoModal';
 
 const COR_STATUS = {
-  VERDE: 'bg-emerald-400',
+  VERDE: 'bg-raiz-accent',
   AMARELO: 'bg-amber-400',
   VERMELHO: 'bg-rose-500',
 } as const;
@@ -29,8 +29,8 @@ const nomeCurto = (nome: string): string => {
 
 const Linha: React.FC<{ rotulo: string; valor: string }> = ({ rotulo, valor }) => (
   <div className="flex items-baseline justify-between gap-2 text-[11px]">
-    <span className="text-slate-500">{rotulo}</span>
-    <span className="truncate font-mono font-semibold text-slate-100" title={valor}>
+    <span className="text-raiz-text-light/55">{rotulo}</span>
+    <span className="truncate font-mono font-semibold text-raiz-text-light" title={valor}>
       {valor}
     </span>
   </div>
@@ -64,18 +64,18 @@ const CameraCard: React.FC<{
           onOpenVideo(item);
         }
       }}
-      className="group cursor-pointer rounded-xl border border-cyan-900/60 bg-[#0d1527] p-3.5 space-y-2.5 transition-colors hover:border-cyan-400/70 hover:bg-[#101b33]"
+      className="group cursor-pointer rounded-xl border border-raiz-border-dark bg-raiz-section p-3.5 space-y-2.5 transition-colors hover:border-raiz-accent/50 hover:bg-raiz-section/80"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-cyan-300">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-raiz-accent">
             <Camera className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{camera.codigo}</span>
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
+            <span className="rounded bg-raiz-border-dark px-1.5 py-0.5 text-[10px] font-semibold text-raiz-text-light/75">
               {ROTULO_TIPO[camera.tipo]}
             </span>
           </div>
-          <p className="mt-1 truncate text-xs text-slate-300" title={camera.nome}>
+          <p className="mt-1 truncate text-xs text-raiz-text-light/75" title={camera.nome}>
             {camera.nome}
           </p>
         </div>
@@ -108,7 +108,7 @@ const CameraCard: React.FC<{
       ) : (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-raiz-text-light/55">
               {carregando
                 ? 'Carregando leitura...'
                 : semZona
@@ -132,7 +132,7 @@ const CameraCard: React.FC<{
         </div>
       )}
 
-      <div className="pt-1 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-semibold text-cyan-300 group-hover:text-cyan-200">
+      <div className="pt-1 border-t border-raiz-border-dark flex items-center justify-between text-[11px] font-semibold text-raiz-accent group-hover:text-raiz-text-light">
         <span className="inline-flex items-center gap-1.5">
           <Video className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Analisar vídeo</span>
@@ -187,17 +187,17 @@ export const CameraTelemetryPanel: React.FC<CameraTelemetryPanelProps> = ({
     <section className="space-y-3" aria-labelledby="cameras-titulo">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 id="cameras-titulo" className="flex items-center gap-2 text-base font-bold text-white sm:text-lg">
-            <Camera className="h-5 w-5 text-cyan-400" aria-hidden="true" />
+          <h2 id="cameras-titulo" className="flex items-center gap-2 text-base font-bold text-raiz-text-light sm:text-lg">
+            <Camera className="h-5 w-5 text-raiz-accent" aria-hidden="true" />
             <span>Telemetria das Câmeras ({cameras.length})</span>
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-raiz-text-light/75">
             Leitura por zona da API: pessoas, espera e densidade. Câmeras sem zona usam valores simulados de fluxo.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {atualizadoEm && (
-            <span className="font-mono text-[11px] text-slate-500">
+            <span className="font-mono text-[11px] text-raiz-text-light/55">
               Atualizado às {atualizadoEm.toLocaleTimeString('pt-BR')}
             </span>
           )}
@@ -206,7 +206,7 @@ export const CameraTelemetryPanel: React.FC<CameraTelemetryPanelProps> = ({
             onClick={handleSincronizado}
             aria-label="Atualizar telemetria"
             title="Atualizar agora"
-            className="rounded-lg border border-cyan-900/60 bg-[#0d1527] p-1.5 text-slate-300 transition-colors hover:text-white"
+            className="rounded-lg border border-raiz-border-dark bg-raiz-section p-1.5 text-raiz-text-light/75 transition-colors hover:text-raiz-text-light"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
@@ -241,7 +241,7 @@ export const CameraTelemetryPanel: React.FC<CameraTelemetryPanelProps> = ({
       />
 
       {dispatches.length > 0 && (
-        <div className="rounded-xl border border-rose-900/50 bg-[#0d1527] p-3.5 space-y-2">
+        <div className="rounded-xl border border-rose-500/40 bg-raiz-section p-3.5 space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-300">
               <Radio className="h-3.5 w-3.5" />
@@ -252,17 +252,17 @@ export const CameraTelemetryPanel: React.FC<CameraTelemetryPanelProps> = ({
             {dispatches.slice(-4).reverse().map((d) => (
               <div
                 key={d.id}
-                className="rounded-lg border border-slate-800 bg-[#080d1a] px-3 py-2 text-xs flex items-start justify-between gap-2"
+                className="rounded-lg border border-raiz-border-dark bg-raiz-dark px-3 py-2 text-xs flex items-start justify-between gap-2"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 font-mono text-[11px]">
                     <span className="font-bold text-rose-300">#{d.id}</span>
-                    <span className="text-cyan-300">{d.nome_zona ?? `Zona ${d.pdv_id}`}</span>
+                    <span className="text-raiz-accent">{d.nome_zona ?? `Zona ${d.pdv_id}`}</span>
                     <span className="rounded bg-rose-950/80 px-1.5 py-0.5 text-[10px] text-rose-300">
                       {d.nivel_critico}
                     </span>
                   </div>
-                  <p className="mt-1 text-slate-300 truncate" title={d.sugestao_acao}>
+                  <p className="mt-1 text-raiz-text-light/75 truncate" title={d.sugestao_acao}>
                     {d.sugestao_acao}
                   </p>
                 </div>
